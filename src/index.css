@@ -45,6 +45,15 @@
     --sidebar-ring: 217 91% 60%;
   }
 
+  .s-logo {
+    transition: filter 0.3s ease-in-out;
+  }
+  
+  .dark .s-logo, 
+  .high-contrast .s-logo {
+    filter: invert(1);
+  }  
+
   .dark, .high-contrast {
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;

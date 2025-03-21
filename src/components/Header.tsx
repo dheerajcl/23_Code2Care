@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
+import Logo from "../assets/logo.png";
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -71,8 +72,9 @@ const Header: React.FC = () => {
             className="flex items-center space-x-2"
             aria-label="Samarthanam Trust - Home"
           >
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">S</div>
-            <span className="font-semibold text-xl hidden md:block">Samarthanam</span>
+            <img src={Logo} alt="Samarth Connect Logo" className='h-12 w-12 s-logo'/>
+            {/* <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">S</div> */}
+            <span className="font-semibold text-xl hidden md:block">Samarth Connect</span>
           </Link>
 
           {/* Desktop Navigation */}
