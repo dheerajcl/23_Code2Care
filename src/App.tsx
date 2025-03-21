@@ -17,6 +17,7 @@ import NotFound from "./pages/NotFound";
 import AdminLogin from "./admin/pages/AdminLogin";
 import AdminRegister from "./admin/pages/AdminRegister";
 import JoinUs from "./pages/JoinUs";
+import ParticipantForm from "./pages/ParticipantForm";
 import AdminDashboard from "./admin/pages/AdminDashboard";
 import VolunteerDashboard from "./pages/VolunteerDashboard";
 import AdminEvents from "./admin/pages/AdminEvents";
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="/register" element={<Register />} />
               <Route path="/login" element={<Login />} />
               <Route path="/join-us" element={<JoinUs />} />
+              <Route path="/participant" element={<ParticipantForm/>}/>
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin/register" element={<AdminRegister />} />
               
