@@ -47,6 +47,10 @@ const App = () => (
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin/register" element={<AdminRegister />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/admin/events" element={<AdminEvents />} />
+              <Route path="/admin/volunteers" element={<AdminVolunteers />} />
+
+
               
               {/* Protected admin routes */}
               <Route 
