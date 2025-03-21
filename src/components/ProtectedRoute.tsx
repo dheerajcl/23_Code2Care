@@ -20,7 +20,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (loading) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+        <Loader2 className="h-12 w-12 animate-spin text-red-600" />
         <p className="mt-4 text-lg">Loading...</p>
       </div>
     );

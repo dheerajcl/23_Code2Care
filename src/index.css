@@ -1,48 +1,47 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
+    --background: 0 15% 98%;
+    --foreground: 0 20% 15%;
     
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 0 20% 15%;
     
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 0 20% 15%;
     
-    --primary: 221 83% 53%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 0 59% 40%;
+    --primary-foreground: 0 15% 98%;
     
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 20 15% 92%;
+    --secondary-foreground: 0 20% 15%;
     
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 20 15% 92%;
+    --muted-foreground: 0 10% 45%;
     
-    --accent: 221 83% 53%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 20 40% 45%;
+    --accent-foreground: 0 15% 98%;
     
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 15% 98%;
     
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 221 83% 53%;
+    --border: 0 20% 88%;
+    --input: 0 20% 88%;
+    --ring: 0 59% 40%;
     
     --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5% 26%;
-    --sidebar-primary: 240 6% 10%;
+    --sidebar-background: 20 15% 97%;
+    --sidebar-foreground: 0 10% 30%;
+    --sidebar-primary: 0 15% 25%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 5% 96%;
-    --sidebar-accent-foreground: 240 6% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-accent: 20 10% 92%;
+    --sidebar-accent-foreground: 0 15% 25%;
+    --sidebar-border: 20 10% 88%;
+    --sidebar-ring: 0 59% 40%;
   }
 
   .s-logo {
@@ -54,34 +53,34 @@
     filter: invert(1);
   }  
 
-  .dark, .high-contrast {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
+  .dark {
+    --background: 0 15% 12%;
+    --foreground: 20 15% 92%;
     
-    --card: 222 47% 11%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 15% 12%;
+    --card-foreground: 20 15% 92%;
     
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 15% 12%;
+    --popover-foreground: 20 15% 92%;
     
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 11%;
+    --primary: 0 45% 35%;
+    --primary-foreground: 20 15% 92%;
     
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 10% 20%;
+    --secondary-foreground: 20 15% 92%;
     
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 0 10% 20%;
+    --muted-foreground: 20 10% 70%;
     
-    --accent: 217 91% 60%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 20 30% 35%;
+    --accent-foreground: 20 15% 92%;
     
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 60% 30%;
+    --destructive-foreground: 20 15% 92%;
     
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 213 27% 84%;
+    --border: 0 10% 25%;
+    --input: 0 10% 25%;
+    --ring: 0 59% 40%;
   }
 
   .high-contrast {
@@ -94,8 +93,8 @@
     --popover: 0 0% 0%;
     --popover-foreground: 0 0% 100%;
     
-    --primary: 60 100% 50%;
-    --primary-foreground: 0 0% 0%;
+    --primary: 0 83% 53%;  /* Bright red (previously mentioned as too bright) */
+    --primary-foreground: 0 0% 100%;
     
     --secondary: 0 0% 15%;
     --secondary-foreground: 0 0% 100%;
@@ -103,7 +102,7 @@
     --muted: 0 0% 15%;
     --muted-foreground: 0 0% 80%;
     
-    --accent: 60 100% 50%;
+    --accent: 0 100% 65%;  /* Bright accent to match */
     --accent-foreground: 0 0% 0%;
     
     --destructive: 0 100% 50%;
@@ -111,7 +110,7 @@
     
     --border: 0 0% 40%;
     --input: 0 0% 40%;
-    --ring: 60 100% 50%;
+    --ring: 0 83% 53%;  /* Bright red for focus rings */
   }
 }
 
@@ -158,14 +157,23 @@
     @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors 
     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 
     disabled:opacity-50 disabled:pointer-events-none ring-offset-background
-    bg-primary text-primary-foreground hover:bg-primary/90 h-10 py-2 px-4;
+    bg-red-800 text-white hover:bg-red-700 h-10 py-2 px-4;
   }
 
   .btn-secondary {
     @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors 
     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 
     disabled:opacity-50 disabled:pointer-events-none ring-offset-background
-    bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 py-2 px-4;
+    bg-stone-200 text-stone-800 hover:bg-stone-300 h-10 py-2 px-4;
+  }
+  
+  /* High contrast button overrides */
+  .high-contrast .btn-primary {
+    @apply bg-red-600 text-white hover:bg-red-500;
+  }
+
+  .high-contrast .btn-secondary {
+    @apply bg-neutral-800 text-white hover:bg-neutral-700;
   }
 }
 
