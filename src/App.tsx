@@ -17,8 +17,11 @@ import NotFound from "./pages/NotFound";
 import AdminLogin from "./admin/pages/AdminLogin";
 import AdminRegister from "./admin/pages/AdminRegister";
 import JoinUs from "./pages/JoinUs";
-import AdminDashboard from "./admin/AdminDashboard";
+import AdminDashboard from "./admin/pages/AdminDashboard";
 import VolunteerDashboard from "./pages/VolunteerDashboard";
+import AdminEvents from "./admin/pages/AdminEvents";
+import AdminVolunteers from "./admin/pages/AdminVolunteers";
+import AdminReports from "./admin/pages/AdminReports";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +50,36 @@ const App = () => (
                 element={
                   <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
                     <AdminDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+
+              {/* Protected admin routes */}
+              <Route 
+                path="/admin/events" 
+                element={
+                  <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                    <AdminEvents />
+                  </ProtectedRoute>
+                } 
+              />
+
+              {/* Protected admin routes */}
+              <Route 
+                path="/admin/volunteers" 
+                element={
+                  <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                    <AdminVolunteers />
+                  </ProtectedRoute>
+                } 
+              />
+
+              {/* Protected admin routes */}
+              <Route 
+                path="/admin/reports" 
+                element={
+                  <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                    <AdminReports />
                   </ProtectedRoute>
                 } 
               />
