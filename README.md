@@ -1,130 +1,178 @@
-# Samarthanam Trust Volunteer Management System
+# Samarthanam Volunteer Management System
 
-This is a volunteer management system for Samarthanam Trust for the Disabled, a National Award-winning NGO that works for the empowerment of persons with disabilities and the underserved through diverse initiatives.
+A modern volunteer management platform for Samarthanam Trust, built with React, TypeScript, Vite, and Supabase.
 
 ## Features
 
-- **Admin Features**:
-  - Create and schedule events
-  - Create tasks for events and schedule tasks
-  - Identify potential volunteers based on skills and interests
-  - Notify volunteers of opportunities
-  - Assign tasks to volunteers
-  - Track task status
-  - Collect feedback from volunteers
+- Admin and volunteer user roles with separate dashboards
+- Event management and volunteer registration
+- Feedback collection and reporting
+- Modern, accessible UI with dark mode support
+- Responsive design for all devices
 
-- **Volunteer Features**:
-  - Register with email, skills, interests, and availability preferences
-  - View recommended events and all available events
-  - Register for events
-  - Accept tasks and provide updates
-  - Submit feedback after events
-  - Receive notifications of new events
+## Tech Stack
 
-## Technology Stack
-
-- Frontend: React with Vite, TypeScript, Tailwind CSS, shadcn/ui
-- Authentication: Supabase Auth + Prisma
-- Database: PostgreSQL
-- ORM: Prisma
-- State Management: React Context API
+- **Frontend**: React, TypeScript, Vite, Tailwind CSS, shadcn/ui
+- **Backend**: Supabase (Auth, Database, Storage)
+- **ORM**: Drizzle ORM for typesafe database access
+- **API**: RESTful API with React Query
+- **State Management**: React Context API + React Query
+- **Deployment**: Docker & GitHub Actions
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js (v18+ recommended)
-- pnpm package manager
-- PostgreSQL database
+- Node.js 18+ and npm/pnpm
+- Supabase account (free tier works)
 
 ### Installation
 
 1. Clone the repository:
-   ```
+   ```bash
    git clone https://github.com/your-username/samarthanam.git
    cd samarthanam
    ```
 
 2. Install dependencies:
-   ```
+   ```bash
    pnpm install
    ```
 
-3. Configure environment variables by copying the `.env.example` to `.env` and updating the values:
-   ```
+3. Copy the `.env.example` to `.env` and configure your environment variables:
+   ```bash
    cp .env.example .env
    ```
 
-   Update the following variables in `.env`:
-   - `DATABASE_URL`: PostgreSQL connection string
-   - `VITE_SUPABASE_URL`: Your Supabase project URL
-   - `VITE_SUPABASE_ANON_KEY`: Your Supabase anonymous key
-
-4. Set up the database with Prisma:
+4. Update the `.env` file with your Supabase credentials:
    ```
-   pnpm dlx prisma migrate dev --name init
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   DATABASE_URL=your_postgresql_connection_string
    ```
 
 5. Start the development server:
-   ```
+   ```bash
    pnpm dev
    ```
 
-## Database Setup
+## Drizzle ORM Setup Guide
 
-The project uses Prisma ORM to connect to a PostgreSQL database. The schema is defined in `prisma/schema.prisma`.
+Drizzle ORM provides type-safe database access. Here's how to set it up and use it in this project:
 
-### Setting up PostgreSQL
+### Initial Setup
 
-1. Install PostgreSQL on your machine or use a cloud-hosted PostgreSQL database
-2. Create a new database for the project:
-   ```sql
-   CREATE DATABASE samarthanam;
+1. Make sure the database connection is properly configured in your `.env` file:
+   ```
+   DATABASE_URL=postgres://postgres:password@db.csotbvprygtwbarusbwc.supabase.co:5432/postgres
    ```
 
-3. Update the `DATABASE_URL` in your `.env` file to point to your PostgreSQL instance:
-   ```
-   DATABASE_URL="postgresql://USERNAME:PASSWORD@localhost:5432/samarthanam?schema=public"
-   ```
-
-4. Run Prisma migrations to set up your database schema:
-   ```
-   pnpm dlx prisma migrate dev --name init
+2. Install Drizzle dependencies if not already installed:
+   ```bash
+   pnpm add drizzle-orm pg
+   pnpm add -D drizzle-kit @types/pg
    ```
 
-### Schema Overview
+### Database Schema Management
 
-The database schema includes the following models:
-- Admin: Organization administrators
-- Volunteer: People who sign up to volunteer
-- Organization: Organizations that coordinate volunteer events
-- Event: Volunteer events organized by admins
-- Task: Individual tasks within events
-- EventSignup: Volunteer event registrations
-- TaskAssignment: Task assignments to volunteers
-- Feedback: Volunteer feedback on events
+The database schema is defined in the `src/db/schema/` directory:
 
-## Authentication
+- `users.ts` - Admin and volunteer user schemas
+- `organization.ts` - Organization schema
+- `events.ts` - Events, tasks, signups, and feedback schemas
 
-The application uses Supabase for authentication, combined with Prisma for user data storage. This approach provides:
+### Working with Migrations
 
-1. Email-based authentication
-2. Role-based access control (Admin vs Volunteer)
-3. Secure password hashing
+1. Generate a new migration after schema changes:
+   ```bash
+   npx drizzle-kit generate --name=your_migration_name
+   ```
 
-## Accessibility
+2. Push schema changes to the database:
+   ```bash
+   npx drizzle-kit push
+   ```
 
-The platform is designed to be accessible, especially for visually impaired users, with features like:
-- Keyboard navigation
-- Screen reader compatibility
-- High contrast mode
-- Text-to-speech capabilities
-- Scalable font sizes
+3. Check migration status:
+   ```bash
+   npx drizzle-kit check
+   ```
+
+### Database Permissions
+
+If you encounter permission issues, run the following SQL in the Supabase SQL Editor:
+
+```sql
+-- Grant schema usage permissions
+GRANT USAGE ON SCHEMA public TO anon;
+GRANT USAGE ON SCHEMA public TO authenticated;
+
+-- Grant specific table permissions
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO anon;
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO authenticated;
+
+-- Make sure future tables get the same permissions
+ALTER DEFAULT PRIVILEGES IN SCHEMA public 
+GRANT SELECT, INSERT, UPDATE ON TABLES TO anon;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public 
+GRANT SELECT, INSERT, UPDATE ON TABLES TO authenticated;
+```
+
+### Using Drizzle in the Application
+
+Drizzle is already configured in the application:
+
+1. The database connection is set up in `src/db/index.ts`
+2. Use the exported `db` object to perform database operations:
+
+```typescript
+import { db } from '@/db';
+import { admins } from '@/db/schema/users';
+import { eq } from 'drizzle-orm';
+
+// Example: Query data
+const admin = await db.query.admins.findFirst({
+  where: eq(admins.email, 'admin@example.com')
+});
+
+// Example: Insert data
+const [newAdmin] = await db.insert(admins).values({
+  email: 'admin@example.com',
+  password: hashedPassword,
+  firstName: 'Admin',
+  lastName: 'User'
+}).returning();
+```
+
+## Code Organization
+
+- `src/admin/` - Admin dashboard components and pages
+- `src/components/` - Shared UI components
+- `src/db/` - Database schema and configuration
+- `src/lib/` - Utilities and context providers
+- `src/pages/` - Main application pages
+- `src/services/` - API and authentication services
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+1. Create a feature branch:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+2. Make your changes and commit:
+   ```bash
+   git commit -m "feat: add your feature"
+   ```
+
+3. Push to the branch:
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+
+4. Open a pull request
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License.

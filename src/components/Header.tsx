@@ -1,19 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Menu, X, Moon, Sun, Settings } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Menu, X, Moon, Sun, Settings, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel
 } from '@/components/ui/dropdown-menu';
 import Logo from "../assets/logo.png";
+import { useAuth } from '@/lib/authContext';
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -57,6 +67,19 @@ const Header: React.FC = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
+  // Function to get the dashboard URL based on user role
+  const getDashboardUrl = () => {
+    if (!user) return '/login';
+    
+    // Return the appropriate dashboard URL based on user role
+    // if (user.role === 'admin') {
+    //   return '/admin/dashboard';
+    // }
+    
+    // Default to volunteer dashboard if role is volunteer or not determined
+    return '/volunteer/dashboard';
+  };
+
   return (
     <header 
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -96,13 +119,52 @@ const Header: React.FC = () => {
             >
               About
             </Link>
-            <Button asChild variant="ghost" className="ml-2">
-              <Link to="/join-us">Volunteer</Link>
-            </Button>
+            
+            {user ? (
+              // Show dashboard button if user is logged in
+              <Button asChild variant="ghost" className="ml-2">
+                <Link to={getDashboardUrl()}>Dashboard</Link>
+              </Button>
+            ) : (
+              // Show volunteer button if user is not logged in
+              <Button asChild variant="ghost" className="ml-2">
+                <Link to="/join-us">Volunteer</Link>
+              </Button>
+            )}
           </nav>
 
-          {/* Theme and Accessibility Controls */}
-          <div className="flex items-center space-x-2">
+          {/* User Menu & Controls */}
+          <div className="flex items-center space-x-1">
+            {/* User Account Dropdown (if logged in) */}
+            {user && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative">
+                    <User className="h-5 w-5" />
+                    <span className="sr-only">User menu</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user.firstName} {user.lastName}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate(getDashboardUrl())}>
+                    Dashboard
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
+            {/* Theme Toggle */}
             <Button 
               variant="ghost" 
               size="icon" 
@@ -116,6 +178,7 @@ const Header: React.FC = () => {
               )}
             </Button>
 
+            {/* Accessibility Options */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Accessibility options">
@@ -157,10 +220,10 @@ const Header: React.FC = () => {
       </div>
 
       {/* Mobile Navigation Menu */}
-      <div 
+      <div
         className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
           isMenuOpen 
-            ? 'max-h-64 bg-background/95 backdrop-blur-md border-b border-border' 
+            ? 'max-h-80 bg-background/95 backdrop-blur-md border-b border-border' 
             : 'max-h-0'
         }`}
       >
@@ -186,13 +249,39 @@ const Header: React.FC = () => {
           >
             About
           </Link>
-          <Link 
-            to="/join-us" 
-            className="block px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            Volunteer
-          </Link>
+          
+          {user ? (
+            // Show dashboard link if user is logged in
+            <Link 
+              to={getDashboardUrl()}
+              className="block px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Dashboard
+            </Link>
+          ) : (
+            // Show volunteer link if user is not logged in
+            <Link 
+              to="/join-us" 
+              className="block px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Volunteer
+            </Link>
+          )}
+          
+          {/* Show logout option if logged in (mobile) */}
+          {user && (
+            <button
+              onClick={() => {
+                handleLogout();
+                setIsMenuOpen(false);
+              }}
+              className="w-full text-left block px-3 py-2 rounded-md text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 transition-colors"
+            >
+              Log out
+            </button>
+          )}
         </div>
       </div>
     </header>

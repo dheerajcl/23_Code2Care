@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ChevronRight, Heart, Users, Calendar, BookOpen } from 'lucide-react';
@@ -9,6 +8,7 @@ import Footer from '@/components/Footer';
 import Hero from '@/components/Hero';
 import EventCard from '@/components/EventCard';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
+import { useAuth } from '@/lib/authContext';
 
 // Sample events data
 const upcomingEvents = [
@@ -71,6 +71,10 @@ const impactStats = [
 ];
 
 const Index: React.FC = () => {
+  const { user } = useAuth();
+  
+  // No automatic redirect to dashboard - allow all users to view the home page
+  
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
