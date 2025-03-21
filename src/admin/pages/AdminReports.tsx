@@ -44,12 +44,16 @@ const AdminReports: React.FC = () => {
   const handleLogout = async () => {
     await logout();
   };
-
+  interface jsPDFWithAutoTable extends jsPDF {
+    lastAutoTable: {
+      finalY: number;
+    };
+  }
   const generatePDF = () => {
-    const doc = new jsPDF();
+    const doc = new jsPDF() as jsPDFWithAutoTable;
     doc.setFontSize(18);
     doc.text('Volunteer & Event Reports', 14, 20);
-
+  
     // Top Events
     autoTable(doc, {
       startY: 30,
@@ -57,9 +61,9 @@ const AdminReports: React.FC = () => {
       body: topEvents.map(e => [e.name, e.participants]),
       theme: 'striped',
     });
-
+  
     const firstTableY = doc.lastAutoTable.finalY;
-
+  
     // Frequent Volunteers
     autoTable(doc, {
       startY: firstTableY + 10,
@@ -67,12 +71,12 @@ const AdminReports: React.FC = () => {
       body: frequentVolunteers.map(v => [v.name, v.events]),
       theme: 'striped',
     });
-
+  
     const secondTableY = doc.lastAutoTable.finalY;
-
+  
     doc.setFontSize(14);
     doc.text(`Volunteer Retention Rate: ${retentionRate}%`, 14, secondTableY + 20);
-
+  
     doc.save('Volunteer_Report.pdf');
   };
 
