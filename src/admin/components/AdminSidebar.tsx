@@ -3,11 +3,19 @@ import {
   LayoutDashboard, Calendar, Users, BarChart2, 
   LogOut, ChevronLeft, ChevronRight, Menu 
 } from 'lucide-react';
+import { useAuth } from '@/lib/authContext';
 
 const AdminSidebar = ({ initialExpanded = true, onToggle }) => {
   const [expanded, setExpanded] = useState(initialExpanded);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeItem, setActiveItem] = useState('Dashboard');
+  const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    // Redirect is handled by the auth context
+  };
+
 
   // Check the current URL and set the active item accordingly
   useEffect(() => {
@@ -82,7 +90,7 @@ const AdminSidebar = ({ initialExpanded = true, onToggle }) => {
           </button>
         </div>
         
-        <div className="py-4 flex flex-col justify-between h-[calc(100%-64px)]">
+        <div className="pt-4 flex flex-col justify-between h-[calc(100%-64px)]">
           {/* Menu Items */}
           <nav>
             <ul>
@@ -115,15 +123,12 @@ const AdminSidebar = ({ initialExpanded = true, onToggle }) => {
           
           {/* Sign Out Button */}
           <div className="mt-auto border-t border-white">
-            <a 
-              href="#signout" 
-              className="flex items-center px-4 py-3 hover:bg-red-700 transition-colors"
-            >
+            <div className="flex items-center px-4 py-4 hover:bg-red-700 transition-colors" onClick={handleLogout}>
               <span className="inline-flex items-center justify-center text-white">
-                <LogOut size={28} />
+                <LogOut size={28}/>
               </span>
-              {expanded && <span className="ml-4">Sign Out</span>}
-            </a>
+              {expanded && <span className="ml-4">Log Out</span>}
+            </div>
           </div>
         </div>
       </div>

@@ -4,7 +4,7 @@ import AdminSidebar from '../components/AdminSidebar'
 const AdminDashboard = () => {
   // State to track sidebar expansion - need to share between components
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
-
+  
   // Function to update sidebar state (pass this to the AdminSidebar component)
   const handleSidebarToggle = (expanded) => {
     setSidebarExpanded(expanded);
