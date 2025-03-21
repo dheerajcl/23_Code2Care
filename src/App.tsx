@@ -43,6 +43,10 @@ const App = () => (
               <Route path="/join-us" element={<JoinUs />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin/register" element={<AdminRegister />} />
+              <Route path="/admin/events" element={<AdminEvents />} />
+              <Route path="/admin/volunteers" element={<AdminVolunteers />} />
+
+
               
               {/* Protected admin routes */}
               <Route 
