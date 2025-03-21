@@ -1,8 +1,8 @@
-
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Calendar, Clock, MapPin, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
+import { Button } from './ui/button';
 import { 
   Card, 
   CardContent, 
@@ -10,8 +10,8 @@ import {
   CardFooter, 
   CardHeader, 
   CardTitle 
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+} from './ui/card';
+import { Badge } from './ui/badge';
 
 interface EventCardProps {
   id: number;
