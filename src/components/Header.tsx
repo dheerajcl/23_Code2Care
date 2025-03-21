@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, X, Moon, Sun, Settings } from 'lucide-react';
@@ -98,7 +97,7 @@ const Header: React.FC = () => {
               About
             </Link>
             <Button asChild variant="ghost" className="ml-2">
-              <Link to="/register">Volunteer</Link>
+              <Link to="/join-us">Volunteer</Link>
             </Button>
           </nav>
 
@@ -188,7 +187,7 @@ const Header: React.FC = () => {
             About
           </Link>
           <Link 
-            to="/register" 
+            to="/join-us" 
             className="block px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
             onClick={() => setIsMenuOpen(false)}
           >

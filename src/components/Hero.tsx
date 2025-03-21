@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
@@ -50,7 +49,7 @@ const Hero: React.FC<HeroProps> = ({
           {showCta && (
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button asChild size="lg" className="w-full sm:w-auto">
-                <Link to="/register">
+                <Link to="/join-us">
                   Become a Volunteer
                 </Link>
               </Button>

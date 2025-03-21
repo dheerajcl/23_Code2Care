@@ -1,10 +1,43 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { loginSchema } from '@/services/auth.service';
+import { loginAdmin } from '@/services/auth.service';
+import { useAuth } from '@/lib/authContext';
+import { toast } from '@/components/ui/use-toast';
+import { Loader2 } from 'lucide-react';
+
+type LoginFormValues = {
+  email: string;
+  password: string;
+};
 
 const AdminLogin = () => {
   const [displayText, setDisplayText] = useState('');
   const fullText = "Hello\nAdmin!";
   const [showEmoji, setShowEmoji] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { checkAuth, user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  });
+  
+  // If already logged in, redirect to admin dashboard
+  useEffect(() => {
+    if (user && user.role === 'admin') {
+      navigate('/admin/dashboard');
+    }
+  }, [user, navigate]);
+  
+  // Animation effect
   useEffect(() => {
     let currentIndex = 0;
     const typingInterval = setInterval(() => {
@@ -21,6 +54,38 @@ const AdminLogin = () => {
     
     return () => clearInterval(typingInterval);
   }, []);
+  
+  const onSubmit = async (data: LoginFormValues) => {
+    try {
+      setLoading(true);
+      const result = await loginAdmin(data);
+      
+      if (result.success) {
+        toast({
+          title: 'Login successful',
+          description: 'Welcome back!',
+        });
+        await checkAuth(); // Update auth context
+        // Redirect to dashboard or previous page
+        const redirectTo = location.state?.from?.pathname || '/admin/dashboard';
+        navigate(redirectTo);
+      } else {
+        toast({
+          title: 'Login failed',
+          description: result.message,
+          variant: 'destructive',
+        });
+      }
+    } catch (error: Error | unknown) {
+      toast({
+        title: 'Login failed',
+        description: error instanceof Error ? error.message : 'Something went wrong',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   
   return (
     <div className="flex h-screen">
@@ -53,26 +118,42 @@ const AdminLogin = () => {
             Don't have an account? <a href="/admin/register" className="text-blue-600 underline">Register</a>.
           </p>
 
-          <form>
+          <form onSubmit={handleSubmit(onSubmit)}>
             <div className="mb-4">
               <input 
                 type="email" 
                 placeholder="admin@example.com" 
-                className="w-full border border-gray-300 p-3 rounded-md"
+                className={`w-full border ${errors.email ? 'border-red-500' : 'border-gray-300'} p-3 rounded-md`}
+                {...register('email')}
               />
+              {errors.email && (
+                <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+              )}
             </div>
             <div className="mb-6">
               <input 
                 type="password" 
                 placeholder="Password" 
-                className="w-full border border-gray-300 p-3 rounded-md"
+                className={`w-full border ${errors.password ? 'border-red-500' : 'border-gray-300'} p-3 rounded-md`}
+                {...register('password')}
               />
+              {errors.password && (
+                <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
+              )}
             </div>
             <button 
               type="submit" 
-              className="w-full bg-black text-white py-3 rounded-md mb-4"
+              className="w-full bg-black text-white py-3 rounded-md mb-4 flex items-center justify-center"
+              disabled={loading}
             >
-              Login Now
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Logging in...
+                </>
+              ) : (
+                'Login Now'
+              )}
             </button>
             <button 
               type="button" 

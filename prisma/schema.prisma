@@ -1,0 +1,145 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // Note: Using transaction pooler URL only
+}
+
+// Admin model for organization administrators
+model Admin {
+  id             String   @id @default(uuid())
+  email          String   @unique
+  password       String
+  firstName      String
+  lastName       String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  events         Event[]
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+}
+
+// Volunteer model for people who sign up to volunteer
+model Volunteer {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  password     String
+  firstName    String
+  lastName     String
+  phone        String?
+  address      String?
+  city         String?
+  state        String?
+  skills       String[] // Array of skills
+  interests    String[] // Array of interests
+  availability String?  // Availability preferences
+  experience   String?  // Previous volunteer experience
+  howHeard     String?  // How they heard about the organization
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  eventSignups EventSignup[]
+  taskAssignments TaskAssignment[]
+  feedback     Feedback[]
+}
+
+// Organization model
+model Organization {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  logo      String?  // URL to logo image
+  mission   String?
+  website   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  admins    Admin[]
+  events    Event[]
+}
+
+// Event model for volunteer events
+model Event {
+  id             String   @id @default(uuid())
+  title          String
+  description    String?
+  location       String?
+  startDate      DateTime
+  endDate        DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  status         String   @default("upcoming") // upcoming, ongoing, completed, cancelled
+  adminId        String
+  admin          Admin    @relation(fields: [adminId], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  tasks          Task[]
+  signups        EventSignup[]
+  feedback       Feedback[]
+}
+
+// Task model for event tasks
+model Task {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  startTime   DateTime?
+  endTime     DateTime?
+  skills      String[] // Required skills
+  maxVolunteers Int?   // Maximum number of volunteers needed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  status      String   @default("open") // open, in-progress, completed
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id])
+  assignments TaskAssignment[]
+}
+
+// EventSignup model for volunteer event signups
+model EventSignup {
+  id          String   @id @default(uuid())
+  status      String   @default("pending") // pending, approved, rejected, attended
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  volunteerId String
+  volunteer   Volunteer @relation(fields: [volunteerId], references: [id])
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id])
+
+  @@unique([volunteerId, eventId])
+}
+
+// TaskAssignment model for assigning tasks to volunteers
+model TaskAssignment {
+  id          String   @id @default(uuid())
+  status      String   @default("assigned") // assigned, in-progress, completed
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  volunteerId String
+  volunteer   Volunteer @relation(fields: [volunteerId], references: [id])
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id])
+
+  @@unique([volunteerId, taskId])
+}
+
+// Feedback model for collecting feedback from volunteers
+model Feedback {
+  id          String   @id @default(uuid())
+  rating      Int      // 1-5 rating
+  comments    String?
+  createdAt   DateTime @default(now())
+  volunteerId String
+  volunteer   Volunteer @relation(fields: [volunteerId], references: [id])
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id])
+
+  @@unique([volunteerId, eventId])
+}

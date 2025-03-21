@@ -1,69 +1,130 @@
-# Welcome to your Lovable project
+# Samarthanam Trust Volunteer Management System
 
-## Project info
+This is a volunteer management system for Samarthanam Trust for the Disabled, a National Award-winning NGO that works for the empowerment of persons with disabilities and the underserved through diverse initiatives.
 
-**URL**: https://lovable.dev/projects/5be53375-83ac-4d79-9d9a-4f6e88efef3f
+## Features
 
-## How can I edit this code?
+- **Admin Features**:
+  - Create and schedule events
+  - Create tasks for events and schedule tasks
+  - Identify potential volunteers based on skills and interests
+  - Notify volunteers of opportunities
+  - Assign tasks to volunteers
+  - Track task status
+  - Collect feedback from volunteers
 
-There are several ways of editing your application.
+- **Volunteer Features**:
+  - Register with email, skills, interests, and availability preferences
+  - View recommended events and all available events
+  - Register for events
+  - Accept tasks and provide updates
+  - Submit feedback after events
+  - Receive notifications of new events
 
-**Use Lovable**
+## Technology Stack
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/5be53375-83ac-4d79-9d9a-4f6e88efef3f) and start prompting.
+- Frontend: React with Vite, TypeScript, Tailwind CSS, shadcn/ui
+- Authentication: Supabase Auth + Prisma
+- Database: PostgreSQL
+- ORM: Prisma
+- State Management: React Context API
 
-Changes made via Lovable will be committed automatically to this repo.
+## Getting Started
 
-**Use your preferred IDE**
+### Prerequisites
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- Node.js (v18+ recommended)
+- pnpm package manager
+- PostgreSQL database
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Installation
 
-Follow these steps:
+1. Clone the repository:
+   ```
+   git clone https://github.com/your-username/samarthanam.git
+   cd samarthanam
+   ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+2. Install dependencies:
+   ```
+   pnpm install
+   ```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+3. Configure environment variables by copying the `.env.example` to `.env` and updating the values:
+   ```
+   cp .env.example .env
+   ```
 
-# Step 3: Install the necessary dependencies.
-npm i
+   Update the following variables in `.env`:
+   - `DATABASE_URL`: PostgreSQL connection string
+   - `VITE_SUPABASE_URL`: Your Supabase project URL
+   - `VITE_SUPABASE_ANON_KEY`: Your Supabase anonymous key
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+4. Set up the database with Prisma:
+   ```
+   pnpm dlx prisma migrate dev --name init
+   ```
 
-**Edit a file directly in GitHub**
+5. Start the development server:
+   ```
+   pnpm dev
+   ```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Database Setup
 
-**Use GitHub Codespaces**
+The project uses Prisma ORM to connect to a PostgreSQL database. The schema is defined in `prisma/schema.prisma`.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Setting up PostgreSQL
 
-## What technologies are used for this project?
+1. Install PostgreSQL on your machine or use a cloud-hosted PostgreSQL database
+2. Create a new database for the project:
+   ```sql
+   CREATE DATABASE samarthanam;
+   ```
 
-This project is built with .
+3. Update the `DATABASE_URL` in your `.env` file to point to your PostgreSQL instance:
+   ```
+   DATABASE_URL="postgresql://USERNAME:PASSWORD@localhost:5432/samarthanam?schema=public"
+   ```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+4. Run Prisma migrations to set up your database schema:
+   ```
+   pnpm dlx prisma migrate dev --name init
+   ```
 
-## How can I deploy this project?
+### Schema Overview
 
-Simply open [Lovable](https://lovable.dev/projects/5be53375-83ac-4d79-9d9a-4f6e88efef3f) and click on Share -> Publish.
+The database schema includes the following models:
+- Admin: Organization administrators
+- Volunteer: People who sign up to volunteer
+- Organization: Organizations that coordinate volunteer events
+- Event: Volunteer events organized by admins
+- Task: Individual tasks within events
+- EventSignup: Volunteer event registrations
+- TaskAssignment: Task assignments to volunteers
+- Feedback: Volunteer feedback on events
 
-## I want to use a custom domain - is that possible?
+## Authentication
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+The application uses Supabase for authentication, combined with Prisma for user data storage. This approach provides:
+
+1. Email-based authentication
+2. Role-based access control (Admin vs Volunteer)
+3. Secure password hashing
+
+## Accessibility
+
+The platform is designed to be accessible, especially for visually impaired users, with features like:
+- Keyboard navigation
+- Screen reader compatibility
+- High contrast mode
+- Text-to-speech capabilities
+- Scalable font sizes
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check, ChevronRight, HelpCircle } from 'lucide-react';
+import { Check, ChevronRight, HelpCircle, Loader2 } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Hero from '@/components/Hero';
@@ -25,7 +26,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Card, CardContent } from '@/components/ui/card';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/use-toast';
+import { registerVolunteer } from '@/services/auth.service';
+import { useAuth } from '@/lib/authContext';
 
 const Register: React.FC = () => {
   const [step, setStep] = useState(1);
@@ -33,6 +36,7 @@ const Register: React.FC = () => {
     firstName: '',
     lastName: '',
     email: '',
+    password: '',
     phone: '',
     address: '',
     city: '',
@@ -44,8 +48,11 @@ const Register: React.FC = () => {
     howHeard: '',
     agreeTerms: false
   });
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const { checkAuth } = useAuth();
   
-  const updateFormData = (field: string, value: any) => {
+  const updateFormData = (field: string, value: unknown) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
   
@@ -73,7 +80,7 @@ const Register: React.FC = () => {
   
   const isStepValid = () => {
     if (step === 1) {
-      return formData.firstName && formData.lastName && formData.email && formData.phone;
+      return formData.firstName && formData.lastName && formData.email && formData.phone && formData.password;
     } else if (step === 2) {
       return formData.skills.length > 0 && formData.interests.length > 0 && formData.availability;
     } else if (step === 3) {
@@ -87,7 +94,11 @@ const Register: React.FC = () => {
       setStep(prev => prev + 1);
       window.scrollTo(0, 0);
     } else {
-      toast.error("Please complete all required fields before continuing.");
+      toast({
+        title: "Missing Information",
+        description: "Please complete all required fields before continuing.",
+        variant: "destructive"
+      });
     }
   };
   
@@ -96,32 +107,43 @@ const Register: React.FC = () => {
     window.scrollTo(0, 0);
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isStepValid()) {
-      // Registration form submission logic would go here
-      console.log("Form submitted:", formData);
-      toast.success("Your volunteer registration has been submitted successfully!");
-      
-      // Reset form and go back to step 1 after submission
-      setFormData({
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        address: '',
-        city: '',
-        state: '',
-        skills: [],
-        interests: [],
-        availability: '',
-        experience: '',
-        howHeard: '',
-        agreeTerms: false
-      });
-      setStep(1);
+      try {
+        setLoading(true);
+        const result = await registerVolunteer(formData);
+        
+        if (result.success) {
+          toast({
+            title: "Registration Successful",
+            description: "Your volunteer account has been created successfully!",
+          });
+          
+          // Reset form and go to step 4 (completed)
+          setStep(4);
+        } else {
+          toast({
+            title: "Registration Failed",
+            description: result.message,
+            variant: "destructive"
+          });
+        }
+      } catch (error: Error | unknown) {
+        toast({
+          title: "Registration Error",
+          description: error instanceof Error ? error.message : "Something went wrong during registration.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
     } else {
-      toast.error("Please agree to the terms and conditions before submitting.");
+      toast({
+        title: "Missing Information",
+        description: "Please agree to the terms and conditions before submitting.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -241,6 +263,21 @@ const Register: React.FC = () => {
                             required
                           />
                         </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="password" className="required">Password</Label>
+                        <Input 
+                          id="password" 
+                          type="password" 
+                          placeholder="Create a secure password" 
+                          value={formData.password}
+                          onChange={(e) => updateFormData('password', e.target.value)}
+                          required
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Password must be at least 6 characters long.
+                        </p>
                       </div>
                       
                       <div className="space-y-2">
@@ -428,9 +465,9 @@ const Register: React.FC = () => {
                       className="space-y-6"
                     >
                       <div className="space-y-2">
-                        <h2 className="text-2xl font-bold">Review & Submit</h2>
+                        <h2 className="text-2xl font-bold">Review & Terms</h2>
                         <p className="text-muted-foreground">
-                          Please review your information and agree to our terms before submitting.
+                          Please review your information and agree to our terms and conditions.
                         </p>
                       </div>
                       
@@ -514,41 +551,34 @@ const Register: React.FC = () => {
                     </motion.div>
                   )}
                   
-                  {/* Step 4: Completion */}
+                  {/* Step 4: Completed */}
                   {step === 4 && (
                     <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.5 }}
-                      className="text-center py-8 space-y-6"
+                      className="py-10 text-center space-y-6"
                     >
-                      <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                        <Check className="h-10 w-10 text-primary" />
+                      <div className="flex justify-center">
+                        <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center">
+                          <Check className="h-12 w-12 text-green-600" />
+                        </div>
                       </div>
                       
                       <div className="space-y-2">
-                        <h2 className="text-2xl font-bold">Registration Complete!</h2>
+                        <h2 className="text-2xl font-bold">Registration Successful!</h2>
                         <p className="text-muted-foreground">
-                          Thank you for registering as a volunteer with Samarthanam Trust for the Disabled.
+                          Thank you for signing up as a volunteer. You can now log in to your account to view and sign up for events.
                         </p>
                       </div>
                       
-                      <div className="bg-muted p-4 rounded-lg text-left">
-                        <h3 className="font-semibold mb-2">What happens next?</h3>
-                        <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                          <li>You will receive a confirmation email within 24 hours.</li>
-                          <li>Our volunteer coordinator will review your application.</li>
-                          <li>You'll be invited to an orientation session to learn more about our programs.</li>
-                          <li>We'll match you with volunteer opportunities based on your skills and interests.</li>
-                        </ul>
-                      </div>
-                      
-                      <div className="pt-4">
-                        <Button asChild>
-                          <a href="/events">
-                            Browse Upcoming Events
-                            <ChevronRight className="ml-2 h-4 w-4" />
-                          </a>
+                      <div className="flex justify-center mt-6">
+                        <Button 
+                          onClick={() => navigate('/login')}
+                          className="min-w-36"
+                        >
+                          Go to Login
+                          <ChevronRight className="ml-2 h-4 w-4" />
                         </Button>
                       </div>
                     </motion.div>
@@ -562,6 +592,7 @@ const Register: React.FC = () => {
                           type="button" 
                           variant="outline"
                           onClick={prevStep}
+                          disabled={loading}
                         >
                           Back
                         </Button>
@@ -573,16 +604,24 @@ const Register: React.FC = () => {
                         <Button 
                           type="button"
                           onClick={nextStep}
-                          disabled={!isStepValid()}
+                          disabled={!isStepValid() || loading}
                         >
                           Next
                         </Button>
                       ) : (
                         <Button 
                           type="submit"
-                          disabled={!isStepValid()}
+                          disabled={!isStepValid() || loading}
+                          className="flex items-center"
                         >
-                          Submit
+                          {loading ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Submitting...
+                            </>
+                          ) : (
+                            'Submit'
+                          )}
                         </Button>
                       )}
                     </div>
