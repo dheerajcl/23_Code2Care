@@ -16,7 +16,7 @@ const JoinUs: React.FC = () => {
       <Header />
       
       <main className="flex-grow">
-        <section className="py-16 px-4">
+        <section className="py-28 px-4">
           <div className="container mx-auto max-w-4xl">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
