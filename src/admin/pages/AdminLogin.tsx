@@ -89,8 +89,8 @@ const AdminLogin = () => {
   
   return (
     <div className="flex h-screen">
-      {/* Left side with blue background */}
-      <div className="w-1/2 bg-blue-600 flex flex-col justify-center p-16 text-white">
+      {/* Left side with red background */}
+      <div className="w-1/2 bg-red-600 flex flex-col justify-center p-16 text-white">
         <div className="mb-6">
           <span className="text-8xl">*</span>
         </div>
@@ -123,7 +123,7 @@ const AdminLogin = () => {
               <input 
                 type="email" 
                 placeholder="admin@example.com" 
-                className={`w-full border ${errors.email ? 'border-red-500' : 'border-gray-300'} p-3 rounded-md`}
+                className={`w-full border ${errors.email ? 'border-red-600' : 'border-gray-300'} p-3 rounded-md`}
                 {...register('email')}
               />
               {errors.email && (
