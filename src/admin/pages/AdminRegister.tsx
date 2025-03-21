@@ -93,8 +93,8 @@ const AdminRegister = () => {
   
   return (
     <div className="flex h-screen">
-      {/* Left side with blue background */}
-      <div className="w-1/2 bg-blue-600 flex flex-col justify-center p-16 text-white">
+      {/* Left side with red background */}
+      <div className="w-1/2 bg-red-600 flex flex-col justify-center p-16 text-white">
         <div className="mb-6">
           <span className="text-8xl">*</span>
         </div>
