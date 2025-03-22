@@ -107,54 +107,6 @@ const queryClient = new QueryClient();
                     </ProtectedRoute>
                   }
                 />
-                <Route
-                  path="/volunteer/events"
-                  element={
-                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
-                      <VolunteerEvents />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="volunteer/events/:id/tasks"
-                  element={
-                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
-                      <VolTasks />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/volunteer/events/:id/feedback"
-                  element={
-                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
-                      <EventFeedback />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/volunteer/tasks"
-                  element={
-                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
-                      <VolunteerTasks />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/volunteer/badges"
-                  element={
-                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
-                      <VolunteerBadges />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/volunteer/progress"
-                  element={
-                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
-                      <VolunteerProgress />
-                    </ProtectedRoute>
-                  }
-                />
                 
                 {/* 404 route */}
             <Route path="*" element={<NotFound />} />
