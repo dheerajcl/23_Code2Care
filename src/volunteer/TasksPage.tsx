@@ -11,7 +11,7 @@ import Footer from '@/components/Footer';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { assignedTasks } from './dashboard';
+import { assignedTasks } from './VolunteerDashboard';
 
 const TasksPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -25,7 +25,8 @@ const TasksPage: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-background">
       {/* Header with boundary */}
       <div className="border-b border-gray-300 shadow-sm">
-        <Header />
+      <Header handleLogout={handleLogout} />
+
       </div>
 
       <div className="flex-1 flex flex-row">
