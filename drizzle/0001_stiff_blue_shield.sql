@@ -19,7 +19,8 @@ CREATE TABLE "event" (
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	"status" text DEFAULT 'upcoming' NOT NULL,
 	"admin_id" uuid NOT NULL,
-	"organization_id" uuid NOT NULL
+	"organization_id" uuid NOT NULL,
+	"category" text
 );
 --> statement-breakpoint
 CREATE TABLE "feedback" (

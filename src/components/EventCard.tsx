@@ -17,8 +17,8 @@ interface EventCardProps {
   id: number;
   title: string;
   description: string;
-  date: string;
-  time: string;
+  start_date: string;
+  end_date: string;
   location: string;
   category: string;
   volunteersNeeded: number;
@@ -29,8 +29,8 @@ const EventCard: React.FC<EventCardProps> = ({
   id,
   title,
   description,
-  date,
-  time,
+  start_date,
+  end_date,
   location,
   category,
   volunteersNeeded,
@@ -65,12 +65,12 @@ const EventCard: React.FC<EventCardProps> = ({
         <CardContent className="space-y-3 flex-grow">
           <div className="flex items-center text-sm text-muted-foreground">
             <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
-            <span>{date}</span>
+            <span>{new Date(start_date).toLocaleDateString()}-{new Date(end_date).toLocaleDateString()}</span>
           </div>
           
           <div className="flex items-center text-sm text-muted-foreground">
             <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
-            <span>{time}</span>
+            <span>{new Date(start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
           
           <div className="flex items-start text-sm text-muted-foreground">

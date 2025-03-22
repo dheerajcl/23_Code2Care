@@ -15,6 +15,7 @@ export const events = pgTable('event', {
   status: text('status').default('upcoming').notNull(),
   adminId: uuid('admin_id').notNull().references(() => admins.id),
   organizationId: uuid('organization_id').notNull().references(() => organizations.id),
+  category: text("category"),
 });
 
 // Task table
