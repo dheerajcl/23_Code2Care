@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import Header from '../components/Header';
 import Footer from '../components/Footer';
 import EventCard from '../components/EventCard';
 import Hero from '../components/Hero';
@@ -14,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '../components/ui/select';
+import LandingHeader from '@/components/LandingHeader';
 
 // Events Component
 const Events: React.FC = () => {
@@ -82,7 +82,7 @@ const Events: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <LandingHeader />
 
       <main className="flex-grow">
         <Hero
