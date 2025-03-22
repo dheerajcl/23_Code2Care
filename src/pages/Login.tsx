@@ -22,7 +22,7 @@ type LoginFormValues = {
 
 const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
-  const { checkAuth, user } = useAuth();
+  const { user, setUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -37,37 +37,49 @@ const Login: React.FC = () => {
   // If already logged in as volunteer, redirect to volunteer dashboard
   useEffect(() => {
     if (user && user.role === 'volunteer') {
-      navigate('/volunteer/dashboard');
+      navigate('/volunteer/dashboard', { replace: true });
     }
   }, [user, navigate]);
   
   const onSubmit = async (data: LoginFormValues) => {
     try {
       setLoading(true);
-      const result = await loginVolunteer(data);
+      console.log('Starting login process...');
       
-      if (result.success) {
+      const result = await loginVolunteer(data);
+      console.log('Login result:', result);
+      
+      if (result.success && result.user) {
+        console.log('Login successful');
+        
+        // Set user in context
+        setUser(result.user);
+        
+        // Show success toast
         toast({
           title: 'Login successful',
           description: 'Welcome back!',
         });
-        await checkAuth(); // Update auth context
-        // Always redirect to volunteer dashboard
+        
+        // Navigate to dashboard
         navigate('/volunteer/dashboard', { replace: true });
       } else {
+        console.log('Login failed:', result.message);
         toast({
           title: 'Login failed',
           description: result.message,
           variant: 'destructive',
         });
       }
-    } catch (error: Error | unknown) {
+    } catch (error: unknown) {
+      console.error('Login error:', error);
       toast({
         title: 'Login failed',
         description: error instanceof Error ? error.message : 'Something went wrong',
         variant: 'destructive',
       });
     } finally {
+      console.log('Login process completed, setting loading to false');
       setLoading(false);
     }
   };

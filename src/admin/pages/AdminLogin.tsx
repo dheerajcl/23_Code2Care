@@ -13,12 +13,12 @@ type LoginFormValues = {
   password: string;
 };
 
-const AdminLogin = () => {
+const AdminLogin: React.FC = () => {
   const [displayText, setDisplayText] = useState('');
   const fullText = "Hello\nAdmin!";
   const [showEmoji, setShowEmoji] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { checkAuth } = useAuth();
+  const { user, setUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -30,8 +30,12 @@ const AdminLogin = () => {
     },
   });
   
-  // No automatic redirect for admin users
-  // They must manually login each time
+  // If already logged in as admin, redirect to admin dashboard
+  useEffect(() => {
+    if (user && user.role === 'admin') {
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
   
   // Animation effect
   useEffect(() => {
@@ -54,38 +58,42 @@ const AdminLogin = () => {
   const onSubmit = async (data: LoginFormValues) => {
     try {
       setLoading(true);
-      const result = await loginAdmin(data);
+      console.log('Starting admin login process...');
       
-      if (result.success) {
+      const result = await loginAdmin(data);
+      console.log('Admin login result:', result);
+      
+      if (result.success && result.user) {
+        console.log('Admin login successful');
+        
+        // Set user in context
+        setUser(result.user);
+        
+        // Show success toast
         toast({
           title: 'Login successful',
-          description: 'Welcome back!',
+          description: 'Welcome back, admin!',
         });
         
-        // Force update the auth context with the user data
-        if (result.user) {
-          // Store the user in localStorage as a fallback
-          localStorage.setItem('adminUser', JSON.stringify(result.user));
-        }
-        
-        await checkAuth(); // Update auth context
-        
-        // Always redirect to admin dashboard
+        // Navigate to dashboard
         navigate('/admin/dashboard', { replace: true });
       } else {
+        console.log('Admin login failed:', result.message);
         toast({
           title: 'Login failed',
           description: result.message,
           variant: 'destructive',
         });
       }
-    } catch (error: Error | unknown) {
+    } catch (error: unknown) {
+      console.error('Admin login error:', error);
       toast({
         title: 'Login failed',
         description: error instanceof Error ? error.message : 'Something went wrong',
         variant: 'destructive',
       });
     } finally {
+      console.log('Admin login process completed, setting loading to false');
       setLoading(false);
     }
   };
