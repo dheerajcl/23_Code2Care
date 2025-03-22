@@ -320,7 +320,7 @@ const VolunteerEvents = () => {
       <Header user={user} handleLogout={handleLogout} />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 overflow-auto p-8">
+        <main className="flex-1 overflow-auto p-8 pt-28">
           {/* Events Header */}
           <div className="flex justify-between items-center mb-8">
             <div>

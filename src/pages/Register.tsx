@@ -29,6 +29,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import { registerVolunteer } from '@/services/auth.service';
 import { useAuth } from '@/lib/authContext';
+import LandingHeader from '@/components/LandingHeader';
 
 const Register: React.FC = () => {
   const [step, setStep] = useState(1);
@@ -149,7 +150,7 @@ const Register: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <LandingHeader />
       
       <main className="flex-grow">
         <Hero 

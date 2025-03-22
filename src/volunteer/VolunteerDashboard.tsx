@@ -40,6 +40,7 @@ import { Bar, BarChart, ResponsiveContainer } from 'recharts';
 import { Leaderboard } from '@/components/Leaderboard';
 import { Link, useLocation } from 'react-router-dom';
 import Sidebar from '@/components/Sidebar';
+import LandingHeader from '@/components/LandingHeader';
 
 // Mock data for the dashboard
 const upcomingEvents = [
@@ -191,10 +192,10 @@ export const VolunteerDashboard = () => {
   
   return (
     <div className="h-screen bg-gray-100 flex flex-col">
-      <Header user={user} handleLogout={handleLogout}/>
+      <Header/>
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 overflow-auto p-8">
+        <main className="flex-1 overflow-auto pt-28 p-8">
           <div className="container mx-auto px-4 lg:px-2">
           <div className="flex flex-col gap-6">
               {/* Welcome */}

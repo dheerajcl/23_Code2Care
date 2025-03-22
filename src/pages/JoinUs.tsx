@@ -7,13 +7,14 @@ import Footer from '@/components/Footer';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import LandingHeader from '@/components/LandingHeader';
 
 const JoinUs: React.FC = () => {
   const navigate = useNavigate();
   
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <LandingHeader />
       
       <main className="flex-grow">
         <section className="py-28 px-4">

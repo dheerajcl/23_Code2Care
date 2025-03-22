@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import LandingHeader from '@/components/LandingHeader';
 
 type LoginFormValues = {
   email: string;
@@ -86,7 +87,7 @@ const Login: React.FC = () => {
   
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <LandingHeader />
       
       <main className="flex-grow flex items-center justify-center py-16 px-4">
         <Card className="w-full max-w-md">
