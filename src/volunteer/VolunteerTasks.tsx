@@ -10,6 +10,7 @@ import TaskKanban from '../components/TaskKanban';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import { Badge } from '@/components/ui/badge';
+import AccessibilityMenu from '@/components/AccessibilityMenu';
 
 const VolunteerTasks = () => {
   const [activeView, setActiveView] = useState('table');
@@ -237,6 +238,7 @@ const VolunteerTasks = () => {
           </div>
         </main>
       </div>
+      <AccessibilityMenu/>
     </div>
   );
 };
