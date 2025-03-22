@@ -4,6 +4,8 @@ import {
   Code, Activity, ChevronDown, ChevronUp, User, UserCheck, Clock
 } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
+import AdminHeader from '../components/AdminHeader';
+import { useAuth } from '@/lib/authContext';
 
 const AdminVolunteers = () => {
   // State for volunteers data
@@ -397,21 +399,23 @@ const AdminVolunteers = () => {
     </div>
   );
 
-  const [sidebarExpanded, setSidebarExpanded] = useState(true);
-
-  // Function to handle sidebar toggle
-  const handleSidebarToggle = (expanded) => {
-    setSidebarExpanded(expanded);
-  };
+  const { user, logout } = useAuth();
+  
+    const handleLogout = async () => {
+      await logout();
+      // Redirect is handled by the auth context
+  
+    };
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <AdminSidebar initialExpanded={sidebarExpanded} onToggle={handleSidebarToggle} />
-      <main className={`flex-1 transition-all duration-300 overflow-auto p-8
-                  ${sidebarExpanded ? 'md:ml-56' : 'md:ml-16'}`}>
-        <div className="p-6">
+    <div className="h-screen bg-gray-100 flex flex-col">
+      <AdminHeader user={user} handleLogout={handleLogout}/>
+      <div className="flex flex-1 overflow-hidden">
+        <AdminSidebar />
+        <main className="flex-1 overflow-auto p-8">
+          <div>
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-800">Volunteers</h1>
+            <h1 className="text-3xl font-bold text-gray-800">Volunteers</h1>
             <p className="text-gray-600">Manage and analyze volunteer data</p>
           </div>
           
@@ -579,10 +583,11 @@ const AdminVolunteers = () => {
             {viewMode === 'leaderboard' && renderLeaderboard()}
             {viewMode === 'analytics' && renderAnalytics()}
           </div>
-        </div>
-      </main>
+          </div>
+        </main>
+      </div>
     </div>
   );
-};
+}
 
 export default AdminVolunteers;

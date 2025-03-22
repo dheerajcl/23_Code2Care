@@ -19,10 +19,11 @@ import AdminRegister from "./admin/pages/AdminRegister";
 import JoinUs from "./pages/JoinUs";
 import ParticipantForm from "./pages/ParticipantForm";
 import AdminDashboard from "./admin/pages/AdminDashboard";
-import VolunteerDashboard from "./pages/VolunteerDashboard";
+import VolunteerDashboard from "./volunteer/dashboard";
 import AdminEvents from "./admin/pages/AdminEvents";
 import AdminVolunteers from "./admin/pages/AdminVolunteers";
 import AdminReports from "./admin/pages/AdminReports";
+import AuthCallback from "./pages/AuthCallback";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,9 @@ const App = () => (
               <Route path="/participant" element={<ParticipantForm/>}/>
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin/register" element={<AdminRegister />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
+
+
               
               {/* Protected admin routes */}
               <Route 

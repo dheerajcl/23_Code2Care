@@ -18,7 +18,7 @@ const AdminLogin = () => {
   const fullText = "Hello\nAdmin!";
   const [showEmoji, setShowEmoji] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { checkAuth, user } = useAuth();
+  const { checkAuth } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -30,12 +30,8 @@ const AdminLogin = () => {
     },
   });
   
-  // If already logged in, redirect to admin dashboard
-  useEffect(() => {
-    if (user && user.role === 'admin') {
-      navigate('/admin/dashboard');
-    }
-  }, [user, navigate]);
+  // No automatic redirect for admin users
+  // They must manually login each time
   
   // Animation effect
   useEffect(() => {
@@ -66,9 +62,8 @@ const AdminLogin = () => {
           description: 'Welcome back!',
         });
         await checkAuth(); // Update auth context
-        // Redirect to dashboard or previous page
-        const redirectTo = location.state?.from?.pathname || '/admin/dashboard';
-        navigate(redirectTo);
+        // Always redirect to admin dashboard
+        navigate('/admin/dashboard', { replace: true });
       } else {
         toast({
           title: 'Login failed',

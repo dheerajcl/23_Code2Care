@@ -31,4 +31,4 @@ if (isBrowser) {
   }
 }
 
-export { prisma };
+export { prisma }; 

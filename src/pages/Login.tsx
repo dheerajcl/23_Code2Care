@@ -34,7 +34,7 @@ const Login: React.FC = () => {
     },
   });
   
-  // If already logged in, redirect to volunteer dashboard
+  // If already logged in as volunteer, redirect to volunteer dashboard
   useEffect(() => {
     if (user && user.role === 'volunteer') {
       navigate('/volunteer/dashboard');
@@ -52,9 +52,8 @@ const Login: React.FC = () => {
           description: 'Welcome back!',
         });
         await checkAuth(); // Update auth context
-        // Redirect to dashboard or previous page
-        const redirectTo = location.state?.from?.pathname || '/volunteer/dashboard';
-        navigate(redirectTo);
+        // Always redirect to volunteer dashboard
+        navigate('/volunteer/dashboard', { replace: true });
       } else {
         toast({
           title: 'Login failed',
@@ -142,6 +141,9 @@ const Login: React.FC = () => {
                   <Link to="/admin/login" className="hover:underline">
                     Admin Login
                   </Link>
+                  <span className="block mt-1 text-xs">
+                    Administrators must log in separately through the Admin Login page
+                  </span>
                 </p>
               </div>
             </form>

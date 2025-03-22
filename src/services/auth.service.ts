@@ -1,38 +1,18 @@
 import { supabase } from '@/lib/supabase';
 import { z } from 'zod';
 
-// Check if we're running in a browser environment
-const isBrowser = typeof window !== 'undefined';
-
-// Mock data for browser environments
-const mockData = {
-  admins: [
-    {
-      id: '1',
-      email: 'admin@samarthanam.org',
-      firstName: 'Admin',
-      lastName: 'User',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-  ],
-  volunteers: [
-    {
-      id: '1',
-      email: 'volunteer@example.com',
-      firstName: 'Volunteer',
-      lastName: 'User',
-      phone: '+91 98765 43210',
-      city: 'Bengaluru',
-      state: 'karnataka',
-      skills: ['Teaching', 'Technology'],
-      interests: ['Education', 'Community Outreach'],
-      availability: 'weekends',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-  ]
+// Define better types for users
+export type UserData = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: 'admin' | 'volunteer';
+  [key: string]: unknown;
 };
+
+// Define the CurrentUser type
+export type CurrentUser = UserData;
 
 // Validation schemas
 export const loginSchema = z.object({
@@ -74,97 +54,84 @@ export const adminRegisterSchema = z.object({
 type AuthResponse = {
   success: boolean;
   message: string;
-  user?: any;
+  user?: UserData;
+};
+
+// Error type
+type AppError = {
+  message: string;
+  [key: string]: unknown;
 };
 
 // Admin authentication
 export const registerAdmin = async (userData: z.infer<typeof adminRegisterSchema>): Promise<AuthResponse> => {
   try {
-    // Create Supabase user for authentication
+    // Validate input
+    const result = adminRegisterSchema.safeParse(userData);
+    if (!result.success) {
+      return { success: false, message: 'Invalid user data' };
+    }
+
+    // Create account with Supabase Auth
     const { data, error } = await supabase.auth.signUp({
       email: userData.email,
       password: userData.password,
-      options: {
-        data: {
-          role: 'admin',
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-        },
-      },
     });
 
     if (error) {
       return { success: false, message: error.message };
     }
-    
-    // If in browser, use mock data directly
-    if (isBrowser) {
-      // Check if email already exists in mock data
-      const existingAdmin = mockData.admins.find(admin => admin.email === userData.email);
-      if (existingAdmin) {
-        await supabase.auth.signOut();
-        return { success: false, message: 'Email already in use' };
-      }
-      
-      // Create a new mock admin
-      const newAdmin = {
-        id: String(mockData.admins.length + 1),
-        email: userData.email,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      mockData.admins.push(newAdmin);
-      
-      return {
-        success: true,
-        message: 'Admin registered successfully',
-        user: { ...data.user, role: 'admin', ...newAdmin },
-      };
-    } else {
-      // In a server environment, we'd use Prisma here
-      // This code path won't be executed in the browser
-      return {
-        success: true,
-        message: 'Admin registered successfully',
-        user: { ...data.user, role: 'admin' },
-      };
+
+    if (!data.user) {
+      return { success: false, message: 'Failed to create user' };
     }
-  } catch (error: any) {
-    return { success: false, message: error.message || 'Failed to register admin' };
+
+    const supabaseUserId = data.user.id;
+
+    // Create admin in Supabase database - note the table name is 'admin' not 'admins'
+    const { error: insertError, data: insertData } = await supabase
+      .from('admin')  // Changed from 'admins' to 'admin' to match the schema
+      .insert({
+        id: supabaseUserId,
+        email: userData.email,
+        password: userData.password, // Usually you'd hash this, but we'll follow the existing pattern
+        first_name: userData.firstName, // Changed from firstName to first_name to match DB schema
+        last_name: userData.lastName,   // Changed from lastName to last_name to match DB schema
+      })
+      .select();
+
+    if (insertError) {
+      // If database insert failed, clean up the auth user
+      await supabase.auth.admin.deleteUser(supabaseUserId).catch(() => {});
+      return { success: false, message: insertError.message || 'Failed to create admin record' };
+    }
+
+    const newAdmin = insertData?.[0];
+    
+    if (!newAdmin) {
+      // If no admin was returned, clean up the auth user
+      await supabase.auth.admin.deleteUser(supabaseUserId).catch(() => {});
+      return { success: false, message: 'Failed to create admin record' };
+    }
+
+    return {
+      success: true,
+      message: 'Admin registered successfully',
+      user: {
+        ...newAdmin,
+        role: 'admin' as const,
+        manuallyLoggedIn: true,
+      },
+    };
+  } catch (error: unknown) {
+    const err = error as AppError;
+    return { success: false, message: err.message || 'Failed to register admin' };
   }
 };
 
 export const loginAdmin = async (credentials: z.infer<typeof loginSchema>): Promise<AuthResponse> => {
   try {
-    // If in browser and using mock admin credentials, bypass Supabase
-    if (isBrowser) {
-      const admin = mockData.admins.find(a => a.email === credentials.email);
-      
-      if (admin && credentials.email === 'admin@samarthanam.org' && credentials.password === 'Admin@123') {
-        const mockUser = { 
-          id: admin.id,
-          email: admin.email,
-          firstName: admin.firstName,
-          lastName: admin.lastName,
-          role: 'admin',
-          ...admin 
-        };
-        
-        // Store in localStorage to maintain the session
-        localStorage.setItem('mockUser', JSON.stringify(mockUser));
-        
-        return {
-          success: true,
-          message: 'Login successful',
-          user: mockUser,
-        };
-      }
-    }
-    
-    // Otherwise proceed with Supabase authentication
+    // Sign in with Supabase Auth
     const { data, error } = await supabase.auth.signInWithPassword({
       email: credentials.email,
       password: credentials.password,
@@ -173,131 +140,120 @@ export const loginAdmin = async (credentials: z.infer<typeof loginSchema>): Prom
     if (error) {
       return { success: false, message: error.message };
     }
+
+    // Fetch admin record from database - note the table name is 'admin' not 'admins'
+    const { data: adminData, error: adminError } = await supabase
+      .from('admin')  // Changed from 'admins' to 'admin' to match the schema
+      .select('*')
+      .eq('email', credentials.email)
+      .single();
     
-    // If in browser, use mock data
-    if (isBrowser) {
-      // Find admin in mock data
-      const admin = mockData.admins.find(a => a.email === credentials.email);
-      
-      if (!admin) {
-        await supabase.auth.signOut();
-        return { success: false, message: 'Invalid admin credentials' };
-      }
-      
-      return {
-        success: true,
-        message: 'Login successful',
-        user: { ...data.user, role: 'admin', ...admin },
-      };
-    } else {
-      // In server environment, we'd fetch from database
-      return {
-        success: true,
-        message: 'Login successful',
-        user: { ...data.user, role: 'admin' },
-      };
+    if (adminError || !adminData) {
+      await supabase.auth.signOut();
+      return { success: false, message: 'Invalid admin credentials' };
     }
-  } catch (error: any) {
-    return { success: false, message: error.message || 'Failed to login' };
+    
+    // Convert snake_case DB column names to camelCase for frontend
+    const camelCaseAdmin = {
+      ...adminData,
+      firstName: adminData.first_name,
+      lastName: adminData.last_name,
+      createdAt: adminData.created_at,
+      updatedAt: adminData.updated_at,
+      organizationId: adminData.organization_id,
+      manuallyLoggedIn: true,
+      role: 'admin' as const,
+    };
+    
+    return {
+      success: true,
+      message: 'Login successful',
+      user: camelCaseAdmin,
+    };
+  } catch (error: unknown) {
+    const err = error as AppError;
+    return { success: false, message: err.message || 'Failed to login' };
   }
 };
 
 // Volunteer authentication
 export const registerVolunteer = async (userData: z.infer<typeof volunteerRegisterSchema>): Promise<AuthResponse> => {
   try {
-    // Create Supabase user for authentication
+    // Validate input
+    const result = volunteerRegisterSchema.safeParse(userData);
+    if (!result.success) {
+      return { success: false, message: 'Invalid user data' };
+    }
+
+    // Create account with Supabase Auth
     const { data, error } = await supabase.auth.signUp({
       email: userData.email,
       password: userData.password,
-      options: {
-        data: {
-          role: 'volunteer',
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-        },
-      },
     });
 
     if (error) {
       return { success: false, message: error.message };
     }
+
+    if (!data.user) {
+      return { success: false, message: 'Failed to create user' };
+    }
+
+    const supabaseUserId = data.user.id;
     
-    // If in browser, use mock data directly
-    if (isBrowser) {
-      // Check if email already exists in mock data
-      const existingVolunteer = mockData.volunteers.find(vol => vol.email === userData.email);
-      if (existingVolunteer) {
-        await supabase.auth.signOut();
-        return { success: false, message: 'Email already in use' };
-      }
-      
-      // Create a new mock volunteer
-      const newVolunteer = {
-        id: String(mockData.volunteers.length + 1),
+    // Create volunteer in database - note the table name is 'volunteer' not 'volunteers'
+    const { error: insertError, data: insertData } = await supabase
+      .from('volunteer')  // Changed from 'volunteers' to 'volunteer' to match the schema
+      .insert({
+        id: supabaseUserId,
         email: userData.email,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
+        password: userData.password,
+        first_name: userData.firstName, // Changed from firstName to first_name to match DB schema
+        last_name: userData.lastName,   // Changed from lastName to last_name to match DB schema
         phone: userData.phone,
         address: userData.address,
         city: userData.city,
         state: userData.state,
-        skills: userData.skills,
-        interests: userData.interests,
+        skills: userData.skills || [],
+        interests: userData.interests || [],
         availability: userData.availability,
         experience: userData.experience,
-        howHeard: userData.howHeard,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      mockData.volunteers.push(newVolunteer);
-      
-      return {
-        success: true,
-        message: 'Volunteer registered successfully',
-        user: { ...data.user, role: 'volunteer', ...newVolunteer },
-      };
-    } else {
-      // In a server environment, we'd use Prisma here
-      return {
-        success: true,
-        message: 'Volunteer registered successfully',
-        user: { ...data.user, role: 'volunteer' },
-      };
+        how_heard: userData.howHeard     // Changed from howHeard to how_heard to match DB schema
+      })
+      .select();
+
+    if (insertError) {
+      // If database insert failed, clean up the auth user
+      await supabase.auth.admin.deleteUser(supabaseUserId).catch(() => {});
+      return { success: false, message: insertError.message || 'Failed to create volunteer record' };
     }
-  } catch (error: any) {
-    return { success: false, message: error.message || 'Failed to register volunteer' };
+
+    const newVolunteer = insertData?.[0];
+    
+    if (!newVolunteer) {
+      // If no volunteer was returned, clean up the auth user
+      await supabase.auth.admin.deleteUser(supabaseUserId).catch(() => {});
+      return { success: false, message: 'Failed to create volunteer record' };
+    }
+
+    return {
+      success: true,
+      message: 'Volunteer registered successfully',
+      user: {
+        ...newVolunteer,
+        role: 'volunteer' as const,
+        manuallyLoggedIn: true,
+      },
+    };
+  } catch (error: unknown) {
+    const err = error as AppError;
+    return { success: false, message: err.message || 'Failed to register volunteer' };
   }
 };
 
 export const loginVolunteer = async (credentials: z.infer<typeof loginSchema>): Promise<AuthResponse> => {
   try {
-    // If in browser and using mock volunteer credentials, bypass Supabase
-    if (isBrowser) {
-      const volunteer = mockData.volunteers.find(v => v.email === credentials.email);
-      
-      if (volunteer && credentials.email === 'volunteer@example.com' && credentials.password === 'Volunteer@123') {
-        const mockUser = { 
-          id: volunteer.id,
-          email: volunteer.email,
-          firstName: volunteer.firstName,
-          lastName: volunteer.lastName,
-          role: 'volunteer',
-          ...volunteer 
-        };
-        
-        // Store in localStorage to maintain the session
-        localStorage.setItem('mockUser', JSON.stringify(mockUser));
-        
-        return {
-          success: true,
-          message: 'Login successful',
-          user: mockUser,
-        };
-      }
-    }
-    
-    // Otherwise proceed with Supabase authentication
+    // Sign in with Supabase Auth
     const { data, error } = await supabase.auth.signInWithPassword({
       email: credentials.email,
       password: credentials.password,
@@ -306,43 +262,45 @@ export const loginVolunteer = async (credentials: z.infer<typeof loginSchema>): 
     if (error) {
       return { success: false, message: error.message };
     }
+
+    // Fetch volunteer record from database - note the table name is 'volunteer' not 'volunteers'
+    const { data: volunteerData, error: volunteerError } = await supabase
+      .from('volunteer')  // Changed from 'volunteers' to 'volunteer' to match the schema
+      .select('*')
+      .eq('email', credentials.email)
+      .single();
     
-    // If in browser, use mock data
-    if (isBrowser) {
-      // Find volunteer in mock data
-      const volunteer = mockData.volunteers.find(v => v.email === credentials.email);
-      
-      if (!volunteer) {
-        await supabase.auth.signOut();
-        return { success: false, message: 'Invalid volunteer credentials' };
-      }
-      
-      return {
-        success: true,
-        message: 'Login successful',
-        user: { ...data.user, role: 'volunteer', ...volunteer },
-      };
-    } else {
-      // In server environment, we'd fetch from database
-      return {
-        success: true,
-        message: 'Login successful',
-        user: { ...data.user, role: 'volunteer' },
-      };
+    if (volunteerError || !volunteerData) {
+      await supabase.auth.signOut();
+      return { success: false, message: 'Invalid volunteer credentials' };
     }
-  } catch (error: any) {
-    return { success: false, message: error.message || 'Failed to login' };
+    
+    // Convert snake_case DB column names to camelCase for frontend
+    const camelCaseVolunteer = {
+      ...volunteerData,
+      firstName: volunteerData.first_name,
+      lastName: volunteerData.last_name,
+      howHeard: volunteerData.how_heard,
+      createdAt: volunteerData.created_at,
+      updatedAt: volunteerData.updated_at,
+      manuallyLoggedIn: true,
+      role: 'volunteer' as const,
+    };
+    
+    return {
+      success: true,
+      message: 'Login successful',
+      user: camelCaseVolunteer,
+    };
+  } catch (error: unknown) {
+    const err = error as AppError;
+    return { success: false, message: err.message || 'Failed to login' };
   }
 };
 
-// Logout function for both admin and volunteer
+// Logout function
 export const logout = async (): Promise<{ success: boolean; message: string }> => {
   try {
-    // Clear mock user from localStorage
-    if (isBrowser) {
-      localStorage.removeItem('mockUser');
-    }
-    
     const { error } = await supabase.auth.signOut();
     
     if (error) {
@@ -350,96 +308,67 @@ export const logout = async (): Promise<{ success: boolean; message: string }> =
     }
     
     return { success: true, message: 'Logged out successfully' };
-  } catch (error: any) {
-    return { success: false, message: error.message || 'Failed to logout' };
+  } catch (error: unknown) {
+    const err = error as AppError;
+    return { success: false, message: err.message || 'Failed to logout' };
   }
 };
 
 // Current user function
 export const getCurrentUser = async (): Promise<CurrentUser | null> => {
   try {
-    // If in browser, check localStorage for mock user first
-    if (isBrowser) {
-      const mockUserString = localStorage.getItem('mockUser');
-      if (mockUserString) {
-        try {
-          const mockUser = JSON.parse(mockUserString);
-          
-          // Verify this is a valid mock user by checking against our mock data
-          if (mockUser.email === 'admin@samarthanam.org' || mockUser.email === 'volunteer@example.com') {
-            return {
-              ...mockUser,
-              role: mockUser.email === 'admin@samarthanam.org' ? 'admin' : 'volunteer'
-            };
-          }
-        } catch (e) {
-          // Invalid JSON in localStorage, ignore and continue with normal flow
-          localStorage.removeItem('mockUser');
-        }
-      }
-    }
-    
-    // If no mock user found or not in browser, continue with normal flow
+    // Check if we have a Supabase session
     const { data: { session } } = await supabase.auth.getSession();
     
+    // If no session, return null
     if (!session) {
       return null;
     }
     
-    // Determine role based on email or other criteria
-    // For real application, we would fetch this data from the database
-    // For now, we'll just check against mock data for simplicity
-    
-    if (isBrowser) {
-      // When in browser, check if user matches our mock data
-      const adminUser = mockData.admins.find(admin => admin.email === session.user.email);
-      if (adminUser) {
-        return {
-          id: adminUser.id,
-          email: adminUser.email,
-          firstName: adminUser.firstName,
-          lastName: adminUser.lastName,
-          role: 'admin',
-          ...adminUser
-        };
-      }
+    // Check if the user is an admin - note the table name is 'admin' not 'admins'
+    const { data: adminData, error: adminError } = await supabase
+      .from('admin')  // Changed from 'admins' to 'admin' to match the schema
+      .select('*')
+      .eq('id', session.user.id)
+      .single();
       
-      const volunteerUser = mockData.volunteers.find(vol => vol.email === session.user.email);
-      if (volunteerUser) {
-        return {
-          id: volunteerUser.id,
-          email: volunteerUser.email,
-          firstName: volunteerUser.firstName,
-          lastName: volunteerUser.lastName,
-          role: 'volunteer',
-          ...volunteerUser
-        };
-      }
-    } else {
-      // Server environment - would query the database
-      // For demo purposes, return a mock response based on email
-      if (session.user.email?.includes('admin')) {
-        return {
-          id: session.user.id,
-          email: session.user.email,
-          firstName: 'Admin',
-          lastName: 'User',
-          role: 'admin'
-        };
-      } else {
-        return {
-          id: session.user.id,
-          email: session.user.email,
-          firstName: 'Volunteer',
-          lastName: 'User',
-          role: 'volunteer'
-        };
-      }
+    if (adminData && !adminError) {
+      // Convert snake_case DB column names to camelCase for frontend
+      return {
+        ...adminData,
+        firstName: adminData.first_name,
+        lastName: adminData.last_name,
+        createdAt: adminData.created_at,
+        updatedAt: adminData.updated_at,
+        organizationId: adminData.organization_id,
+        role: 'admin',
+      };
+    }
+    
+    // Check if the user is a volunteer - note the table name is 'volunteer' not 'volunteers'
+    const { data: volunteerData, error: volunteerError } = await supabase
+      .from('volunteer')  // Changed from 'volunteers' to 'volunteer' to match the schema
+      .select('*')
+      .eq('id', session.user.id)
+      .single();
+      
+    if (volunteerData && !volunteerError) {
+      // Convert snake_case DB column names to camelCase for frontend
+      return {
+        ...volunteerData,
+        firstName: volunteerData.first_name,
+        lastName: volunteerData.last_name,
+        howHeard: volunteerData.how_heard,
+        createdAt: volunteerData.created_at,
+        updatedAt: volunteerData.updated_at,
+        role: 'volunteer',
+      };
     }
     
     return null;
-  } catch (error: any) {
-    console.error('Error getting current user:', error.message);
+  } catch (error: unknown) {
+    const err = error as AppError;
+    console.error('Error getting current user:', err.message);
     return null;
   }
-}; 
+};

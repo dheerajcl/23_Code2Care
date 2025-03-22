@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   CalendarIcon, 
   Users, 
@@ -31,6 +32,7 @@ import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
 import AdminSidebar from '../components/AdminSidebar';
+import AdminHeader from '../components/AdminHeader';
 
 // Mock data for the dashboard
 const eventData = [
@@ -132,33 +134,31 @@ const upcomingEvents = [
 
 const AdminDashboard: React.FC = () => {
   const { user, logout } = useAuth();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
     // Redirect is handled by the auth context
+
+  };
+  const navigate = useNavigate();
+
+  const handleViewAllEvents = () => {
+    navigate('/admin/events'); // Update the path as per your routing
+    
   };
 
-  const [sidebarExpanded, setSidebarExpanded] = useState(true);
-    
-    // Function to update sidebar state (pass this to the AdminSidebar component)
-    const handleSidebarToggle = (expanded) => {
-      setSidebarExpanded(expanded);
-    };
+  const handleViewAllVolunteers = () => {
+    navigate('/admin/volunteers'); // Adjust this route if needed
+  };
+  
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <AdminSidebar initialExpanded={sidebarExpanded} onToggle={handleSidebarToggle} />
-      <main 
-        className={`flex-1 transition-all duration-300 overflow-auto p-8
-                   ${sidebarExpanded ? 'md:ml-56' : 'md:ml-16'}`}
-      >
-
-      <div className="flex-1 flex flex-row">
-
-        {/* Main Content */}
-        <main className="flex-1 pt-6 overflow-y-auto">
-          <div className="container mx-auto px-4 lg:px-8">
+    <div className="h-screen bg-gray-100 flex flex-col">
+      <AdminHeader user={user} handleLogout={handleLogout}/>
+      <div className="flex flex-1 overflow-hidden">
+        <AdminSidebar />
+        <main className="flex-1 overflow-auto p-8">
+          <div className="container mx-auto px-4 lg:px-2">
             <div className="flex flex-col gap-6">
               {/* Welcome */}
               <div>
@@ -346,8 +346,11 @@ const AdminDashboard: React.FC = () => {
                     </div>
                   </CardContent>
                   <CardFooter>
-                    <Button variant="outline" className="w-full">View All Events</Button>
+                    <Button variant="outline" className="w-full" onClick={handleViewAllEvents}>
+                      View All Events
+                    </Button>
                   </CardFooter>
+
                 </Card>
               </div>
 
@@ -408,16 +411,17 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button variant="outline" className="w-full">View All Volunteers</Button>
+                  <Button variant="outline" className="w-full" onClick={handleViewAllVolunteers}>
+                    View All Volunteers
+                  </Button>
                 </CardFooter>
+
               </Card>
             </div>
           </div>
         </main>
       </div>
-      
-      <AccessibilityMenu />
-      </main>
+      <AccessibilityMenu/>
     </div>
   );
 };

@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import AdminSidebar from '../components/AdminSidebar'
 import { Calendar, Plus, Clock, CheckCircle } from 'lucide-react'
+import AdminHeader from '../components/AdminHeader';
+import { useAuth } from '@/lib/authContext';
 
 const AdminEvents = () => {
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
@@ -28,18 +30,22 @@ const AdminEvents = () => {
     setSidebarExpanded(expanded);
   };
 
+  const { user, logout } = useAuth();
+  
+    const handleLogout = async () => {
+      await logout();
+      // Redirect is handled by the auth context
+  
+    };
+
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Pass the state and toggler to the sidebar */}
-      <AdminSidebar initialExpanded={sidebarExpanded} onToggle={handleSidebarToggle} />
-      
-      {/* Main content area */}
-      <main 
-        className={`flex-1 transition-all duration-300 overflow-auto p-8
-                   ${sidebarExpanded ? 'md:ml-56' : 'md:ml-16'}`}
-      >
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-bold">Events Management</h1>
+    <div className="h-screen bg-gray-100 flex flex-col">
+      <AdminHeader user={user} handleLogout={handleLogout}/>
+      <div className="flex flex-1 overflow-hidden">
+        <AdminSidebar />
+        <main className="flex-1 overflow-auto p-8">
+          <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold">Events Management</h1>
           <button className="flex items-center gap-2 bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-800 transition-colors">
             <Plus size={20} />
             <span>Create Event</span>
@@ -179,9 +185,10 @@ const AdminEvents = () => {
             </table>
           </div>
         </div>
-      </main>
+        </main>
+      </div>
     </div>
-  )
+  );
 }
 
 export default AdminEvents
