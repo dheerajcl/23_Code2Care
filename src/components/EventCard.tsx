@@ -63,7 +63,7 @@ const EventCard: React.FC<EventCardProps> = ({
   const handleVolunteerSignup = async () => {
     if (!user) {
       // Redirect to login if user is not logged in
-      navigate('/login');
+      navigate('/join-us');
       return;
     }
 
