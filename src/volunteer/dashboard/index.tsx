@@ -68,7 +68,7 @@ const upcomingEvents = [
   },
 ];
 
-const assignedTasks = [
+export const assignedTasks = [
   {
     id: '1',
     eventId: '1',

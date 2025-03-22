@@ -105,10 +105,38 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-                <Route path="/volunteer/events" element={<ProtectedRoute><VolunteerEvents /></ProtectedRoute>} />
-                <Route path="/volunteer/tasks" element={<ProtectedRoute><VolunteerTasks /></ProtectedRoute>} />
-                <Route path="/volunteer/badges" element={<ProtectedRoute><VolunteerBadges /></ProtectedRoute>} />
-                <Route path="/volunteer/progress" element={<ProtectedRoute><VolunteerProgress /></ProtectedRoute>} />
+                <Route
+                  path="/volunteer/events"
+                  element={
+                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
+                      <VolunteerEvents />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/volunteer/tasks"
+                  element={
+                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
+                      <VolunteerTasks />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/volunteer/badges"
+                  element={
+                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
+                      <VolunteerBadges />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/volunteer/progress"
+                  element={
+                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
+                      <VolunteerProgress />
+                    </ProtectedRoute>
+                  }
+                />
                 
                 {/* 404 route */}
                 <Route path="*" element={<NotFound />} />

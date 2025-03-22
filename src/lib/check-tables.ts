@@ -17,8 +17,8 @@ const extractEnvValue = (key) => {
   return match ? match[1] : null;
 };
 
-const supabaseUrl = extractEnvValue('VITE_SUPABASE_URL');
-const supabaseAnonKey = extractEnvValue('VITE_SUPABASE_ANON_KEY');
+const supabaseUrl = extractEnvValue('VITE_PUBLIC_SUPABASE_URL');
+const supabaseAnonKey = extractEnvValue('VITE_PUBLIC_SUPABASE_ANON_KEY');
 
 console.log('Using Supabase URL:', supabaseUrl);
 console.log('Using Supabase Anon Key:', supabaseAnonKey ? '***' + supabaseAnonKey.substr(-5) : 'Not found');

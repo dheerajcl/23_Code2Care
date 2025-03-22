@@ -45,7 +45,7 @@ A modern volunteer management platform for Samarthanam Trust, built with React, 
    ```
 
 4. Update the `.env` file with your Supabase credentials:
-   ```
+   ```bash
    VITE_SUPABASE_URL=your_supabase_url
    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
    DATABASE_URL=your_postgresql_connection_string
@@ -176,3 +176,56 @@ const [newAdmin] = await db.insert(admins).values({
 ## License
 
 This project is licensed under the MIT License.
+
+## Database
+
+The application uses Supabase for database storage and authentication.
+
+### Environment Variables
+
+Make sure to set up these environment variables in your `.env` file:
+
+```
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
+
+### Database Structure
+
+The database contains the following tables:
+
+- `admin` - Admin user details
+- `volunteer` - Volunteer user details  
+- `event` - Event information
+- `task` - Tasks associated with events
+- `event_signup` - Volunteer signups for events
+- `task_assignment` - Task assignments for volunteers
+- `feedback` - Feedback from events
+- `newsletter` - Newsletter subscribers
+
+### Accessing Data
+
+The Supabase client is available in the `src/lib/supabase.ts` file. Example usage:
+
+```typescript
+import { supabase } from '@/lib/supabase';
+
+// Get admin by email
+const { data: admin, error } = await supabase
+  .from('admin')
+  .select('*')
+  .eq('email', email)
+  .single();
+
+// Create new admin
+const { data: newAdmin, error } = await supabase
+  .from('admin')
+  .insert({
+    email: 'admin@example.com',
+    first_name: 'Admin',
+    last_name: 'User',
+    password: 'securepassword'
+  })
+  .select()
+  .single();
+```
