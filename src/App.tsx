@@ -78,6 +78,16 @@ const App = () => (
 
               {/* Protected admin routes */}
               <Route 
+                path="/admin/events/:id" 
+                element={
+                  <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                    <AdminEventDetails />
+                  </ProtectedRoute>
+                } 
+              />
+
+              {/* Protected admin routes */}
+              <Route 
                 path="/admin/volunteers" 
                 element={
                   <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
