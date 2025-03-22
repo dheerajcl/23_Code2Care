@@ -18,50 +18,84 @@ const AdminEventDetails = () => {
   // Event data for the specific ID
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Store all tasks
+  const [allTasks, setAllTasks] = useState([]);
+  // Store filtered tasks for the current event
+  const [eventTasks, setEventTasks] = useState([]);
 
-  // Dummy data for tasks
+  // Dummy data for tasks with eventId field
   const tasks = [
     { 
       id: 1, 
       name: 'Confirm venue reservation', 
       assignee: { id: 1, name: 'John', initial: 'J' }, 
       status: 'Backlog',
-      dueDate: 'March 2, 2025'
+      dueDate: 'March 2, 2025',
+      eventId: 1
     },
     { 
       id: 2, 
       name: 'Arrange catering services', 
       assignee: { id: 2, name: 'Antonio', initial: 'A' }, 
       status: 'In Progress',
-      dueDate: 'April 3, 2025'
+      dueDate: 'April 3, 2025',
+      eventId: 1
     },
     { 
       id: 3, 
       name: 'Send invitations', 
       assignee: { id: 1, name: 'John', initial: 'J' }, 
       status: 'Todo',
-      dueDate: 'March 23, 2025'
+      dueDate: 'March 23, 2025',
+      eventId: 1
     },
     { 
       id: 4, 
       name: 'Schedule volunteers', 
       assignee: { id: 1, name: 'John', initial: 'J' }, 
       status: 'Done',
-      dueDate: 'March 25, 2025'
+      dueDate: 'March 25, 2025',
+      eventId: 2
     },
     { 
       id: 5, 
       name: 'Prepare event materials', 
       assignee: { id: 2, name: 'Antonio', initial: 'A' }, 
       status: 'In Review',
-      dueDate: 'April 5, 2025'
+      dueDate: 'April 5, 2025',
+      eventId: 2
     },
     { 
       id: 6, 
       name: 'Setup registration page', 
       assignee: { id: 1, name: 'John', initial: 'J' }, 
       status: 'Backlog',
-      dueDate: 'March 1, 2025'
+      dueDate: 'March 1, 2025',
+      eventId: 3
+    },
+    { 
+      id: 7, 
+      name: 'Coordinate with speakers', 
+      assignee: { id: 2, name: 'Antonio', initial: 'A' }, 
+      status: 'In Progress',
+      dueDate: 'April 10, 2025',
+      eventId: 3
+    },
+    { 
+      id: 8, 
+      name: 'Arrange medical staff', 
+      assignee: { id: 1, name: 'John', initial: 'J' }, 
+      status: 'Todo',
+      dueDate: 'March 15, 2025',
+      eventId: 4
+    },
+    { 
+      id: 9, 
+      name: 'Organize collection points', 
+      assignee: { id: 2, name: 'Antonio', initial: 'A' }, 
+      status: 'Done',
+      dueDate: 'February 10, 2025',
+      eventId: 5
     }
   ];
 
@@ -114,25 +148,52 @@ const AdminEventDetails = () => {
     }
   ];
 
-  // Task statistics
-  const totalTasks = tasks.length;
-  const assignedTasks = tasks.filter(task => task.assignee).length;
-  const incompleteTasks = tasks.filter(task => task.status !== 'Done').length;
-  const completedTasks = tasks.filter(task => task.status === 'Done').length;
-  const overdueTasks = tasks.filter(task => task.status === 'Backlog').length; // Count 'Backlog' tasks as overdue
-
   useEffect(() => {
     if (id) {
       // Fetch event data based on ID
       const eventData = eventDatabase.find(e => e.id === parseInt(id));
       setEvent(eventData);
+      
+      // Store all tasks
+      setAllTasks(tasks);
+      
+      // Filter tasks for this specific event
+      const filteredTasks = tasks.filter(task => task.eventId === parseInt(id));
+      setEventTasks(filteredTasks);
+      
       setLoading(false);
     }
   }, [id]);
 
+  // Task statistics calculated from filtered event tasks
+  const totalTasks = eventTasks.length;
+  const assignedTasks = eventTasks.filter(task => task.assignee).length;
+  const incompleteTasks = eventTasks.filter(task => task.status !== 'Done').length;
+  const completedTasks = eventTasks.filter(task => task.status === 'Done').length;
+  const overdueTasks = eventTasks.filter(task => task.status === 'Backlog').length;
+
   const handleLogout = async () => {
     await logout();
     // Redirect is handled by the auth context
+  };
+
+  // Add a new task to the current event
+  const handleAddTask = () => {
+    const newTask = {
+      id: allTasks.length + 1,
+      name: 'New Task',
+      assignee: null,
+      status: 'Todo',
+      dueDate: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      eventId: parseInt(id)
+    };
+    
+    // Update all tasks
+    const updatedAllTasks = [...allTasks, newTask];
+    setAllTasks(updatedAllTasks);
+    
+    // Update event tasks
+    setEventTasks([...eventTasks, newTask]);
   };
 
   if (loading) {
@@ -164,7 +225,10 @@ const AdminEventDetails = () => {
               <button className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
                 <span>Edit Event</span>
               </button>
-              <button className="flex items-center gap-2 bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-800 transition-colors">
+              <button 
+                onClick={handleAddTask}
+                className="flex items-center gap-2 bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-800 transition-colors"
+              >
                 <Plus size={20} />
                 <span>Add Task</span>
               </button>
@@ -206,62 +270,62 @@ const AdminEventDetails = () => {
             </div>
           </div>
 
-              {/* Task Management */}
-<div className="mb-8">
-  <h2 className="text-2xl font-bold mb-6">Event Tasks</h2>
-  
-      {/* Task Statistics */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow p-4 flex flex-col justify-center items-center border-t-4 border-blue-500">
-          <div className="bg-blue-100 p-2 rounded-full mb-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-          </div>
-          <span className="text-gray-500 text-sm">Total Tasks</span>
-          <span className="text-3xl font-bold text-blue-500">{totalTasks}</span>
-        </div>
+          {/* Task Management */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold mb-6">Event Tasks</h2>
+            
+            {/* Task Statistics */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+              <div className="bg-white rounded-lg shadow p-4 flex flex-col justify-center items-center border-t-4 border-blue-500">
+                <div className="bg-blue-100 p-2 rounded-full mb-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
+                <span className="text-gray-500 text-sm">Total Tasks</span>
+                <span className="text-3xl font-bold text-blue-500">{totalTasks}</span>
+              </div>
 
-        <div className="bg-white rounded-lg shadow p-4 flex flex-col justify-center items-center border-t-4 border-purple-500">
-          <div className="bg-purple-100 p-2 rounded-full mb-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-          </div>
-          <span className="text-gray-500 text-sm">Assigned Tasks</span>
-          <span className="text-3xl font-bold text-purple-500">{assignedTasks}</span>
-        </div>
+              <div className="bg-white rounded-lg shadow p-4 flex flex-col justify-center items-center border-t-4 border-purple-500">
+                <div className="bg-purple-100 p-2 rounded-full mb-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                </div>
+                <span className="text-gray-500 text-sm">Assigned Tasks</span>
+                <span className="text-3xl font-bold text-purple-500">{assignedTasks}</span>
+              </div>
 
-        <div className="bg-white rounded-lg shadow p-4 flex flex-col justify-center items-center border-t-4 border-yellow-500">
-          <div className="bg-yellow-100 p-2 rounded-full mb-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <span className="text-gray-500 text-sm">Incomplete Tasks</span>
-          <span className="text-3xl font-bold text-yellow-500">{incompleteTasks}</span>
-        </div>
+              <div className="bg-white rounded-lg shadow p-4 flex flex-col justify-center items-center border-t-4 border-yellow-500">
+                <div className="bg-yellow-100 p-2 rounded-full mb-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <span className="text-gray-500 text-sm">Incomplete Tasks</span>
+                <span className="text-3xl font-bold text-yellow-500">{incompleteTasks}</span>
+              </div>
 
-        <div className="bg-white rounded-lg shadow p-4 flex flex-col justify-center items-center border-t-4 border-green-500">
-          <div className="bg-green-100 p-2 rounded-full mb-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <span className="text-gray-500 text-sm">Completed Tasks</span>
-          <span className="text-3xl font-bold text-green-500">{completedTasks}</span>
-        </div>
+              <div className="bg-white rounded-lg shadow p-4 flex flex-col justify-center items-center border-t-4 border-green-500">
+                <div className="bg-green-100 p-2 rounded-full mb-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <span className="text-gray-500 text-sm">Completed Tasks</span>
+                <span className="text-3xl font-bold text-green-500">{completedTasks}</span>
+              </div>
 
-        <div className="bg-white rounded-lg shadow p-4 flex flex-col justify-center items-center border-t-4 border-red-500">
-          <div className="bg-red-100 p-2 rounded-full mb-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <span className="text-gray-500 text-sm">Overdue Tasks</span>
-          <span className="text-3xl font-bold text-red-500">{overdueTasks}</span>
-        </div>
-      </div>
+              <div className="bg-white rounded-lg shadow p-4 flex flex-col justify-center items-center border-t-4 border-red-500">
+                <div className="bg-red-100 p-2 rounded-full mb-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <span className="text-gray-500 text-sm">Overdue Tasks</span>
+                <span className="text-3xl font-bold text-red-500">{overdueTasks}</span>
+              </div>
+            </div>
             
             {/* View Selector */}
             <div className="flex justify-between items-center mb-4">
@@ -293,9 +357,9 @@ const AdminEventDetails = () => {
             {/* Task Views */}
             <div className="bg-white rounded-lg shadow">
               {activeView === 'table' ? (
-                <TaskTable tasks={tasks} />
+                <TaskTable tasks={eventTasks} />
               ) : (
-                <TaskKanban tasks={tasks} />
+                <TaskKanban tasks={eventTasks} />
               )}
             </div>
           </div>
