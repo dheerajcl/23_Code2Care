@@ -9,7 +9,7 @@ type User = {
   firstName: string;
   lastName: string;
   role: 'admin' | 'volunteer';
-  [key: string]: any;
+  [key: string]: string | number | boolean | object;
 };
 
 type AuthContextType = {
