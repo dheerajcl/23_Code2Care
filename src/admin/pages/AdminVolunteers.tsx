@@ -65,7 +65,7 @@ const AdminVolunteers = () => {
         
         if (data) {
           // Process volunteer data for display
-          const processedData = data.map(volunteer => {
+          let processedData = data.map(volunteer => {
             return {
               id: volunteer.id,
               firstname: volunteer.first_name || '',
@@ -87,8 +87,8 @@ const AdminVolunteers = () => {
           
           // Fetch event registration data to get events and hours
           const { data: signupData, error: signupError } = await supabase
-            .from('event_registration')
-            .select('volunteer_id, event_id, hours_served');
+            .from('event_signup')
+            .select('volunteer_id, event_id, hours');
           
           if (signupError) throw signupError;
           
@@ -98,22 +98,25 @@ const AdminVolunteers = () => {
             signupData.forEach(signup => {
               if (!volunteerStats[signup.volunteer_id]) {
                 volunteerStats[signup.volunteer_id] = {
-                  totalHours: 0,
-                  eventCount: new Set()
+                  events: new Set(),
+                  hours: 0
                 };
               }
               
-              volunteerStats[signup.volunteer_id].totalHours += parseFloat(signup.hours_served || 0);
-              volunteerStats[signup.volunteer_id].eventCount.add(signup.event_id);
+              volunteerStats[signup.volunteer_id].events.add(signup.event_id);
+              volunteerStats[signup.volunteer_id].hours += parseFloat(signup.hours) || 0;
             });
             
-            // Update the processed data with the stats
-            processedData.forEach(volunteer => {
-              const stats = volunteerStats[volunteer.id];
-              if (stats) {
-                volunteer.hours = stats.totalHours;
-                volunteer.events = stats.eventCount.size;
+            // Update processed data with event stats
+            processedData = processedData.map(volunteer => {
+              if (volunteerStats[volunteer.id]) {
+                return {
+                  ...volunteer,
+                  events: volunteerStats[volunteer.id].events.size,
+                  hours: volunteerStats[volunteer.id].hours
+                };
               }
+              return volunteer;
             });
           }
           
