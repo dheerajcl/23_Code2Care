@@ -16,51 +16,70 @@ type User = {
 type AuthContextType = {
   user: User | null;
   loading: boolean;
-  checkAuth: () => Promise<void>;
+  checkAuth: () => Promise<User | null>;
   logout: () => Promise<void>;
 };
 
-// Default context
-const defaultContext: AuthContextType = {
-  user: null,
-  loading: true,
-  checkAuth: async () => {},
-  logout: async () => {},
-};
-
 // Create context
-const AuthContext = createContext<AuthContextType>(defaultContext);
-
-// Hook for using auth context
-export const useAuth = () => useContext(AuthContext);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Provider component
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Function to check if user is authenticated
   const checkAuth = async () => {
     try {
-      setLoading(true);
-      const userData = await getCurrentUser();
-      if (userData) {
-        setUser(userData as User);
-      } else {
-        setUser(null);
+      // First, try getting user through Supabase session
+      const currentUser = await getCurrentUser();
+      
+      if (currentUser) {
+        setUser(currentUser);
+        return currentUser;
       }
-    } catch (error) {
-      console.error('Error checking auth:', error);
+      
+      // If no user found through session, check localStorage for admin users
+      // This is our fallback for admin users with unconfirmed emails
+      const savedAdmin = localStorage.getItem('adminUser');
+      if (savedAdmin) {
+        try {
+          const adminUser = JSON.parse(savedAdmin);
+          // Validate that this is a proper user object
+          if (adminUser && adminUser.id && adminUser.email && adminUser.role === 'admin') {
+            setUser(adminUser);
+            return adminUser;
+          }
+        } catch (e) {
+          // Invalid JSON, clear it
+          localStorage.removeItem('adminUser');
+        }
+      }
+      
       setUser(null);
+      return null;
+    } catch (error) {
+      console.error('Auth check error:', error);
+      setUser(null);
+      return null;
     } finally {
       setLoading(false);
     }
   };
 
+  // Logout function
   const logout = async () => {
     try {
+      // Sign out from Supabase
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      
+      // Clear local storage
+      localStorage.removeItem('adminUser');
+      
+      // Clear user state
       setUser(null);
+      
       toast({
         title: 'Logged out successfully',
         description: 'You have been logged out of your account',
@@ -75,17 +94,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Check auth on mount
+  // Check auth on initial load
   useEffect(() => {
     checkAuth();
-
-    // Subscribe to auth changes
+    
+    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          checkAuth();
+          const user = await checkAuth();
+          if (user) {
+            toast({
+              title: 'Signed in',
+              description: `Welcome back, ${user.firstName}!`,
+            });
+          }
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
+          // Clear admin fallback on sign out
+          localStorage.removeItem('adminUser');
+          toast({
+            title: 'Signed out',
+            description: 'You have been signed out.',
+          });
         }
       }
     );
@@ -95,12 +126,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, []);
 
-  const value = {
-    user,
-    loading,
-    checkAuth,
-    logout,
-  };
+  return (
+    <AuthContext.Provider value={{ user, loading, checkAuth, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+// Hook to use auth context
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 }; 

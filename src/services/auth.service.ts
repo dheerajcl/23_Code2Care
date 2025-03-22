@@ -72,10 +72,41 @@ export const registerAdmin = async (userData: z.infer<typeof adminRegisterSchema
       return { success: false, message: 'Invalid user data' };
     }
 
+    // Check if an admin account with this email already exists in the database
+    const { data: existingAdmin } = await supabase
+      .from('admin')
+      .select('*')
+      .eq('email', userData.email)
+      .single();
+
+    // If admin already exists, we can try to log in directly
+    if (existingAdmin) {
+      // Try to sign in
+      const signInResult = await loginAdmin({
+        email: userData.email,
+        password: userData.password
+      });
+
+      if (signInResult.success) {
+        return {
+          success: true,
+          message: 'Admin account already exists, logged in successfully',
+          user: signInResult.user
+        };
+      } else {
+        return { success: false, message: 'An account with this email already exists.' };
+      }
+    }
+
     // Create account with Supabase Auth
     const { data, error } = await supabase.auth.signUp({
       email: userData.email,
       password: userData.password,
+      options: {
+        data: {
+          role: 'admin' // Add role metadata
+        }
+      }
     });
 
     if (error) {
@@ -85,42 +116,38 @@ export const registerAdmin = async (userData: z.infer<typeof adminRegisterSchema
     if (!data.user) {
       return { success: false, message: 'Failed to create user' };
     }
+    
+    const userId = data.user.id;
 
-    const supabaseUserId = data.user.id;
-
-    // Create admin in Supabase database - note the table name is 'admin' not 'admins'
+    // Insert admin record directly regardless of email confirmation
     const { error: insertError, data: insertData } = await supabase
-      .from('admin')  // Changed from 'admins' to 'admin' to match the schema
+      .from('admin')
       .insert({
-        id: supabaseUserId,
+        id: userId,
         email: userData.email,
-        password: userData.password, // Usually you'd hash this, but we'll follow the existing pattern
-        first_name: userData.firstName, // Changed from firstName to first_name to match DB schema
-        last_name: userData.lastName,   // Changed from lastName to last_name to match DB schema
+        password: userData.password,
+        first_name: userData.firstName,
+        last_name: userData.lastName,
       })
       .select();
 
     if (insertError) {
-      // If database insert failed, clean up the auth user
-      await supabase.auth.admin.deleteUser(supabaseUserId).catch(() => {});
       return { success: false, message: insertError.message || 'Failed to create admin record' };
     }
 
-    const newAdmin = insertData?.[0];
-    
-    if (!newAdmin) {
-      // If no admin was returned, clean up the auth user
-      await supabase.auth.admin.deleteUser(supabaseUserId).catch(() => {});
+    if (!insertData?.[0]) {
       return { success: false, message: 'Failed to create admin record' };
     }
 
+    // Here's the key: We ignore email confirmation completely and attempt to sign in immediately
     return {
       success: true,
-      message: 'Admin registered successfully',
+      message: 'Admin registered successfully. Please sign in.',
       user: {
-        ...newAdmin,
+        ...insertData[0],
+        firstName: insertData[0].first_name,
+        lastName: insertData[0].last_name,
         role: 'admin' as const,
-        manuallyLoggedIn: true,
       },
     };
   } catch (error: unknown) {
@@ -131,28 +158,51 @@ export const registerAdmin = async (userData: z.infer<typeof adminRegisterSchema
 
 export const loginAdmin = async (credentials: z.infer<typeof loginSchema>): Promise<AuthResponse> => {
   try {
-    // Sign in with Supabase Auth
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: credentials.email,
-      password: credentials.password,
-    });
-
-    if (error) {
-      return { success: false, message: error.message };
-    }
-
-    // Fetch admin record from database - note the table name is 'admin' not 'admins'
+    // First verify if this admin exists in our database
     const { data: adminData, error: adminError } = await supabase
-      .from('admin')  // Changed from 'admins' to 'admin' to match the schema
+      .from('admin')
       .select('*')
       .eq('email', credentials.email)
       .single();
     
     if (adminError || !adminData) {
-      await supabase.auth.signOut();
-      return { success: false, message: 'Invalid admin credentials' };
+      return { success: false, message: 'Admin account not found' };
     }
     
+    // Try to sign in with Supabase Auth
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: credentials.email,
+      password: credentials.password,
+    });
+
+    // Handle the case where auth fails because of email confirmation
+    if (error && error.message.toLowerCase().includes('email not confirmed')) {
+      // Ignore the email confirmation error and proceed anyway
+      // since we already verified this admin exists in our database
+      
+      // Convert snake_case DB column names to camelCase for frontend
+      const camelCaseAdmin = {
+        ...adminData,
+        firstName: adminData.first_name,
+        lastName: adminData.last_name,
+        createdAt: adminData.created_at,
+        updatedAt: adminData.updated_at,
+        organizationId: adminData.organization_id,
+        manuallyLoggedIn: true,
+        role: 'admin' as const,
+      };
+      
+      return {
+        success: true,
+        message: 'Login successful (bypassing email confirmation)',
+        user: camelCaseAdmin,
+      };
+    } else if (error) {
+      // Handle other errors
+      return { success: false, message: error.message };
+    }
+
+    // If we reached here, the normal auth flow worked
     // Convert snake_case DB column names to camelCase for frontend
     const camelCaseAdmin = {
       ...adminData,

@@ -61,7 +61,15 @@ const AdminLogin = () => {
           title: 'Login successful',
           description: 'Welcome back!',
         });
+        
+        // Force update the auth context with the user data
+        if (result.user) {
+          // Store the user in localStorage as a fallback
+          localStorage.setItem('adminUser', JSON.stringify(result.user));
+        }
+        
         await checkAuth(); // Update auth context
+        
         // Always redirect to admin dashboard
         navigate('/admin/dashboard', { replace: true });
       } else {

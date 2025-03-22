@@ -11,8 +11,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     // Whether to persist the session
     persistSession: true,
-    // Detect auth session in URL (used for email confirmations)
-    detectSessionInUrl: true,
+    // Disable everything related to email confirmation
+    detectSessionInUrl: false,
     // Use PKCE flow for better security
     flowType: 'pkce',
   }

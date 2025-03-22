@@ -70,9 +70,10 @@ const AdminRegister = () => {
       if (result.success) {
         toast({
           title: 'Registration successful',
-          description: 'Your admin account has been created. You can now log in.',
+          description: 'Your admin account has been created.',
         });
-        navigate('/admin/login');
+        await checkAuth(); // Refresh auth state
+        navigate('/admin/dashboard'); // Redirect directly to dashboard
       } else {
         toast({
           title: 'Registration failed',
