@@ -7,15 +7,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 const EventFeedback = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   
   const [overallRating, setOverallRating] = useState<number>(0);
-  const [understandingRating, setUnderstandingRating] = useState<number>(0);
-  const [recommendRating, setRecommendRating] = useState<number>(0);
-  const [additionalFeedback, setAdditionalFeedback] = useState('');
+  const [organizationRating, setOrganizationRating] = useState<number>(0);
+  const [tasksWereClear, setTasksWereClear] = useState<string>("");
+  const [feltSupported, setFeltSupported] = useState<string>("");
+  const [improvements, setImprovements] = useState("");
+  const [volunteerAgainRating, setVolunteerAgainRating] = useState<number>(0);
+  const [impactfulPart, setImpactfulPart] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,10 +48,10 @@ const EventFeedback = () => {
     leftLabel: string; 
     rightLabel: string; 
   }) => (
-    <div className="space-y-2">
-      <div className="flex justify-between text-sm text-muted-foreground">
-        <span>{leftLabel}</span>
-        <span>{rightLabel}</span>
+    <div className="space-y-4">
+      <div className="flex justify-between text-sm text-muted-foreground px-2">
+        <div className="w-8 text-center">{leftLabel}</div>
+        <div className="w-8 text-center">{rightLabel}</div>
       </div>
       <div className="flex gap-2">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((rating) => (
@@ -66,6 +71,27 @@ const EventFeedback = () => {
     </div>
   );
 
+  const YesNoRadio = ({ 
+    value, 
+    onChange, 
+    label 
+  }: { 
+    value: string; 
+    onChange: (value: string) => void;
+    label: string;
+  }) => (
+    <RadioGroup value={value} onValueChange={onChange} className="flex gap-4">
+      <div className="flex items-center space-x-2">
+        <RadioGroupItem value="yes" id={`${label}-yes`} />
+        <Label htmlFor={`${label}-yes`}>Yes</Label>
+      </div>
+      <div className="flex items-center space-x-2">
+        <RadioGroupItem value="no" id={`${label}-no`} />
+        <Label htmlFor={`${label}-no`}>No</Label>
+      </div>
+    </RadioGroup>
+  );
+
   return (
     <VolunteerLayout>
       <div className="container max-w-2xl py-6">
@@ -81,57 +107,93 @@ const EventFeedback = () => {
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium mb-2 block">
-                    Please rate your overall event experience <span className="text-red-500">*</span>
+                    How would you rate your overall experience? <span className="text-red-500">*</span>
                   </label>
                   <RatingScale
                     value={overallRating}
                     onChange={setOverallRating}
                     leftLabel="Poor"
-                    rightLabel="Awesome"
+                    rightLabel="Great"
                   />
                 </div>
 
                 <div>
                   <label className="text-sm font-medium mb-2 block">
-                    How easy was it to understand the tasks? <span className="text-red-500">*</span>
+                    How well was the event organized? <span className="text-red-500">*</span>
                   </label>
                   <RatingScale
-                    value={understandingRating}
-                    onChange={setUnderstandingRating}
-                    leftLabel="Very confusing"
-                    rightLabel="Easy"
+                    value={organizationRating}
+                    onChange={setOrganizationRating}
+                    leftLabel="Poor"
+                    rightLabel="Great"
                   />
                 </div>
 
                 <div>
                   <label className="text-sm font-medium mb-2 block">
-                    Would you recommend volunteering with us to a friend? <span className="text-red-500">*</span>
+                    How likely are you to volunteer again? <span className="text-red-500">*</span>
                   </label>
                   <RatingScale
-                    value={recommendRating}
-                    onChange={setRecommendRating}
-                    leftLabel="Very unlikely"
-                    rightLabel="Of course!"
+                    value={volunteerAgainRating}
+                    onChange={setVolunteerAgainRating}
+                    leftLabel="Never"
+                    rightLabel="Always"
                   />
                 </div>
 
                 <div>
                   <label className="text-sm font-medium mb-2 block">
-                    Is there something that you'd like to tell us?
+                    Were the tasks and instructions clear? <span className="text-red-500">*</span>
                   </label>
-                  <Textarea
-                    placeholder="Please enter a few words..."
-                    value={additionalFeedback}
-                    onChange={(e) => setAdditionalFeedback(e.target.value)}
-                    className="min-h-[100px]"
+                  <YesNoRadio
+                    value={tasksWereClear}
+                    onChange={setTasksWereClear}
+                    label="tasks-clear"
                   />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">
+                    Did you feel supported by the organizers? <span className="text-red-500">*</span>
+                  </label>
+                  <YesNoRadio
+                    value={feltSupported}
+                    onChange={setFeltSupported}
+                    label="felt-supported"
+                  />
+                </div>
+
+                <div className="space-y-4 pt-4 border-t">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">
+                      What could be improved for future events?
+                    </label>
+                    <Textarea
+                      placeholder="E.g., More water stations and better signage"
+                      value={improvements}
+                      onChange={(e) => setImprovements(e.target.value)}
+                      className="min-h-[100px]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">
+                      What was the most impactful part of the event?
+                    </label>
+                    <Textarea
+                      placeholder="E.g., Interacting with the visually impaired players was inspiring"
+                      value={impactfulPart}
+                      onChange={(e) => setImpactfulPart(e.target.value)}
+                      className="min-h-[100px]"
+                    />
+                  </div>
                 </div>
               </div>
 
               <Button 
                 type="submit" 
                 className="w-full"
-                disabled={!overallRating || !understandingRating || !recommendRating}
+                disabled={!overallRating || !organizationRating || !tasksWereClear || !feltSupported || !volunteerAgainRating}
               >
                 Submit Feedback
               </Button>
