@@ -25,7 +25,7 @@ const TasksPage: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-background">
       {/* Header with boundary */}
       <div className="border-b border-gray-300 shadow-sm">
-      <Header handleLogout={handleLogout} />
+      <Header/>
 
       </div>
 
