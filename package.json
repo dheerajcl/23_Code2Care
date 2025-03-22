@@ -18,6 +18,7 @@
     "db:init-leaderboard": "psql -h db.csotbvprygtwbarusbwc.supabase.co -U postgres -d postgres -f src/db/migrations/leaderboard_function.sql"
   },
   "dependencies": {
+    "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^3.9.0",
     "@paralleldrive/cuid2": "^2.2.2",
     "@radix-ui/react-accordion": "^1.2.0",
