@@ -119,7 +119,13 @@ const Header: React.FC = () => {
             >
               About
             </Link>
-            
+            <Link 
+              to="/donate" 
+              className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
+            >
+              Donate
+            </Link>          
+
             {user ? (
               // Show dashboard button if user is logged in
               <Button asChild variant="ghost" className="ml-2">

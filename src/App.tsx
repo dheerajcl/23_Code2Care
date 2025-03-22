@@ -25,6 +25,7 @@ import AdminVolunteers from "./admin/pages/AdminVolunteers";
 import AdminReports from "./admin/pages/AdminReports";
 import AuthCallback from "./pages/AuthCallback";
 import AdminEventDetails from "./admin/pages/AdminEventDetails";
+import DonationPage from "./pages/Donate"
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const App = () => (
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin/register" element={<AdminRegister />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/donate" element={<DonationPage/>} />
               {/* <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/volunteers" element={<AdminVolunteers />} />
               <Route path="/admin/events" element={<AdminEvents />} />
