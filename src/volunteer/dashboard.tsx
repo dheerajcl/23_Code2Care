@@ -190,83 +190,7 @@ const VolunteerDashboard: React.FC = () => {
       {/* Top Navigation */}
       <header className="border-b">
         <div className="flex h-16 items-center px-4 sm:px-6">
-          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
-                <MenuIcon className="h-5 w-5" />
-                <span className="sr-only">Toggle menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-72 sm:max-w-none">
-              <nav className="flex flex-col gap-6 mt-6">
-                <a href="/volunteer/dashboard" className="flex items-center gap-2 font-semibold text-lg">
-                  <Award className="h-5 w-5" />
-                  <span>Volunteer Dashboard</span>
-                </a>
-                <div className="flex flex-col gap-2">
-                  <div className="text-xs font-medium uppercase text-muted-foreground">
-                    Navigation
-                  </div>
-                  <Button variant="ghost" className="justify-start" onClick={() => setIsMobileMenuOpen(false)}>
-                    <Home className="h-4 w-4 mr-2" />
-                    Dashboard
-                  </Button>
-                  <Button variant="ghost" className="justify-start" onClick={() => setIsMobileMenuOpen(false)}>
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Events
-                  </Button>
-                  <Button variant="ghost" className="justify-start" onClick={() => setIsMobileMenuOpen(false)}>
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Tasks
-                  </Button>
-                  <Button variant="ghost" className="justify-start" onClick={() => setIsMobileMenuOpen(false)}>
-                    <Award className="h-4 w-4 mr-2" />
-                    Badges
-                  </Button>
-                  <Button variant="ghost" className="justify-start" onClick={() => setIsMobileMenuOpen(false)}>
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    Progress
-                  </Button>
-                </div>
-              </nav>
-            </SheetContent>
-          </Sheet>
-          <div className="flex items-center gap-2 font-semibold text-lg md:ml-0 ml-2">
-            <Award className="h-6 w-6 text-primary" />
-            <span>Samarth Connect</span>
-          </div>
-          
-          <div className="ml-auto flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-1 font-normal">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src="/placeholder-avatar.jpg" alt={user?.firstName} />
-                    <AvatarFallback>{user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <span className="hidden lg:inline-block">{user?.firstName} {user?.lastName}</span>
-                  <ChevronDown className="h-4 w-4 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+        <Header/>
         </div>
       </header>
 
@@ -284,7 +208,7 @@ const VolunteerDashboard: React.FC = () => {
               </Button>
               <Button variant="ghost" className="justify-start">
                 <Calendar className="h-4 w-4 mr-2" />
-                Events
+                Registered Events
               </Button>
               <Button variant="ghost" className="justify-start">
                 <CheckCircle className="h-4 w-4 mr-2" />
@@ -602,7 +526,7 @@ const VolunteerDashboard: React.FC = () => {
           </div>
         </main>
       </div>
-      
+      <Footer/>
       <AccessibilityMenu />
     </div>
   );
