@@ -25,6 +25,7 @@ import AdminVolunteers from "./admin/pages/AdminVolunteers";
 import AdminReports from "./admin/pages/AdminReports";
 import AuthCallback from "./pages/AuthCallback";
 import AdminEventDetails from "./admin/pages/AdminEventDetails";
+import DonationPage from "./pages/Donate";
 
 function App() {
   const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ function App() {
                 <Route path="/" element={<Index />} />
                 <Route path="/events" element={<Events />} />
                 <Route path="/about" element={<About />} />
+                <Route path="/donate" element={<DonationPage />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/join-us" element={<JoinUs />} />

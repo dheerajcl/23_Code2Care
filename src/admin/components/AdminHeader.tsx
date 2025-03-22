@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Menu as MenuIcon, Award, User, Settings, LogOut, ChevronDown } from "lucide-react";
+import Logo from '../../assets/logo.png'
 
 interface User {
   firstName?: string;
@@ -48,7 +49,7 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ user, handleLogout }) => {
           </SheetContent>
         </Sheet>
         <div className="flex items-center gap-2 font-semibold text-lg md:ml-0 ml-2">
-          <Award className="h-6 w-6 text-primary" />
+          <img src={Logo} alt="logo" className="h-12 w-12 s-logo"/>
           <span>Samarth Connect</span>
         </div>
         

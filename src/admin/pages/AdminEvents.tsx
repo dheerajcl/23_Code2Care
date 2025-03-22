@@ -376,6 +376,8 @@ const AdminEventsPage = () => {
                     
                     {/* Replace the existing button layout in your event card with this code */}
                     <div className="border-t pt-4 flex flex-col gap-2">
+                    {new Date(event.date) >= new Date() ? (
+                      // For upcoming events, show Update and Volunteers buttons
                       <div className="flex justify-between gap-4 w-full">
                         <Button
                           variant="ghost"
@@ -390,22 +392,45 @@ const AdminEventsPage = () => {
                           variant="ghost"
                           size="sm"
                           onClick={(e) => handleAddVolunteers(event.id, e)}
-                          className="flex items-center bg-rose-900 justify-center gap-1 text-sm text-white w-1/2 hover:bg-red-800" 
+                          className="flex items-center bg-rose-900 justify-center gap-1 text-sm text-white w-1/2 hover:bg-red-800"
                         >
                           <UserPlus size={16} />
                           <span>Volunteers</span>
                         </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => handleViewDetails(event.id, e)}
-                        className="flex items-center bg-rose-900 justify-center gap-1 text-sm text-white w-full  hover:bg-red-800"
-                      >
-                        <List size={16} />
-                        <span>Tasks</span>
-                      </Button>
-                    </div>
+                    ) : (
+                      // For past events, show View Feedback and Delete buttons
+                      <div className="flex justify-between gap-4 w-full">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => ({})}
+                          className="flex items-center bg-rose-900 justify-center gap-1 text-sm text-white w-1/2 hover:bg-red-800"
+                        >
+                          <List size={16} />
+                          <span>View Feedback</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => ({})}
+                          className="flex items-center bg-rose-900 justify-center gap-1 text-sm text-white w-1/2 hover:bg-red-800"
+                        >
+                          <X size={16} />
+                          <span>Delete</span>
+                        </Button>
+                      </div>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => handleViewDetails(event.id, e)}
+                      className="flex items-center bg-rose-900 justify-center gap-1 text-sm text-white w-full hover:bg-red-800"
+                    >
+                      <List size={16} />
+                      <span>Tasks</span>
+                    </Button>
+                  </div>
                   </div>
                 </motion.div>
               ))}
