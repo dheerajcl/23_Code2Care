@@ -21,23 +21,16 @@ export const VolunteerLayout = ({ children }: VolunteerLayoutProps) => {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Header */}
-      <Header />
-
-      {/* Main content area with sidebar */}
-      <div className="flex-1 flex">
-        {/* Desktop Sidebar */}
-        <Sidebar/>
-
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto pt-20">
-          <div className="container max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            {children}
-          </div>
-        </main>
+    <div className="h-screen bg-gray-100 flex flex-col">
+    <Header/>
+    <div className="flex flex-1 overflow-hidden">
+      <Sidebar />
+      <main className="flex-1 overflow-auto pt-28 p-8">
+        <div className="container mx-auto px-4 lg:px-2">
+          {children}
+        </div>
+      </main>
       </div>
-      <AccessibilityMenu />
     </div>
   );
 }; 
