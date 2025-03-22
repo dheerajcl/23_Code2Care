@@ -1,61 +1,96 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Try to use environment variables first, with fallbacks to direct values
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://csotbvprygtwbarusbwc.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNzb3RidnByeWd0d2JhcnVzYndjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1NTM2NTcsImV4cCI6MjA1ODEyOTY1N30.A2RfgEHP1kvLhMOyajRKfdr7rIj53w6qykddQl0-j3A';
+// Use Vite's environment variables instead of dotenv
+const supabaseUrl = import.meta.env.VITE_PUBLIC_SUPABASE_URL || 'https://csotbvprygtwbarusbwc.supabase.co';
+const supabaseKey = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNzb3RidnByeWd0d2JhcnVzYndjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1NTM2NTcsImV4cCI6MjA1ODEyOTY1N30.A2RfgEHP1kvLhMOyajRKfdr7rIj53w6qykddQl0-j3A';
 
-// Create a simple test function to verify database connection
-export const testDatabaseConnection = async () => {
-  try {
-    const response = await fetch(
-      `${supabaseUrl}/rest/v1/volunteer?select=id&limit=1`,
-      {
-        method: 'GET',
-        headers: {
-          'apikey': supabaseAnonKey,
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-        },
+// Enhanced error handling for Supabase client fetch
+const customFetch = (url: RequestInfo, options?: RequestInit) => {
+  const timeout = 20000; // 20 seconds
+
+  const controller = new AbortController();
+  const { signal } = controller;
+
+  // Set up timeout
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  // Create options with signal
+  const fetchOptions = {
+    ...options,
+    signal,
+  };
+
+  return fetch(url, fetchOptions)
+    .then((response) => {
+      clearTimeout(timeoutId);
+      return response;
+    })
+    .catch((error) => {
+      clearTimeout(timeoutId);
+      // Improve error message for timeout
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out. Please check your connection and try again.');
       }
-    );
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log('Database connection test successful:', data);
-    return { success: true, data };
-  } catch (error) {
-    console.error('Database connection test failed:', error);
-    return { success: false, error };
-  }
+      throw error;
+    });
 };
 
-// Create the Supabase client with proper configuration
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+// Create Supabase client with enhanced fetch
+const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
-    // Enable auto refresh of the auth token
-    autoRefreshToken: true,
-    // Whether to persist the session
     persistSession: true,
-    // Disable everything related to email confirmation
-    detectSessionInUrl: false,
-    // Use PKCE flow for better security
-    flowType: 'pkce',
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
   },
   global: {
-    // Increase timeout to 20 seconds
-    fetch: (url, options) => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
-      return fetch(url, { ...options, signal: controller.signal })
-        .finally(() => clearTimeout(timeoutId));
-    },
+    fetch: customFetch,
   },
-  db: {
-    schema: 'public',
-  },
-  realtime: {
-    timeout: 20000, // 20 seconds
-  },
-}); 
+});
+
+// Helper types
+export type Admin = {
+  id: string;
+  email: string;
+  first_name: string; 
+  last_name: string;
+  password?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type Volunteer = {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  password?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  skills?: string[];
+  interests?: string[];
+  availability?: string;
+  experience?: string;
+  how_heard?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type Event = {
+  id: string;
+  title: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+  location: string;
+  organizer_id: string;
+  created_at?: string;
+  updated_at?: string;
+  image_url?: string;
+  status?: string;
+  max_volunteers?: number;
+};
+
+// Export the client
+export { supabase }; 

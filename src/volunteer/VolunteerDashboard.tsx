@@ -37,6 +37,8 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
 import { Bar, BarChart, ResponsiveContainer } from 'recharts';
+import { Leaderboard } from '@/components/Leaderboard';
+import { Link, useLocation } from 'react-router-dom';
 import Sidebar from '@/components/Sidebar';
 
 // Mock data for the dashboard
@@ -67,7 +69,7 @@ const upcomingEvents = [
   },
 ];
 
-const assignedTasks = [
+export const assignedTasks = [
   {
     id: '1',
     eventId: '1',
@@ -177,15 +179,16 @@ const feedbackData = [
   },
 ];
 
-const VolunteerDashboard: React.FC = () => {
+export const VolunteerDashboard = () => {
   const { user, logout } = useAuth();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  const handleLogout = async () => {
-    await logout();
-    // Redirect is handled by the auth context
-  };
-
+  const location = useLocation();
+  
+    const handleLogout = async () => {
+      await logout();
+      // Redirect is handled by the auth context
+  
+    };
+  
   return (
     <div className="h-screen bg-gray-100 flex flex-col">
       <Header user={user} handleLogout={handleLogout}/>
@@ -224,6 +227,11 @@ const VolunteerDashboard: React.FC = () => {
                     </CardContent>
                   </Card>
                 ))}
+              </div>
+
+              {/* Leaderboard Section */}
+              <div className="w-full">
+                <Leaderboard />
               </div>
 
               {/* Tabs for different sections */}

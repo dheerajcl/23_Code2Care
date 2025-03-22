@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { z } from 'zod';
+import { pointsService } from './points.service';
 
 // Define better types for users
 export type UserData = {
@@ -387,6 +388,15 @@ export const loginVolunteer = async (credentials: z.infer<typeof loginSchema>): 
       };
     }
     
+    // Track login and handle badges
+    try {
+      await pointsService.trackLogin(volunteerData.id);
+      console.log('Login tracked successfully');
+    } catch (error) {
+      console.error('Error tracking login:', error);
+      // Don't fail the login if tracking fails
+    }
+    
     // Create user object
     const user = {
       id: volunteerData.id,
@@ -398,17 +408,18 @@ export const loginVolunteer = async (credentials: z.infer<typeof loginSchema>): 
     };
     
     console.log('Login successful');
+    
     return {
       success: true,
-      message: 'Login successful',
-      user: user,
+      message: 'Logged in successfully',
+      user
     };
   } catch (error: unknown) {
-    console.error('Unexpected error during login:', error);
     const err = error as AppError;
+    console.error('Login error:', err.message);
     return { 
       success: false, 
-      message: 'Login failed. Please check your connection and try again.' 
+      message: err.message || 'Failed to log in' 
     };
   }
 };

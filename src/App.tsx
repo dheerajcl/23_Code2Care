@@ -6,6 +6,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { AuthProvider } from "@/lib/authContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { VolunteerTasks } from './volunteer/tasks';
+import { VolunteerBadges } from './volunteer/badges';
+import { VolunteerProgress } from './volunteer/progress';
 
 // Pages
 import Index from "./pages/Index";
@@ -102,12 +105,35 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-
                 <Route
                   path="/volunteer/events"
                   element={
                     <ProtectedRoute roles={['volunteer']} redirectTo="/login">
                       <VolunteerEvents />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/volunteer/tasks"
+                  element={
+                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
+                      <VolunteerTasks />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/volunteer/badges"
+                  element={
+                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
+                      <VolunteerBadges />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/volunteer/progress"
+                  element={
+                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
+                      <VolunteerProgress />
                     </ProtectedRoute>
                   }
                 />

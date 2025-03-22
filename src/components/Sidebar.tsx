@@ -5,9 +5,9 @@ import { LayoutDashboard, Calendar, CheckCircle, BarChart3, Award } from 'lucide
 const menuItems = [
   { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/volunteer/dashboard' },
   { name: 'Events', icon: <Calendar size={20} />, path: '/volunteer/events' },
-  { name: 'Tasks', icon: <CheckCircle size={20} />, path: '/tasks' },
-  { name: 'Leaderboard', icon: <BarChart3 size={20} />, path: '/leaderboard' },
-  { name: 'Badges', icon: <Award size={20} />, path: '/badges' },
+  { name: 'Tasks', icon: <CheckCircle size={20} />, path: '/volunteer/tasks' },
+  { name: 'Leaderboard', icon: <BarChart3 size={20} />, path: '/volunteer/leaderboard' },
+  { name: 'Badges', icon: <Award size={20} />, path: '/volunteer/badges' },
 ];
 
 const Sidebar = () => {
