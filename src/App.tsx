@@ -19,13 +19,14 @@ import AdminRegister from "./admin/pages/AdminRegister";
 import JoinUs from "./pages/JoinUs";
 import ParticipantForm from "./pages/ParticipantForm";
 import AdminDashboard from "./admin/pages/AdminDashboard";
-import VolunteerDashboard from "./volunteer/dashboard";
+import VolunteerDashboard from "./volunteer/VolunteerDashboard";
 import AdminEvents from "./admin/pages/AdminEvents";
 import AdminVolunteers from "./admin/pages/AdminVolunteers";
 import AdminReports from "./admin/pages/AdminReports";
 import AuthCallback from "./pages/AuthCallback";
 import AdminEventDetails from "./admin/pages/AdminEventDetails";
 import DonationPage from "./pages/Donate";
+import VolunteerEvents from "./volunteer/VolunteerEvents";
 
 function App() {
   const queryClient = new QueryClient();
@@ -98,6 +99,15 @@ function App() {
                   element={
                     <ProtectedRoute roles={['volunteer']} redirectTo="/login">
                       <VolunteerDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/volunteer/events"
+                  element={
+                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
+                      <VolunteerEvents />
                     </ProtectedRoute>
                   }
                 />

@@ -3,13 +3,13 @@ import { motion } from 'framer-motion';
 import { ChevronRight, Heart, Users, Calendar, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Hero from '@/components/Hero';
 import EventCard from '@/components/EventCard';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
 import { useAuth } from '@/lib/authContext';
 import { supabase } from '@/lib/supabase';
+import LandingHeader from '@/components/LandingHeader';
 
 const Events: React.FC = () => {
   const [events, setEvents] = useState<any[]>([]);
@@ -37,7 +37,7 @@ const Events: React.FC = () => {
 
   return (
     <div>
-      <Header />
+      <LandingHeader />
       <AccessibilityMenu />
       <div className="container mx-auto py-8">
         <h1 className="text-3xl font-bold text-center mb-6">Upcoming Events</h1>
@@ -67,7 +67,7 @@ const impactStats = [
 const Index: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <LandingHeader />
       <main className="flex-grow">
         <Hero />
         <section id="content-section" className="py-16 md:py-24 px-4">

@@ -26,6 +26,7 @@ import { useToast } from '@/components/ui/use-toast';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
+import LandingHeader from '@/components/LandingHeader';
 
 const donationOptions = [
   { value: 'education', label: 'Education' },
@@ -125,7 +126,7 @@ const DonationPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <LandingHeader />
 
       <main className="flex-grow">
         {/* Hero Section */}
