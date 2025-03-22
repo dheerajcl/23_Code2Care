@@ -73,7 +73,7 @@ const DonationPage: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validation
@@ -95,22 +95,79 @@ const DonationPage: React.FC = () => {
       return;
     }
     
-    // Process donation (in a real app, this would connect to payment processing)
+    // Show processing toast
     toast({
-      title: "Donation Processing",
-      description: "Your donation is being processed. Thank you for your support!",
+      title: "Processing Donation",
+      description: "Please wait while we process your donation...",
     });
     
-    // In a real implementation, you would handle form submission to backend here
-    console.log({
-      donationType,
-      amount,
-      paymentMethod,
-      donationPurpose,
-      personalInfo,
-      agreeToTerms,
-      receiveUpdates
-    });
+    try {
+      // Prepare the donation data
+      const donationData = {
+        amount: Number(amount),
+        donationType,
+        donationPurpose,
+        paymentMethod,
+        personalInfo,
+        receiveUpdates,
+        // Add organization ID if available
+        // organizationId: "your-organization-id"
+      };
+      
+      // Submit to the API
+      const response = await fetch('/api/donations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(donationData),
+      });
+
+      // Add this check before parsing JSON
+      if (response.status === 204 || response.headers.get('content-length') === '0') {
+        // Handle empty response
+        toast({
+          title: "Donation Successful!",
+          description: "Thank you for your donation, but we received an empty response.",
+          variant: "default",
+        });
+        return;
+      }
+
+      // Now parse the JSON safely
+      let result;
+      try {
+        result = await response.json();
+      } catch (error) {
+        console.error("Error parsing JSON response:", error);
+        toast({
+          title: "Error Processing Response",
+          description: "There was an issue processing the server response.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Success response
+      toast({
+        title: "Donation Successful!",
+        description: `Thank you for your donation of ₹${typeof amount === 'string' ? amount : amount.toLocaleString()}. Transaction ID: ${result.transactionId}`,
+        variant: "default",
+      });
+      
+      // Reset form or redirect to thank you page
+      // resetForm(); // You would need to implement this function
+      // or
+      // router.push('/thank-you'); // Using Next.js router
+      
+    } catch (error) {
+      console.error('Donation processing error:', error);
+      toast({
+        title: "Donation Failed",
+        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const isFormValid = () => {

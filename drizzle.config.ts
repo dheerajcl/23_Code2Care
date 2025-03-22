@@ -11,7 +11,7 @@ export default defineConfig({
     host: 'db.csotbvprygtwbarusbwc.supabase.co',
     port: 5432,
     user: 'postgres',
-    password: 'samarthanam24',
+    password: '8WOFxFmBg2rYuGEK',
     database: 'postgres',
     ssl: {
       rejectUnauthorized: false
