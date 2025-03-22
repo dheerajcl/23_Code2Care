@@ -1,6 +1,3 @@
-<<<<<<< HEAD
- 
-=======
 import { supabase } from '@/lib/supabase';
 
 // Define types based on database schema
@@ -1359,4 +1356,3 @@ export const updateVolunteerRating = async (volunteerId: string, rating: number)
     return { data: null, error };
   }
 }; 
->>>>>>> ac0ede2 (DB integration for volunteers and events tabs)
