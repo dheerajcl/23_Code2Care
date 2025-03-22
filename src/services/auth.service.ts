@@ -158,71 +158,78 @@ export const registerAdmin = async (userData: z.infer<typeof adminRegisterSchema
 
 export const loginAdmin = async (credentials: z.infer<typeof loginSchema>): Promise<AuthResponse> => {
   try {
-    // First verify if this admin exists in our database
+    console.log('Starting admin login process...');
+    
+    // Test database connection first with a simple query
+    const { data: testData, error: testError } = await supabase
+      .from('admin')
+      .select('id')
+      .limit(1);
+      
+    if (testError) {
+      console.error('Database connection test failed:', testError);
+      return { 
+        success: false, 
+        message: 'Cannot connect to database. Please try again later.' 
+      };
+    }
+    
+    console.log('Database connection successful, checking admin credentials...');
+    
+    // Verify if this admin exists in our database
     const { data: adminData, error: adminError } = await supabase
       .from('admin')
       .select('*')
       .eq('email', credentials.email)
       .single();
     
-    if (adminError || !adminData) {
-      return { success: false, message: 'Admin account not found' };
+    if (adminError && adminError.code !== 'PGRST116') {
+      console.error('Database error while fetching admin:', adminError);
+      return { 
+        success: false, 
+        message: 'Error verifying account. Please try again.' 
+      };
     }
     
-    // Try to sign in with Supabase Auth
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: credentials.email,
-      password: credentials.password,
-    });
-
-    // Handle the case where auth fails because of email confirmation
-    if (error && error.message.toLowerCase().includes('email not confirmed')) {
-      // Ignore the email confirmation error and proceed anyway
-      // since we already verified this admin exists in our database
-      
-      // Convert snake_case DB column names to camelCase for frontend
-      const camelCaseAdmin = {
-        ...adminData,
-        firstName: adminData.first_name,
-        lastName: adminData.last_name,
-        createdAt: adminData.created_at,
-        updatedAt: adminData.updated_at,
-        organizationId: adminData.organization_id,
-        manuallyLoggedIn: true,
-        role: 'admin' as const,
+    if (!adminData) {
+      console.log('No admin found with this email');
+      return { 
+        success: false, 
+        message: 'No admin account found with this email' 
       };
-      
-      return {
-        success: true,
-        message: 'Login successful (bypassing email confirmation)',
-        user: camelCaseAdmin,
-      };
-    } else if (error) {
-      // Handle other errors
-      return { success: false, message: error.message };
     }
-
-    // If we reached here, the normal auth flow worked
-    // Convert snake_case DB column names to camelCase for frontend
-    const camelCaseAdmin = {
-      ...adminData,
+    
+    // Simple password check against the stored password
+    if (adminData.password !== credentials.password) {
+      console.log('Password does not match');
+      return { 
+        success: false, 
+        message: 'Invalid email or password' 
+      };
+    }
+    
+    // Create user object
+    const user = {
+      id: adminData.id,
+      email: adminData.email,
       firstName: adminData.first_name,
       lastName: adminData.last_name,
-      createdAt: adminData.created_at,
-      updatedAt: adminData.updated_at,
-      organizationId: adminData.organization_id,
-      manuallyLoggedIn: true,
       role: 'admin' as const,
     };
     
+    console.log('Login successful');
     return {
       success: true,
       message: 'Login successful',
-      user: camelCaseAdmin,
+      user: user,
     };
   } catch (error: unknown) {
+    console.error('Unexpected error during login:', error);
     const err = error as AppError;
-    return { success: false, message: err.message || 'Failed to login' };
+    return { 
+      success: false, 
+      message: 'Login failed. Please check your connection and try again.' 
+    };
   }
 };
 
@@ -235,10 +242,41 @@ export const registerVolunteer = async (userData: z.infer<typeof volunteerRegist
       return { success: false, message: 'Invalid user data' };
     }
 
+    // Check if a volunteer account with this email already exists in the database
+    const { data: existingVolunteer } = await supabase
+      .from('volunteer')
+      .select('*')
+      .eq('email', userData.email)
+      .single();
+
+    // If volunteer already exists, we can try to log in directly
+    if (existingVolunteer) {
+      // Try to sign in
+      const signInResult = await loginVolunteer({
+        email: userData.email,
+        password: userData.password
+      });
+
+      if (signInResult.success) {
+        return {
+          success: true,
+          message: 'Volunteer account already exists, logged in successfully',
+          user: signInResult.user
+        };
+      } else {
+        return { success: false, message: 'An account with this email already exists.' };
+      }
+    }
+
     // Create account with Supabase Auth
     const { data, error } = await supabase.auth.signUp({
       email: userData.email,
       password: userData.password,
+      options: {
+        data: {
+          role: 'volunteer' // Add role metadata
+        }
+      }
     });
 
     if (error) {
@@ -249,17 +287,17 @@ export const registerVolunteer = async (userData: z.infer<typeof volunteerRegist
       return { success: false, message: 'Failed to create user' };
     }
 
-    const supabaseUserId = data.user.id;
+    const userId = data.user.id;
     
-    // Create volunteer in database - note the table name is 'volunteer' not 'volunteers'
+    // Create volunteer in database
     const { error: insertError, data: insertData } = await supabase
-      .from('volunteer')  // Changed from 'volunteers' to 'volunteer' to match the schema
+      .from('volunteer')
       .insert({
-        id: supabaseUserId,
+        id: userId,
         email: userData.email,
         password: userData.password,
-        first_name: userData.firstName, // Changed from firstName to first_name to match DB schema
-        last_name: userData.lastName,   // Changed from lastName to last_name to match DB schema
+        first_name: userData.firstName, 
+        last_name: userData.lastName,
         phone: userData.phone,
         address: userData.address,
         city: userData.city,
@@ -268,31 +306,27 @@ export const registerVolunteer = async (userData: z.infer<typeof volunteerRegist
         interests: userData.interests || [],
         availability: userData.availability,
         experience: userData.experience,
-        how_heard: userData.howHeard     // Changed from howHeard to how_heard to match DB schema
+        how_heard: userData.howHeard
       })
       .select();
 
     if (insertError) {
-      // If database insert failed, clean up the auth user
-      await supabase.auth.admin.deleteUser(supabaseUserId).catch(() => {});
       return { success: false, message: insertError.message || 'Failed to create volunteer record' };
     }
 
-    const newVolunteer = insertData?.[0];
-    
-    if (!newVolunteer) {
-      // If no volunteer was returned, clean up the auth user
-      await supabase.auth.admin.deleteUser(supabaseUserId).catch(() => {});
+    if (!insertData?.[0]) {
       return { success: false, message: 'Failed to create volunteer record' };
     }
 
     return {
       success: true,
-      message: 'Volunteer registered successfully',
+      message: 'Volunteer registered successfully. Please sign in.',
       user: {
-        ...newVolunteer,
+        ...insertData[0],
+        firstName: insertData[0].first_name,
+        lastName: insertData[0].last_name,
+        howHeard: insertData[0].how_heard,
         role: 'volunteer' as const,
-        manuallyLoggedIn: true,
       },
     };
   } catch (error: unknown) {
@@ -303,48 +337,79 @@ export const registerVolunteer = async (userData: z.infer<typeof volunteerRegist
 
 export const loginVolunteer = async (credentials: z.infer<typeof loginSchema>): Promise<AuthResponse> => {
   try {
-    // Sign in with Supabase Auth
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: credentials.email,
-      password: credentials.password,
-    });
-
-    if (error) {
-      return { success: false, message: error.message };
+    console.log('Starting volunteer login process...');
+    
+    // Test database connection first with a simple query
+    const { data: testData, error: testError } = await supabase
+      .from('volunteer')
+      .select('id')
+      .limit(1);
+      
+    if (testError) {
+      console.error('Database connection test failed:', testError);
+      return { 
+        success: false, 
+        message: 'Cannot connect to database. Please try again later.' 
+      };
     }
-
-    // Fetch volunteer record from database - note the table name is 'volunteer' not 'volunteers'
+    
+    console.log('Database connection successful, checking volunteer credentials...');
+    
+    // Verify if this volunteer exists in our database
     const { data: volunteerData, error: volunteerError } = await supabase
-      .from('volunteer')  // Changed from 'volunteers' to 'volunteer' to match the schema
+      .from('volunteer')
       .select('*')
       .eq('email', credentials.email)
       .single();
     
-    if (volunteerError || !volunteerData) {
-      await supabase.auth.signOut();
-      return { success: false, message: 'Invalid volunteer credentials' };
+    if (volunteerError && volunteerError.code !== 'PGRST116') {
+      console.error('Database error while fetching volunteer:', volunteerError);
+      return { 
+        success: false, 
+        message: 'Error verifying account. Please try again.' 
+      };
     }
     
-    // Convert snake_case DB column names to camelCase for frontend
-    const camelCaseVolunteer = {
-      ...volunteerData,
+    if (!volunteerData) {
+      console.log('No volunteer found with this email');
+      return { 
+        success: false, 
+        message: 'No volunteer account found with this email' 
+      };
+    }
+    
+    // Simple password check against the stored password
+    if (volunteerData.password !== credentials.password) {
+      console.log('Password does not match');
+      return { 
+        success: false, 
+        message: 'Invalid email or password' 
+      };
+    }
+    
+    // Create user object
+    const user = {
+      id: volunteerData.id,
+      email: volunteerData.email,
       firstName: volunteerData.first_name,
       lastName: volunteerData.last_name,
       howHeard: volunteerData.how_heard,
-      createdAt: volunteerData.created_at,
-      updatedAt: volunteerData.updated_at,
-      manuallyLoggedIn: true,
       role: 'volunteer' as const,
     };
     
+    console.log('Login successful');
     return {
       success: true,
       message: 'Login successful',
-      user: camelCaseVolunteer,
+      user: user,
     };
   } catch (error: unknown) {
+    console.error('Unexpected error during login:', error);
     const err = error as AppError;
-    return { success: false, message: err.message || 'Failed to login' };
+    return { 
+      success: false, 
+      message: 'Login failed. Please check your connection and try again.' 
+    };
   }
 };
 

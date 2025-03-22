@@ -27,7 +27,8 @@ import AuthCallback from "./pages/AuthCallback";
 import AdminEventDetails from "./admin/pages/AdminEventDetails";
 import DonationPage from "./pages/Donate"
 
-const queryClient = new QueryClient();
+function App() {
+  const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

@@ -578,7 +578,7 @@ const Register: React.FC = () => {
                           className="min-w-36"
                         >
                           Go to Login
-                          <ChevronRight className="ml-2 h-4 w-4" />
+                            <ChevronRight className="ml-2 h-4 w-4" />
                         </Button>
                       </div>
                     </motion.div>
