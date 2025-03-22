@@ -13,7 +13,9 @@
     "db:push": "drizzle-kit push --dialect=postgresql --schema=./src/db/schema/*",
     "db:studio": "drizzle-kit studio --dialect=postgresql --schema=./src/db/schema/*",
     "db:seed": "tsx src/db/seed.ts",
-    "db:migrate": "tsx src/db/migrate.ts"
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:seed-badges": "tsx src/db/seed-badges.ts",
+    "db:init-leaderboard": "psql -h db.csotbvprygtwbarusbwc.supabase.co -U postgres -d postgres -f src/db/migrations/leaderboard_function.sql"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

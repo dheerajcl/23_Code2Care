@@ -37,6 +37,8 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
 import { Bar, BarChart, ResponsiveContainer } from 'recharts';
+import { Leaderboard } from '@/components/Leaderboard';
+import { Link, useLocation } from 'react-router-dom';
 
 // Mock data for the dashboard
 const upcomingEvents = [
@@ -176,21 +178,16 @@ const feedbackData = [
   },
 ];
 
-const VolunteerDashboard: React.FC = () => {
-  const { user, logout } = useAuth();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  const handleLogout = async () => {
-    await logout();
-    // Redirect is handled by the auth context
-  };
-
+export const VolunteerDashboard = () => {
+  const { user } = useAuth();
+  const location = useLocation();
+  
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Top Navigation */}
       <header className="border-b">
         <div className="flex h-16 items-center px-4 sm:px-6">
-        <Header/>
+          <Header/>
         </div>
       </header>
 
@@ -202,26 +199,51 @@ const VolunteerDashboard: React.FC = () => {
               <div className="text-xs font-medium uppercase text-muted-foreground pl-4">
                 Navigation
               </div>
-              <Button variant="ghost" className="justify-start">
-                <Home className="h-4 w-4 mr-2" />
-                Dashboard
-              </Button>
-              <Button variant="ghost" className="justify-start">
-                <Calendar className="h-4 w-4 mr-2" />
-                Registered Events
-              </Button>
-              <Button variant="ghost" className="justify-start">
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Tasks
-              </Button>
-              <Button variant="ghost" className="justify-start">
-                <Award className="h-4 w-4 mr-2" />
-                Badges
-              </Button>
-              <Button variant="ghost" className="justify-start">
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Progress
-              </Button>
+              <Link to="/volunteer/dashboard">
+                <Button 
+                  variant={location.pathname === '/volunteer/dashboard' ? 'default' : 'ghost'} 
+                  className="w-full justify-start"
+                >
+                  <Home className="h-4 w-4 mr-2" />
+                  Dashboard
+                </Button>
+              </Link>
+              <Link to="/volunteer/events">
+                <Button 
+                  variant={location.pathname === '/volunteer/events' ? 'default' : 'ghost'} 
+                  className="w-full justify-start"
+                >
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Registered Events
+                </Button>
+              </Link>
+              <Link to="/volunteer/tasks">
+                <Button 
+                  variant={location.pathname === '/volunteer/tasks' ? 'default' : 'ghost'} 
+                  className="w-full justify-start"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Tasks
+                </Button>
+              </Link>
+              <Link to="/volunteer/badges">
+                <Button 
+                  variant={location.pathname === '/volunteer/badges' ? 'default' : 'ghost'} 
+                  className="w-full justify-start"
+                >
+                  <Award className="h-4 w-4 mr-2" />
+                  Badges
+                </Button>
+              </Link>
+              <Link to="/volunteer/progress">
+                <Button 
+                  variant={location.pathname === '/volunteer/progress' ? 'default' : 'ghost'} 
+                  className="w-full justify-start"
+                >
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Progress
+                </Button>
+              </Link>
             </div>
           </div>
         </aside>
@@ -260,6 +282,11 @@ const VolunteerDashboard: React.FC = () => {
                     </CardContent>
                   </Card>
                 ))}
+              </div>
+
+              {/* Leaderboard Section */}
+              <div className="w-full">
+                <Leaderboard />
               </div>
 
               {/* Tabs for different sections */}
