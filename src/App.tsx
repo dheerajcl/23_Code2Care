@@ -34,21 +34,21 @@ import VolunteerEvents from "./volunteer/VolunteerEvents";
 import VolTasks from "./volunteer/VolunteerTasks";
 
 function App() {
-  const queryClient = new QueryClient();
+const queryClient = new QueryClient();
 
   return (
-    <QueryClientProvider client={queryClient}>
+  <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <BrowserRouter>
-            <AnimatePresence mode="wait">
-              <Routes>
+    <TooltipProvider>
+      <BrowserRouter>
+        <AnimatePresence mode="wait">
+          <Routes>
                 {/* Public routes */}
-                <Route path="/" element={<Index />} />
-                <Route path="/events" element={<Events />} />
-                <Route path="/about" element={<About />} />
+            <Route path="/" element={<Index />} />
+            <Route path="/events" element={<Events />} />
+            <Route path="/about" element={<About />} />
                 <Route path="/donate" element={<DonationPage />} />
-                <Route path="/register" element={<Register />} />
+            <Route path="/register" element={<Register />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/join-us" element={<JoinUs />} />
                 <Route path="/participant-form" element={<ParticipantForm />} />
@@ -157,16 +157,16 @@ function App() {
                 />
                 
                 {/* 404 route */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </AnimatePresence>
-          </BrowserRouter>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AnimatePresence>
+      </BrowserRouter>
           <Toaster />
           <Sonner />
-        </TooltipProvider>
+    </TooltipProvider>
       </AuthProvider>
-    </QueryClientProvider>
-  );
+  </QueryClientProvider>
+);
 }
 
 export default App;
