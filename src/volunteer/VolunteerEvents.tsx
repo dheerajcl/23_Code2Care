@@ -16,7 +16,12 @@ import {
   SelectValue 
 } from '../components/ui/select';
 import { motion } from 'framer-motion';
-import { toast } from 'react-hot-toast';
+import { toast } from '@/components/ui/use-toast';
+import Charity from '../assets/charity.jpg'
+import Workshop from '../assets/workshop.jpg'
+import Community from '../assets/community_cleanup.jpg'
+import Donation from '../assets/donation.png'
+import Cricket from '../assets/cricket.jpg'
 import EventCard from '../components/EventCard';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
 

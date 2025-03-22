@@ -31,7 +31,9 @@ import AuthCallback from "./pages/AuthCallback";
 import AdminEventDetails from "./admin/pages/AdminEventDetails";
 import DonationPage from "./pages/Donate";
 import VolunteerEvents from "./volunteer/VolunteerEvents";
-import VolTasks from "./volunteer/VolunteerTasks";
+import TasksPage from "./volunteer/TasksPage";
+import CreateEvent from "./admin/pages/CreateEvent";
+import EditEvent from "./admin/pages/EditEvent";
 
 function App() {
 const queryClient = new QueryClient();
@@ -74,6 +76,22 @@ const queryClient = new QueryClient();
                   }
                 />
                 <Route
+                  path="/admin/events/create"
+                  element={
+                    <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                      <CreateEvent />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/events/:id/edit"
+                  element={
+                    <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                      <EditEvent />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/admin/events/:id"
                   element={
                     <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
@@ -104,6 +122,30 @@ const queryClient = new QueryClient();
                   element={
                     <ProtectedRoute roles={['volunteer']} redirectTo="/login">
                       <VolunteerDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/volunteer/events"
+                  element={
+                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
+                      <VolunteerEvents />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/volunteer/events/:id/tasks"
+                  element={
+                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
+                      <TasksPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/volunteer/events/:id/feedback"
+                  element={
+                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
+                      <EventFeedback />
                     </ProtectedRoute>
                   }
                 />
