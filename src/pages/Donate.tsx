@@ -136,7 +136,7 @@ const DonationPage: React.FC = () => {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="text-3xl md:text-4xl font-bold mb-6"
+                className="text-3xl md:text-4xl font-bold mb-6 mt-16"
               >
                 Make a Donation to Samarthanam Trust
               </motion.h1>
