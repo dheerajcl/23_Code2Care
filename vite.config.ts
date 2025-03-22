@@ -20,7 +20,8 @@ export default defineConfig(({ mode }) => ({
     },
   },
   optimizeDeps: {
-    exclude: ['@prisma/client', '.prisma/client'],
+    include: ["@hello-pangea/dnd"], // Ensure this dependency is optimized
+    exclude: ["@prisma/client", ".prisma/client"],
   },
   build: {
     commonjsOptions: {

@@ -1,16 +1,38 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Facebook, 
-  Twitter, 
-  Instagram, 
-  Youtube, 
-  Mail, 
-  Phone, 
-  MapPin 
-} from 'lucide-react';
+import { Facebook, Twitter, Instagram, Youtube, Mail, Phone, MapPin } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 const Footer: React.FC = () => {
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
+
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage('');
+  
+    console.log('Form submitted'); // Debugging line
+  
+    if (!email) {
+      setMessage('Please enter a valid email address.');
+      return;
+    }
+  
+    console.log('Attempting to subscribe with email:', email);
+  
+    const { error } = await supabase.from('newsletter').insert([{ email }]);
+  
+    if (error) {
+      console.error('Subscription failed:', error.message);
+      setMessage('Subscription failed. Try again later.');
+    } else {
+      console.log('Subscription successful for email:', email);
+      setMessage('Subscribed successfully!');
+      setEmail('');
+    }
+  };
+  
+
   return (
     <footer className="bg-secondary pt-12 pb-6 border-t border-border">
       <div className="container mx-auto px-4 md:px-6">
@@ -46,26 +68,10 @@ const Footer: React.FC = () => {
           <div>
             <h3 className="font-medium text-lg mb-4">Quick Links</h3>
             <ul className="space-y-2">
-              <li>
-                <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Home
-                </Link>
-              </li>
-              <li>
-                <Link to="/events" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Events
-                </Link>
-              </li>
-              <li>
-                <Link to="/about" className="text-muted-foreground hover:text-foreground transition-colors">
-                  About Us
-                </Link>
-              </li>
-              <li>
-                <Link to="/join-us" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Volunteer
-                </Link>
-              </li>
+              <li><Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">Home</Link></li>
+              <li><Link to="/events" className="text-muted-foreground hover:text-foreground transition-colors">Events</Link></li>
+              <li><Link to="/about" className="text-muted-foreground hover:text-foreground transition-colors">About Us</Link></li>
+              <li><Link to="/join-us" className="text-muted-foreground hover:text-foreground transition-colors">Volunteer</Link></li>
             </ul>
           </div>
 
@@ -75,21 +81,15 @@ const Footer: React.FC = () => {
             <ul className="space-y-3">
               <li className="flex items-start space-x-3">
                 <MapPin className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-                <span className="text-muted-foreground">
-                  CA Site No.1, 7th Main, 7th Cross, 3rd Phase, JP Nagar, Bengaluru, Karnataka 560078
-                </span>
+                <span className="text-muted-foreground">CA Site No.1, 7th Main, 7th Cross, 3rd Phase, JP Nagar, Bengaluru, Karnataka 560078</span>
               </li>
               <li className="flex items-center space-x-3">
                 <Phone className="h-5 w-5 text-muted-foreground" />
-                <a href="tel:+918861799800" className="text-muted-foreground hover:text-foreground transition-colors">
-                  +91 88617 99800
-                </a>
+                <a href="tel:+918861799800" className="text-muted-foreground hover:text-foreground transition-colors">+91 88617 99800</a>
               </li>
               <li className="flex items-center space-x-3">
                 <Mail className="h-5 w-5 text-muted-foreground" />
-                <a href="mailto:contact@samarthanam.org" className="text-muted-foreground hover:text-foreground transition-colors">
-                  contact@samarthanam.org
-                </a>
+                <a href="mailto:contact@samarthanam.org" className="text-muted-foreground hover:text-foreground transition-colors">contact@samarthanam.org</a>
               </li>
             </ul>
           </div>
@@ -97,42 +97,37 @@ const Footer: React.FC = () => {
           {/* Newsletter */}
           <div className="md:col-span-3 lg:col-span-1">
             <h3 className="font-medium text-lg mb-4">Stay Updated</h3>
-            <p className="text-muted-foreground text-sm mb-4">
-              Subscribe to our newsletter for updates on events, volunteer opportunities, and more.
-            </p>
-            <form className="flex">
-              <input
-                type="email"
-                placeholder="Your email"
-                aria-label="Your email address"
-                className="flex-1 min-w-0 px-3 py-2 text-sm bg-background border border-input rounded-l-md focus:outline-none focus:ring-2 focus:ring-ring"
-                required
-              />
-              <button
-                type="submit"
-                className="bg-primary text-primary-foreground px-4 py-2 text-sm font-medium rounded-r-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                Subscribe
-              </button>
+            <p className="text-muted-foreground text-sm mb-4">Subscribe to our newsletter for updates on events, volunteer opportunities, and more.</p>
+            <form onSubmit={handleSubscribe} className="flex flex-col space-y-2">
+              <div className="flex">
+                <input
+                  type="email"
+                  placeholder="Your email"
+                  aria-label="Your email address"
+                  className="flex-1 min-w-0 px-3 py-2 text-sm bg-background border border-input rounded-l-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+                <button
+                  type="submit"
+                  className="bg-primary text-primary-foreground px-4 py-2 text-sm font-medium rounded-r-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  Subscribe
+                </button>
+              </div>
+              {message && <p className="text-sm text-muted-foreground mt-2">{message}</p>}
             </form>
           </div>
         </div>
 
         <div className="mt-12 pt-6 border-t border-border">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} Samarthanam Trust for the Disabled. All rights reserved.
-            </p>
+            <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} Samarthanam Trust for the Disabled. All rights reserved.</p>
             <div className="flex space-x-6">
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Privacy Policy
-              </a>
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Terms of Service
-              </a>
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Accessibility
-              </a>
+              <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</a>
+              <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Terms of Service</a>
+              <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Accessibility</a>
             </div>
           </div>
         </div>

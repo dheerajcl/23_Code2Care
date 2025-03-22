@@ -29,6 +29,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import { registerVolunteer } from '@/services/auth.service';
 import { useAuth } from '@/lib/authContext';
+import LandingHeader from '@/components/LandingHeader';
 
 const Register: React.FC = () => {
   const [step, setStep] = useState(1);
@@ -149,7 +150,7 @@ const Register: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <LandingHeader />
       
       <main className="flex-grow">
         <Hero 
@@ -578,7 +579,7 @@ const Register: React.FC = () => {
                           className="min-w-36"
                         >
                           Go to Login
-                          <ChevronRight className="ml-2 h-4 w-4" />
+                            <ChevronRight className="ml-2 h-4 w-4" />
                         </Button>
                       </div>
                     </motion.div>

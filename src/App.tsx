@@ -6,6 +6,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { AuthProvider } from "@/lib/authContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { VolunteerTasks } from './volunteer/tasks';
+import { VolunteerBadges } from './volunteer/badges';
+import { VolunteerProgress } from './volunteer/progress';
+import EventFeedback from './volunteer/events/feedback';
 
 // Pages
 import Index from "./pages/Index";
@@ -19,113 +23,144 @@ import AdminRegister from "./admin/pages/AdminRegister";
 import JoinUs from "./pages/JoinUs";
 import ParticipantForm from "./pages/ParticipantForm";
 import AdminDashboard from "./admin/pages/AdminDashboard";
-import VolunteerDashboard from "./volunteer/dashboard";
+import VolunteerDashboard from "./volunteer/VolunteerDashboard";
 import AdminEvents from "./admin/pages/AdminEvents";
 import AdminVolunteers from "./admin/pages/AdminVolunteers";
 import AdminReports from "./admin/pages/AdminReports";
 import AuthCallback from "./pages/AuthCallback";
 import AdminEventDetails from "./admin/pages/AdminEventDetails";
-import DonationPage from "./pages/Donate"
+import DonationPage from "./pages/Donate";
+import VolunteerEvents from "./volunteer/VolunteerEvents";
+import TasksPage from "./volunteer/TasksPage";
+import CreateEvent from "./admin/pages/CreateEvent";
+import EditEvent from "./admin/pages/EditEvent";
 
+function App() {
 const queryClient = new QueryClient();
 
-const App = () => (
+  return (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AnimatePresence mode="wait">
-            <Routes>
-              {/* Public routes */}
-              <Route path="/" element={<Index />} />
-              <Route path="/events" element={<Events />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/join-us" element={<JoinUs />} />
-              <Route path="/participant" element={<ParticipantForm/>}/>
-              <Route path="/admin/login" element={<AdminLogin />} />
-              <Route path="/admin/register" element={<AdminRegister />} />
-              <Route path="/auth/callback" element={<AuthCallback />} />
-              <Route path="/donate" element={<DonationPage/>} />
-              {/* <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/admin/volunteers" element={<AdminVolunteers />} />
-              <Route path="/admin/events" element={<AdminEvents />} />
-              <Route path="/admin/events/:id" element={<AdminEventDetails />} />
-              <Route path="/admin/reports" element={<AdminReports />} /> */}
-
-
-              
-              {/* Protected admin routes */}
-              <Route 
-                path="/admin/dashboard" 
-                element={
-                  <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                } 
-              />
-
-              {/* Protected admin routes */}
-              <Route 
-                path="/admin/events" 
-                element={
-                  <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
-                    <AdminEvents />
-                  </ProtectedRoute>
-                } 
-              />
-
-              {/* Protected admin routes */}
-              <Route 
-                path="/admin/events/:id" 
-                element={
-                  <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
-                    <AdminEventDetails />
-                  </ProtectedRoute>
-                } 
-              />
-
-              {/* Protected admin routes */}
-              <Route 
-                path="/admin/volunteers" 
-                element={
-                  <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
-                    <AdminVolunteers />
-                  </ProtectedRoute>
-                } 
-              />
-
-              {/* Protected admin routes */}
-              <Route 
-                path="/admin/reports" 
-                element={
-                  <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
-                    <AdminReports />
-                  </ProtectedRoute>
-                } 
-              />
-              
-              {/* Protected volunteer routes */}
-              <Route 
-                path="/volunteer/dashboard" 
-                element={
-                  <ProtectedRoute roles={['volunteer']} redirectTo="/login">
-                    <VolunteerDashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              
-              {/* Catch all */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AnimatePresence>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
+      <AuthProvider>
+    <TooltipProvider>
+      <BrowserRouter>
+        <AnimatePresence mode="wait">
+          <Routes>
+                {/* Public routes */}
+            <Route path="/" element={<Index />} />
+            <Route path="/events" element={<Events />} />
+            <Route path="/about" element={<About />} />
+                <Route path="/donate" element={<DonationPage />} />
+            <Route path="/register" element={<Register />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/join-us" element={<JoinUs />} />
+                <Route path="/participant-form" element={<ParticipantForm />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
+                
+                {/* Admin routes */}
+                <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/admin/register" element={<AdminRegister />} />
+                <Route
+                  path="/admin/dashboard"
+                  element={
+                    <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/events"
+                  element={
+                    <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                      <AdminEvents />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/events/create"
+                  element={
+                    <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                      <CreateEvent />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/events/:id/edit"
+                  element={
+                    <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                      <EditEvent />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/events/:id"
+                  element={
+                    <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                      <AdminEventDetails />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/volunteers"
+                  element={
+                    <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                      <AdminVolunteers />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/reports"
+                  element={
+                    <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                      <AdminReports />
+                    </ProtectedRoute>
+                  }
+                />
+                
+                {/* Volunteer routes */}
+                <Route
+                  path="/volunteer/dashboard"
+                  element={
+                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
+                      <VolunteerDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/volunteer/events"
+                  element={
+                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
+                      <VolunteerEvents />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/volunteer/events/:id/tasks"
+                  element={
+                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
+                      <TasksPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/volunteer/events/:id/feedback"
+                  element={
+                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
+                      <EventFeedback />
+                    </ProtectedRoute>
+                  }
+                />
+                
+                {/* 404 route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AnimatePresence>
+      </BrowserRouter>
+          <Toaster />
+          <Sonner />
+    </TooltipProvider>
+      </AuthProvider>
   </QueryClientProvider>
 );
+}
 
 export default App;

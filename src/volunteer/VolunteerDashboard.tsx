@@ -37,6 +37,10 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
 import { Bar, BarChart, ResponsiveContainer } from 'recharts';
+import { Leaderboard } from '@/components/Leaderboard';
+import { Link, useLocation } from 'react-router-dom';
+import Sidebar from '@/components/Sidebar';
+import LandingHeader from '@/components/LandingHeader';
 
 // Mock data for the dashboard
 const upcomingEvents = [
@@ -66,7 +70,7 @@ const upcomingEvents = [
   },
 ];
 
-const assignedTasks = [
+export const assignedTasks = [
   {
     id: '1',
     eventId: '1',
@@ -176,60 +180,24 @@ const feedbackData = [
   },
 ];
 
-const VolunteerDashboard: React.FC = () => {
+export const VolunteerDashboard = () => {
   const { user, logout } = useAuth();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  const handleLogout = async () => {
-    await logout();
-    // Redirect is handled by the auth context
-  };
-
+  const location = useLocation();
+  
+    const handleLogout = async () => {
+      await logout();
+      // Redirect is handled by the auth context
+  
+    };
+  
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Top Navigation */}
-      <header className="border-b">
-        <div className="flex h-16 items-center px-4 sm:px-6">
-        <Header/>
-        </div>
-      </header>
-
-      <div className="flex-1 flex flex-row">
-        {/* Desktop Sidebar */}
-        <aside className="hidden border-r bg-muted/40 md:block w-64">
-          <div className="flex flex-col gap-2 p-4 pt-6">
-            <div className="flex flex-col gap-1 py-2">
-              <div className="text-xs font-medium uppercase text-muted-foreground pl-4">
-                Navigation
-              </div>
-              <Button variant="ghost" className="justify-start">
-                <Home className="h-4 w-4 mr-2" />
-                Dashboard
-              </Button>
-              <Button variant="ghost" className="justify-start">
-                <Calendar className="h-4 w-4 mr-2" />
-                Registered Events
-              </Button>
-              <Button variant="ghost" className="justify-start">
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Tasks
-              </Button>
-              <Button variant="ghost" className="justify-start">
-                <Award className="h-4 w-4 mr-2" />
-                Badges
-              </Button>
-              <Button variant="ghost" className="justify-start">
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Progress
-              </Button>
-            </div>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 pt-6 overflow-y-auto">
-          <div className="container mx-auto px-4 lg:px-8">
-            <div className="flex flex-col gap-6">
+    <div className="h-screen bg-gray-100 flex flex-col">
+      <Header/>
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar />
+        <main className="flex-1 overflow-auto pt-28 p-8">
+          <div className="container mx-auto px-4 lg:px-2">
+          <div className="flex flex-col gap-6">
               {/* Welcome */}
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold">Welcome, {user?.firstName}!</h1>
@@ -260,6 +228,11 @@ const VolunteerDashboard: React.FC = () => {
                     </CardContent>
                   </Card>
                 ))}
+              </div>
+
+              {/* Leaderboard Section */}
+              <div className="w-full">
+                <Leaderboard />
               </div>
 
               {/* Tabs for different sections */}
@@ -526,8 +499,7 @@ const VolunteerDashboard: React.FC = () => {
           </div>
         </main>
       </div>
-      <Footer/>
-      <AccessibilityMenu />
+      <AccessibilityMenu/>
     </div>
   );
 };

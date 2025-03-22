@@ -11,11 +11,11 @@ import {
   Heart, 
   Users 
 } from 'lucide-react';
-import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Hero from '@/components/Hero';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
 import { Separator } from '@/components/ui/separator';
+import LandingHeader from '@/components/LandingHeader';
 
 const missionPoints = [
   {
@@ -99,7 +99,7 @@ const teamMembers = [
 const About: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <LandingHeader />
       
       <main className="flex-grow">
         <Hero 

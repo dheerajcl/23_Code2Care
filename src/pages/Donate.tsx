@@ -26,6 +26,7 @@ import { useToast } from '@/components/ui/use-toast';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
+import LandingHeader from '@/components/LandingHeader';
 
 const donationOptions = [
   { value: 'education', label: 'Education' },
@@ -182,7 +183,7 @@ const DonationPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <LandingHeader />
 
       <main className="flex-grow">
         {/* Hero Section */}
@@ -193,7 +194,7 @@ const DonationPage: React.FC = () => {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="text-3xl md:text-4xl font-bold mb-6"
+                className="text-3xl md:text-4xl font-bold mb-6 mt-16"
               >
                 Make a Donation to Samarthanam Trust
               </motion.h1>

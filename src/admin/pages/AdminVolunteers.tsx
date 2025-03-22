@@ -1,22 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Search, Filter, Award, Calendar, MapPin, 
-  Code, Activity, ChevronDown, ChevronUp, User, UserCheck, Clock
+  Code, Activity, ChevronDown, ChevronUp, User, UserCheck, Clock, X
 } from 'lucide-react';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
 import { useAuth } from '@/lib/authContext';
+import { supabase } from '@/lib/supabase';
+import { getVolunteers } from '@/services/database.service';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { format } from 'date-fns';
 
 const AdminVolunteers = () => {
   // State for volunteers data
   const [volunteers, setVolunteers] = useState([]);
   const [filteredVolunteers, setFilteredVolunteers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   // State for UI controls
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState('list'); // 'list', 'leaderboard', 'analytics'
-  
+
+  const [selectedVolunteer, setSelectedVolunteer] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const { adminUser } = useAuth();
+
+  // Handle opening the volunteer details modal
+  const handleViewVolunteer = (volunteer) => {
+    setSelectedVolunteer(volunteer);
+    setShowModal(true);
+  };
+
+  // Close the modal
+  const closeModal = () => {
+    setShowModal(false);
+    setSelectedVolunteer(null);
+  };
+
   // Filter states
   const [filters, setFilters] = useState({
     skills: [],
@@ -29,179 +53,167 @@ const AdminVolunteers = () => {
     availability: []
   });
 
-  // Fetch volunteers data
+  // Fetch volunteers data from Supabase
   useEffect(() => {
-    // This would be replaced with an actual API call
-    const fetchVolunteers = async () => {
-      // Mocked data for demonstration
-      const mockVolunteers = [
-        {
-          id: 1,
-          firstname: 'John',
-          lastname: 'Doe',
-          email: 'john.doe@example.com',
-          contact: '(555) 123-4567',
-          address: '123 Main St',
-          city: 'New York',
-          state: 'NY',
-          skills: ['Teaching', 'Event Management'],
-          domain: 'Education',
-          availability: 'Weekends',
-          previousVolunteerExperience: 'Worked with local food banks and shelters',
-          howDidYouHear: 'Social Media',
-          hours: 10,
-          events: 5,
-          rating: 4.5
-        },
-        {
-          id: 2,
-          firstname: 'Jane',
-          lastname: 'Smith',
-          email: 'jane.smith@example.com',
-          contact: '(555) 987-6543',
-          address: '456 Oak Ave',
-          city: 'Los Angeles',
-          state: 'CA',
-          skills: ['Technology', 'Design'],
-          domain: 'Technology',
-          availability: 'Weekdays',
-          previousVolunteerExperience: 'Assisted in coding bootcamps for underprivileged students',
-          howDidYouHear: 'Friend Recommendation',
-          hours: 15,
-          events: 7,
-          rating: 4.8
-        },
-        {
-          id: 3,
-          firstname: 'Alex',
-          lastname: 'Johnson',
-          email: 'alex.j@example.com',
-          contact: '(555) 456-7890',
-          address: '789 Pine Blvd',
-          city: 'Chicago',
-          state: 'IL',
-          skills: ['Administration', 'Counseling'],
-          domain: 'Career Development',
-          availability: 'Both',
-          previousVolunteerExperience: 'Guided students on career counseling sessions',
-          howDidYouHear: 'Community Event',
-          hours: 8,
-          events: 4,
-          rating: 4.2
-        },
-        {
-          id: 4,
-          firstname: 'Maria',
-          lastname: 'Garcia',
-          email: 'maria.g@example.com',
-          contact: '(555) 234-5678',
-          address: '101 Maple St',
-          city: 'Houston',
-          state: 'TX',
-          skills: ['Language Translation', 'Writing'],
-          domain: 'Arts & Culture',
-          availability: 'Weekdays',
-          previousVolunteerExperience: 'Translated documents for refugees and immigrants',
-          howDidYouHear: 'Website Search',
-          hours: 20,
-          events: 9,
-          rating: 4.9
-        },
-        {
-          id: 5,
-          firstname: 'Sam',
-          lastname: 'Wilson',
-          email: 'sam.w@example.com',
-          contact: '(555) 876-5432',
-          address: '567 Cedar Rd',
-          city: 'San Francisco',
-          state: 'CA',
-          skills: ['Event Management', 'Community Outreach'],
-          domain: 'Fundraising',
-          availability: 'Weekends',
-          previousVolunteerExperience: 'Organized fundraising events for local charities',
-          howDidYouHear: 'Volunteer Fair',
-          hours: 12,
-          events: 6,
-          rating: 4.6
+    const fetchVolunteersData = async () => {
+      setIsLoading(true);
+      try {
+        // Get volunteer data
+        const { data, error } = await getVolunteers();
+        
+        if (error) throw error;
+        
+        if (data) {
+          // Process volunteer data for display
+          let processedData = data.map(volunteer => {
+            return {
+              id: volunteer.id,
+              firstname: volunteer.first_name || '',
+              lastname: volunteer.last_name || '',
+              email: volunteer.email || '',
+              contact: volunteer.phone || '',
+              city: volunteer.city || '',
+              state: volunteer.state || '',
+              skills: volunteer.skills || [],
+              domain: volunteer.interests ? volunteer.interests[0] : 'Not specified', 
+              availability: volunteer.availability || 'Not specified',
+              created: volunteer.created_at || new Date().toISOString(),
+              events: 0, // Will be updated if we have event registration data
+              hours: 0,  // Will be updated if we have event registration data
+              rating: 5, // Default rating
+              status: 'Active' // Default status
+            };
+          });
+          
+          // Fetch event registration data to get events and hours
+          const { data: signupData, error: signupError } = await supabase
+            .from('event_signup')
+            .select('volunteer_id, event_id, hours');
+          
+          if (signupError) throw signupError;
+          
+          // Calculate hours and event counts per volunteer
+          if (signupData) {
+            const volunteerStats = {};
+            signupData.forEach(signup => {
+              if (!volunteerStats[signup.volunteer_id]) {
+                volunteerStats[signup.volunteer_id] = {
+                  events: new Set(),
+                  hours: 0
+                };
+              }
+              
+              volunteerStats[signup.volunteer_id].events.add(signup.event_id);
+              volunteerStats[signup.volunteer_id].hours += parseFloat(signup.hours) || 0;
+            });
+            
+            // Update processed data with event stats
+            processedData = processedData.map(volunteer => {
+              if (volunteerStats[volunteer.id]) {
+                return {
+                  ...volunteer,
+                  events: volunteerStats[volunteer.id].events.size,
+                  hours: volunteerStats[volunteer.id].hours
+                };
+              }
+              return volunteer;
+            });
+          }
+          
+          // Extract all unique skills, domains and availability options for filters
+          const skillsSet = new Set();
+          const domainSet = new Set();
+          const availabilitySet = new Set();
+          
+          processedData.forEach(volunteer => {
+            if (volunteer.skills) {
+              volunteer.skills.forEach(skill => skillsSet.add(skill));
+            }
+            if (volunteer.domain) {
+              domainSet.add(volunteer.domain);
+            }
+            if (volunteer.availability) {
+              availabilitySet.add(volunteer.availability);
+            }
+          });
+          
+          setFilters({
+            skills: [...skillsSet],
+            domain: [...domainSet],
+            availability: [...availabilitySet]
+          });
+          
+          setVolunteers(processedData);
+          setFilteredVolunteers(processedData);
         }
-      ];
-
-      // Extract unique filter options
-      const skills = [...new Set(mockVolunteers.flatMap(v => v.skills))];
-      const domains = [...new Set(mockVolunteers.map(v => v.domain))];
-      const availabilityOptions = [...new Set(mockVolunteers.map(v => v.availability))];
-
-      setFilters({
-        skills,
-        domain: domains,
-        availability: availabilityOptions
-      });
-      
-      setVolunteers(mockVolunteers);
-      setFilteredVolunteers(mockVolunteers);
+      } catch (err) {
+        console.error('Error fetching volunteers:', err);
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
     };
-
-    fetchVolunteers();
+    
+    fetchVolunteersData();
   }, []);
 
-  // Filter volunteers based on search and selected filters
+  // Filter volunteers based on search and filters
   useEffect(() => {
-    let result = volunteers;
+    if (!volunteers.length) return;
+    
+    let filtered = [...volunteers];
     
     // Apply search filter
     if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(volunteer => 
-        (volunteer.firstname + " " + volunteer.lastname).toLowerCase().includes(term) || 
-        volunteer.email.toLowerCase().includes(term)
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(v => 
+        v.firstname.toLowerCase().includes(search) ||
+        v.lastname.toLowerCase().includes(search) ||
+        v.email.toLowerCase().includes(search) ||
+        v.city.toLowerCase().includes(search)
       );
     }
     
     // Apply skill filters
     if (selectedFilters.skills.length > 0) {
-      result = result.filter(volunteer => 
-        selectedFilters.skills.some(skill => volunteer.skills.includes(skill))
+      filtered = filtered.filter(v => 
+        selectedFilters.skills.some(skill => 
+          v.skills && v.skills.includes(skill)
+        )
       );
     }
     
     // Apply domain filters
     if (selectedFilters.domain.length > 0) {
-      result = result.filter(volunteer => 
-        selectedFilters.domain.includes(volunteer.domain)
+      filtered = filtered.filter(v => 
+        selectedFilters.domain.includes(v.domain)
       );
     }
     
-    // Apply availability filters - Fixed to correctly match availability
+    // Apply availability filters
     if (selectedFilters.availability.length > 0) {
-      result = result.filter(volunteer => 
-        selectedFilters.availability.includes(volunteer.availability)
+      filtered = filtered.filter(v => 
+        selectedFilters.availability.includes(v.availability)
       );
     }
     
-    setFilteredVolunteers(result);
+    setFilteredVolunteers(filtered);
   }, [searchTerm, selectedFilters, volunteers]);
 
-  // Handle filter selection
   const toggleFilter = (type, value) => {
-    setSelectedFilters(prev => {
-      const current = [...prev[type]];
-      const index = current.indexOf(value);
-      
-      if (index === -1) {
-        current.push(value);
-      } else {
-        current.splice(index, 1);
-      }
-      
-      return {
-        ...prev,
-        [type]: current
-      };
-    });
+    const filtersCopy = { ...selectedFilters };
+    
+    if (filtersCopy[type].includes(value)) {
+      // Remove the filter if it's already selected
+      filtersCopy[type] = filtersCopy[type].filter(item => item !== value);
+    } else {
+      // Add the filter if it's not already selected
+      filtersCopy[type] = [...filtersCopy[type], value];
+    }
+    
+    setSelectedFilters(filtersCopy);
   };
 
-  // Clear all filters
   const clearFilters = () => {
     setSelectedFilters({
       skills: [],
@@ -211,383 +223,577 @@ const AdminVolunteers = () => {
     setSearchTerm('');
   };
 
-  // Render volunteer list view
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleLogout = async () => {
+    await auth.signOut();
+    navigate('/admin/login');
+  };
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    try {
+      return format(new Date(dateString), 'MMM d, yyyy');
+    } catch (err) {
+      return "Invalid date";
+    }
+  };
+
+  // LEADERBOARD VIEW COMPONENTS - Sorted by hours contributed
+  const renderLeaderboard = () => {
+    const sortedVolunteers = [...filteredVolunteers]
+      .sort((a, b) => b.hours - a.hours)
+      .slice(0, 10); // Top 10
+    
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-xl font-bold mb-6 text-center">Volunteer Leaderboard</h2>
+        <div className="overflow-hidden">
+          {sortedVolunteers.map((volunteer, index) => (
+            <div 
+              key={volunteer.id}
+              className="flex items-center py-3 border-b last:border-0 hover:bg-gray-50 transition-colors"
+            >
+              <div className="w-10 font-bold text-center">{index + 1}</div>
+              <div className="flex-1 flex items-center">
+                <div className="w-10 h-10 bg-gray-200 rounded-full mr-3 flex items-center justify-center">
+                  <User className="h-5 w-5 text-gray-500" />
+                </div>
+                <div>
+                  <h3 className="font-medium">{volunteer.firstname} {volunteer.lastname}</h3>
+                  <p className="text-sm text-gray-500">{volunteer.email}</p>
+                </div>
+              </div>
+              <div className="flex flex-col items-end">
+                <div className="text-lg font-bold">{volunteer.hours} hrs</div>
+                <div className="text-xs text-gray-500">{volunteer.events} events</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // ANALYTICS VIEW COMPONENTS
+  const renderAnalytics = () => {
+    // Calculate analytics
+    const totalVolunteers = volunteers.length;
+    const totalHours = volunteers.reduce((sum, v) => sum + v.hours, 0);
+    const totalEvents = new Set(volunteers.flatMap(v => v.events || [])).size;
+    const activeVolunteers = volunteers.filter(v => v.status === 'Active').length;
+    
+    // Group by skills, cities, etc for charts
+    const skillsData = {};
+    volunteers.forEach(volunteer => {
+      if (volunteer.skills) {
+        volunteer.skills.forEach(skill => {
+          skillsData[skill] = (skillsData[skill] || 0) + 1;
+        });
+      }
+    });
+    
+    const locationData = {};
+    volunteers.forEach(volunteer => {
+      if (volunteer.city) {
+        locationData[volunteer.city] = (locationData[volunteer.city] || 0) + 1;
+      }
+    });
+    
+    // Sort skill and location data by count
+    const sortedSkills = Object.entries(skillsData)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+    
+    const sortedLocations = Object.entries(locationData)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+    
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Summary Cards */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-bold mb-4">Volunteer Overview</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="border rounded-lg p-4 text-center">
+              <p className="text-sm text-gray-500">Total Volunteers</p>
+              <p className="text-3xl font-bold">{totalVolunteers}</p>
+            </div>
+            <div className="border rounded-lg p-4 text-center">
+              <p className="text-sm text-gray-500">Active Volunteers</p>
+              <p className="text-3xl font-bold">{activeVolunteers}</p>
+            </div>
+            <div className="border rounded-lg p-4 text-center">
+              <p className="text-sm text-gray-500">Total Hours</p>
+              <p className="text-3xl font-bold">{totalHours}</p>
+            </div>
+            <div className="border rounded-lg p-4 text-center">
+              <p className="text-sm text-gray-500">Avg Hours/Volunteer</p>
+              <p className="text-3xl font-bold">
+                {totalVolunteers ? (totalHours / totalVolunteers).toFixed(1) : '0'}
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Skills Distribution */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-bold mb-4">Top Skills</h2>
+          <div className="space-y-3">
+            {sortedSkills.map(([skill, count]) => (
+              <div key={skill} className="flex items-center">
+                <span className="w-1/3">{skill}</span>
+                <div className="flex-1">
+                  <div className="relative pt-1">
+                    <div className="overflow-hidden h-2 text-xs flex rounded bg-purple-200">
+                      <div 
+                        style={{ width: `${(count / totalVolunteers) * 100}%` }} 
+                        className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-purple-500"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+                <span className="w-8 text-right">{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Location Distribution */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-bold mb-4">Volunteer Locations</h2>
+          <div className="space-y-3">
+            {sortedLocations.map(([location, count]) => (
+              <div key={location} className="flex items-center">
+                <span className="w-1/3">{location}</span>
+                <div className="flex-1">
+                  <div className="relative pt-1">
+                    <div className="overflow-hidden h-2 text-xs flex rounded bg-blue-200">
+                      <div 
+                        style={{ width: `${(count / totalVolunteers) * 100}%` }} 
+                        className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+                <span className="w-8 text-right">{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Recent Activity */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-bold mb-4">Recent Registrations</h2>
+          <div className="space-y-3">
+            {volunteers
+              .sort((a, b) => new Date(b.created) - new Date(a.created))
+              .slice(0, 5)
+              .map(volunteer => (
+                <div key={volunteer.id} className="flex items-center p-2 border-b">
+                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                    <User className="h-5 w-5 text-gray-500" />
+                  </div>
+                  <div>
+                    <p className="font-medium">{volunteer.firstname} {volunteer.lastname}</p>
+                    <p className="text-sm text-gray-500">Joined {formatDate(volunteer.created)}</p>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // LIST VIEW COMPONENTS
   const renderVolunteerList = () => (
-    <div className="overflow-x-auto">
-      <table className="min-w-full bg-white">
-        <thead className="bg-gray-100">
+    <div className="overflow-hidden bg-white rounded-lg shadow">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
           <tr>
-            <th className="py-2 px-4 border-b text-left">Name</th>
-            <th className="py-2 px-4 border-b text-left">Contact</th>
-            <th className="py-2 px-4 border-b text-left">Skills</th>
-            <th className="py-2 px-4 border-b text-left">Domain</th>
-            <th className="py-2 px-4 border-b text-left">Availability</th>
-            <th className="py-2 px-4 border-b text-center">Actions</th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Volunteer
+            </th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Location
+            </th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Skills
+            </th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Events
+            </th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Hours
+            </th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Status
+            </th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Actions
+            </th>
           </tr>
         </thead>
-        <tbody>
-          {filteredVolunteers.length > 0 ? (
-            filteredVolunteers.map(volunteer => (
-              <tr key={volunteer.id} className="hover:bg-gray-50">
-                <td className="py-2 px-4 border-b">{volunteer.firstname + " " + volunteer.lastname}</td>
-                <td className="py-2 px-4 border-b">
-                  <div>{volunteer.email}</div>
-                  <div className="text-sm text-gray-500">{volunteer.contact}</div>
-                </td>
-                <td className="py-2 px-4 border-b">
-                  <div className="flex flex-wrap gap-1">
-                    {volunteer.skills.map(skill => (
-                      <span key={skill} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+        <tbody className="bg-white divide-y divide-gray-200">
+          {filteredVolunteers.map((volunteer) => (
+            <tr key={volunteer.id} className="hover:bg-gray-50 transition-colors">
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
+                    <User className="h-5 w-5 text-gray-500" />
+                  </div>
+                  <div className="ml-4">
+                    <div className="text-sm font-medium text-gray-900">
+                      {volunteer.firstname} {volunteer.lastname}
+                    </div>
+                    <div className="text-sm text-gray-500">{volunteer.email}</div>
+                  </div>
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm text-gray-900">{volunteer.city || 'Not specified'}</div>
+                <div className="text-sm text-gray-500">{volunteer.state || ''}</div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="flex flex-wrap gap-1">
+                  {volunteer.skills && volunteer.skills.length > 0 ? (
+                    volunteer.skills.slice(0, 2).map(skill => (
+                      <Badge key={skill} variant="outline" className="text-xs">
                         {skill}
-                      </span>
-                    ))}
-                  </div>
-                </td>
-                <td className="py-2 px-4 border-b">
-                  <div className="flex items-center">
-                    {volunteer.domain}
-                  </div>
-                </td>
-                <td className="py-2 px-4 border-b">
-                  {/* Fixed to handle availability as a string */}
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                    {volunteer.availability}
-                  </span>
-                </td>
-                <td className="py-2 px-4 border-b text-center">
-                  <button className="text-blue-600 hover:text-blue-800 mr-2">
-                    View
-                  </button>
-                  <button className="text-blue-600 hover:text-blue-800">
-                    Edit
-                  </button>
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan={6} className="py-4 text-center text-gray-500">
-                No volunteers found matching your criteria
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-gray-400 text-sm">No skills specified</span>
+                  )}
+                  {volunteer.skills && volunteer.skills.length > 2 && (
+                    <Badge variant="outline" className="text-xs">
+                      +{volunteer.skills.length - 2} more
+                    </Badge>
+                  )}
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {volunteer.events}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {volunteer.hours}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <Badge className={`
+                  ${volunteer.status === 'Active' ? 'bg-green-100 text-green-800' : ''}
+                  ${volunteer.status === 'Inactive' ? 'bg-gray-100 text-gray-800' : ''}
+                  ${volunteer.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : ''}
+                `}>
+                  {volunteer.status}
+                </Badge>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleViewVolunteer(volunteer)}
+                >
+                  View
+                </Button>
               </td>
             </tr>
-          )}
+          ))}
         </tbody>
       </table>
     </div>
   );
 
-  // Render leaderboard view
-  const renderLeaderboard = () => (
-    <div className="bg-white rounded-lg shadow">
-      <div className="p-4 border-b border-gray-200">
-        <h3 className="text-lg font-medium">Volunteer Leaderboard</h3>
-        <p className="text-sm text-gray-500">Top volunteers by hours contributed</p>
-      </div>
-      <div className="p-4">
-        <div className="space-y-4">
-          {filteredVolunteers
-            .sort((a, b) => b.hours - a.hours)
-            .map((volunteer, index) => (
-              <div key={volunteer.id} className="flex items-center p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center justify-center h-10 w-10 rounded-full bg-blue-100 text-blue-800 font-semibold mr-4">
-                  {index + 1}
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-medium">{volunteer.firstname + " " + volunteer.lastname}</h4>
-                  <div className="flex items-center text-sm text-gray-500">
-                    <Clock size={16} className="mr-1" />
-                    {volunteer.hours} hours
-                    <span className="mx-2">•</span>
-                    <Calendar size={16} className="mr-1" />
-                    {volunteer.events} events
-                  </div>
-                </div>
-                <div className="flex items-center bg-yellow-100 px-3 py-1 rounded-full">
-                  <Award size={16} className="mr-1 text-yellow-600" />
-                  <span className="text-yellow-800">{volunteer.rating.toFixed(1)}</span>
-                </div>
-              </div>
-            ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  // Render analytics view
-  const renderAnalytics = () => (
-    <div className="bg-white rounded-lg shadow">
-      <div className="p-4 border-b border-gray-200">
-        <h3 className="text-lg font-medium">Volunteer Analytics</h3>
-        <p className="text-sm text-gray-500">Overview of volunteer participation</p>
-      </div>
-      <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-blue-800 text-sm font-medium">Total Volunteers</p>
-              <h4 className="text-2xl font-bold mt-2">{volunteers.length}</h4>
-            </div>
-            <span className="bg-blue-100 p-2 rounded-full">
-              <UserCheck size={24} className="text-blue-800" />
-            </span>
-          </div>
-          <div className="mt-4 text-sm text-blue-600">
-            <span className="font-medium">+5%</span> from last month
-          </div>
-        </div>
-        
-        <div className="bg-green-50 p-4 rounded-lg">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-green-800 text-sm font-medium">Total Hours</p>
-              <h4 className="text-2xl font-bold mt-2">
-                {volunteers.reduce((sum, v) => sum + v.hours, 0)}
-              </h4>
-            </div>
-            <span className="bg-green-100 p-2 rounded-full">
-              <Clock size={24} className="text-green-800" />
-            </span>
-          </div>
-          <div className="mt-4 text-sm text-green-600">
-            <span className="font-medium">+12%</span> from last month
-          </div>
-        </div>
-        
-        <div className="bg-purple-50 p-4 rounded-lg">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-purple-800 text-sm font-medium">Average Rating</p>
-              <h4 className="text-2xl font-bold mt-2">
-                {(volunteers.reduce((sum, v) => sum + v.rating, 0) / volunteers.length).toFixed(1)}
-              </h4>
-            </div>
-            <span className="bg-purple-100 p-2 rounded-full">
-              <Award size={24} className="text-purple-800" />
-            </span>
-          </div>
-          <div className="mt-4 text-sm text-purple-600">
-            <span className="font-medium">+0.2</span> from last month
-          </div>
-        </div>
-        
-        <div className="md:col-span-3 mt-4">
-          <h4 className="font-medium mb-2">Skill Distribution</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filters.skills.map(skill => {
-              // Fixed skill distribution calculation
-              const count = volunteers.filter(v => v.skills.includes(skill)).length;
-              const percentage = Math.round((count / volunteers.length) * 100);
-              
-              return (
-                <div key={skill} className="bg-gray-50 p-3 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-medium">{skill}</span>
-                    <span className="text-sm text-gray-500">{count} volunteers</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div 
-                      className="bg-blue-600 h-2.5 rounded-full" 
-                      style={{ width: `${percentage}%` }}
-                    ></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const { user, logout } = useAuth();
-  
-    const handleLogout = async () => {
-      await logout();
-      // Redirect is handled by the auth context
-  
-    };
-
-  return (
-    <div className="h-screen bg-gray-100 flex flex-col">
-      <AdminHeader user={user} handleLogout={handleLogout}/>
-      <div className="flex flex-1 overflow-hidden">
-        <AdminSidebar />
-        <main className="flex-1 overflow-auto p-8">
-          <div>
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-800">Volunteers</h1>
-            <p className="text-gray-600">Manage and analyze volunteer data</p>
-          </div>
-          
-          {/* View Mode Tabs */}
-          <div className="mb-6 border-b border-gray-200">
-            <div className="flex space-x-6">
-              <button
-                className={`py-2 px-1 -mb-px ${viewMode === 'list' ? 'border-b-2 border-red-600 text-red-600 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
-                onClick={() => setViewMode('list')}
-              >
-                <span className="flex items-center">
-                  <User size={20} className="mr-2" />
-                  Volunteer List
-                </span>
-              </button>
-              <button
-                className={`py-2 px-1 -mb-px ${viewMode === 'leaderboard' ? 'border-b-2 border-red-600 text-red-600 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
-                onClick={() => setViewMode('leaderboard')}
-              >
-                <span className="flex items-center">
-                  <Award size={20} className="mr-2" />
-                  Leaderboard
-                </span>
-              </button>
-              <button
-                className={`py-2 px-1 -mb-px ${viewMode === 'analytics' ? 'border-b-2 border-red-600 text-red-600 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
-                onClick={() => setViewMode('analytics')}
-              >
-                <span className="flex items-center">
-                  <Activity size={20} className="mr-2" />
-                  Analytics
-                </span>
-              </button>
-            </div>
-          </div>
-          
-          {/* Search and Filter Controls */}
-          <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div className="relative w-full md:w-64">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <Search size={18} className="text-gray-400" />
-              </div>
-              <input
-                type="text"
-                className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full pl-10 p-2.5 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Search volunteers..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+  // Modal for viewing volunteer details
+  const renderVolunteerModal = () => {
+    if (!selectedVolunteer) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">Volunteer Profile</h2>
+              <Button variant="ghost" size="sm" onClick={closeModal}>
+                <X className="h-5 w-5" />
+              </Button>
             </div>
             
-            <div className="flex gap-2 w-full md:w-auto">
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                <Filter size={18} className="mr-2" />
-                Filters
-                {showFilters ? (
-                  <ChevronUp size={18} className="ml-2" />
-                ) : (
-                  <ChevronDown size={18} className="ml-2" />
-                )}
-              </button>
-              
-              {(selectedFilters.skills.length > 0 || 
-                selectedFilters.domain.length > 0 || 
-                selectedFilters.availability.length > 0) && (
-                <button
-                  onClick={clearFilters}
-                  className="bg-red-50 text-red-700 border border-red-200 rounded-lg px-4 py-2 text-sm font-medium hover:bg-red-100"
-                >
-                  Clear Filters
-                </button>
-              )}
-              
-              <button className="bg-red-800 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-red-700">
-                Add Volunteer
-              </button>
-            </div>
-          </div>
-          
-          {/* Filter Panel */}
-          {showFilters && (
-            <div className="mb-6 bg-white p-4 rounded-lg shadow">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Skills Filter */}
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-                    <Code size={16} className="mr-2" />
-                    Filter by Skills
-                  </h3>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {filters.skills.map(skill => (
-                      <div key={skill} className="flex items-center">
-                        <input
-                          id={`skill-${skill}`}
-                          type="checkbox"
-                          className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500"
-                          checked={selectedFilters.skills.includes(skill)}
-                          onChange={() => toggleFilter('skills', skill)}
-                        />
-                        <label htmlFor={`skill-${skill}`} className="ml-2 text-sm text-gray-700">
-                          {skill}
-                        </label>
-                      </div>
-                    ))}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Left column - Personal info */}
+              <div className="md:col-span-1">
+                <div className="flex flex-col items-center mb-4">
+                  <div className="h-24 w-24 rounded-full bg-gray-200 flex items-center justify-center mb-2">
+                    <User className="h-12 w-12 text-gray-500" />
                   </div>
+                  <h3 className="text-xl font-semibold">{selectedVolunteer.firstname} {selectedVolunteer.lastname}</h3>
+                  <p className="text-sm text-gray-500">{selectedVolunteer.email}</p>
                 </div>
                 
-                {/* Domain Filter */}
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-                    <MapPin size={16} className="mr-2" />
-                    Filter by Domain
-                  </h3>
-                  <div className="space-y-2">
-                    {filters.domain.map(domain => (
-                      <div key={domain} className="flex items-center">
-                        <input
-                          id={`domain-${domain}`}
-                          type="checkbox"
-                          className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500"
-                          checked={selectedFilters.domain.includes(domain)}
-                          onChange={() => toggleFilter('domain', domain)}
-                        />
-                        <label htmlFor={`domain-${domain}`} className="ml-2 text-sm text-gray-700">
-                          {domain}
-                        </label>
-                      </div>
-                    ))}
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm text-gray-500">Phone</p>
+                    <p>{selectedVolunteer.contact || 'Not provided'}</p>
                   </div>
-                </div>
-                
-                {/* Availability Filter */}
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-                    <Calendar size={16} className="mr-2" />
-                    Filter by Availability
-                  </h3>
-                  <div className="space-y-2">
-                    {filters.availability.map(time => (
-                      <div key={time} className="flex items-center">
-                        <input
-                          id={`availability-${time}`}
-                          type="checkbox"
-                          className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500"
-                          checked={selectedFilters.availability.includes(time)}
-                          onChange={() => toggleFilter('availability', time)}
-                        />
-                        <label htmlFor={`availability-${time}`} className="ml-2 text-sm text-gray-700">
-                          {time}
-                        </label>
-                      </div>
-                    ))}
+                  <div>
+                    <p className="text-sm text-gray-500">Location</p>
+                    <p>{selectedVolunteer.city}{selectedVolunteer.state ? `, ${selectedVolunteer.state}` : ''}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Joined</p>
+                    <p>{formatDate(selectedVolunteer.created)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Status</p>
+                    <Badge className={`
+                      ${selectedVolunteer.status === 'Active' ? 'bg-green-100 text-green-800' : ''}
+                      ${selectedVolunteer.status === 'Inactive' ? 'bg-gray-100 text-gray-800' : ''}
+                      ${selectedVolunteer.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : ''}
+                    `}>
+                      {selectedVolunteer.status}
+                    </Badge>
                   </div>
                 </div>
               </div>
+              
+              {/* Middle column - Skills and interests */}
+              <div className="md:col-span-1">
+                <h3 className="text-lg font-semibold mb-3">Skills & Interests</h3>
+                
+                <div className="mb-4">
+                  <p className="text-sm text-gray-500 mb-2">Skills</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedVolunteer.skills && selectedVolunteer.skills.length > 0 ? (
+                      selectedVolunteer.skills.map(skill => (
+                        <Badge key={skill} variant="outline">
+                          {skill}
+                        </Badge>
+                      ))
+                    ) : (
+                      <p className="text-gray-400">No skills specified</p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="mb-4">
+                  <p className="text-sm text-gray-500 mb-2">Primary Interest</p>
+                  <Badge variant="outline">{selectedVolunteer.domain}</Badge>
+                </div>
+                
+                <div>
+                  <p className="text-sm text-gray-500 mb-2">Availability</p>
+                  <p>{selectedVolunteer.availability}</p>
+                </div>
+              </div>
+              
+              {/* Right column - Stats */}
+              <div className="md:col-span-1">
+                <h3 className="text-lg font-semibold mb-3">Volunteer Stats</h3>
+                
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  <div className="border rounded-lg p-3 text-center">
+                    <p className="text-sm text-gray-500">Events</p>
+                    <p className="text-2xl font-bold">{selectedVolunteer.events}</p>
+                  </div>
+                  <div className="border rounded-lg p-3 text-center">
+                    <p className="text-sm text-gray-500">Hours</p>
+                    <p className="text-2xl font-bold">{selectedVolunteer.hours}</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <Button className="w-full bg-purple-600 hover:bg-purple-700">
+                    View Event History
+                  </Button>
+                  <Button variant="outline" className="w-full">
+                    Edit Profile
+                  </Button>
+                </div>
+              </div>
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex h-screen bg-gray-100">
+      <AdminSidebar />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <AdminHeader title="Volunteer Management" user={adminUser} onLogout={handleLogout} />
+        
+        <main className="flex-1 overflow-y-auto p-4">
+          <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Volunteers</h1>
+              <p className="text-gray-500">Manage and view all registered volunteers</p>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button 
+                variant={viewMode === 'list' ? 'default' : 'outline'}
+                onClick={() => setViewMode('list')}
+                className={viewMode === 'list' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+              >
+                List View
+              </Button>
+              <Button 
+                variant={viewMode === 'leaderboard' ? 'default' : 'outline'}
+                onClick={() => setViewMode('leaderboard')}
+                className={viewMode === 'leaderboard' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+              >
+                Leaderboard
+              </Button>
+              <Button 
+                variant={viewMode === 'analytics' ? 'default' : 'outline'}
+                onClick={() => setViewMode('analytics')}
+                className={viewMode === 'analytics' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+              >
+                Analytics
+              </Button>
+            </div>
+          </div>
+          
+          <div className="mb-6">
+            <div className="bg-white rounded-lg shadow-md p-4">
+              <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                  <Input
+                    placeholder="Search volunteers by name, email, or location..."
+                    className="pl-10"
+                    value={searchTerm}
+                    onChange={handleSearch}
+                  />
+                </div>
+                
+                <div>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="flex items-center"
+                  >
+                    <Filter className="mr-2 h-4 w-4" />
+                    Filters
+                    {showFilters ? 
+                      <ChevronUp className="ml-2 h-4 w-4" /> : 
+                      <ChevronDown className="ml-2 h-4 w-4" />
+                    }
+                  </Button>
+                </div>
+              </div>
+              
+              {showFilters && (
+                <div className="mt-4 border-t pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Skills filter */}
+                    <div>
+                      <h3 className="text-sm font-medium mb-2">Skills</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {filters.skills.map(skill => (
+                          <Badge 
+                            key={skill}
+                            variant={selectedFilters.skills.includes(skill) ? "default" : "outline"}
+                            className={`cursor-pointer ${
+                              selectedFilters.skills.includes(skill) ? 'bg-purple-600' : ''
+                            }`}
+                            onClick={() => toggleFilter('skills', skill)}
+                          >
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Domain filter */}
+                    <div>
+                      <h3 className="text-sm font-medium mb-2">Primary Interest</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {filters.domain.map(domain => (
+                          <Badge 
+                            key={domain}
+                            variant={selectedFilters.domain.includes(domain) ? "default" : "outline"}
+                            className={`cursor-pointer ${
+                              selectedFilters.domain.includes(domain) ? 'bg-purple-600' : ''
+                            }`}
+                            onClick={() => toggleFilter('domain', domain)}
+                          >
+                            {domain}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Availability filter */}
+                    <div>
+                      <h3 className="text-sm font-medium mb-2">Availability</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {filters.availability.map(availability => (
+                          <Badge 
+                            key={availability}
+                            variant={selectedFilters.availability.includes(availability) ? "default" : "outline"}
+                            className={`cursor-pointer ${
+                              selectedFilters.availability.includes(availability) ? 'bg-purple-600' : ''
+                            }`}
+                            onClick={() => toggleFilter('availability', availability)}
+                          >
+                            {availability}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {(selectedFilters.skills.length > 0 || 
+                    selectedFilters.domain.length > 0 || 
+                    selectedFilters.availability.length > 0) && (
+                    <div className="mt-4 flex justify-end">
+                      <Button variant="outline" size="sm" onClick={clearFilters}>
+                        <X className="mr-2 h-4 w-4" />
+                        Clear All Filters
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {isLoading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+            </div>
+          ) : error ? (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+              <strong className="font-bold">Error!</strong>
+              <span className="block sm:inline"> {error}</span>
+            </div>
+          ) : filteredVolunteers.length === 0 ? (
+            <div className="text-center py-10">
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No volunteers found</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {volunteers.length === 0 
+                  ? "No volunteers have registered yet."
+                  : "No volunteers match your current filters."}
+              </p>
+            </div>
+          ) : (
+            <>
+              {viewMode === 'list' && renderVolunteerList()}
+              {viewMode === 'leaderboard' && renderLeaderboard()}
+              {viewMode === 'analytics' && renderAnalytics()}
+            </>
           )}
           
-          {/* Content based on view mode */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            {viewMode === 'list' && renderVolunteerList()}
-            {viewMode === 'leaderboard' && renderLeaderboard()}
-            {viewMode === 'analytics' && renderAnalytics()}
-          </div>
-          </div>
+          {/* Volunteer details modal */}
+          {showModal && renderVolunteerModal()}
         </main>
       </div>
     </div>
   );
-}
+};
 
 export default AdminVolunteers;
