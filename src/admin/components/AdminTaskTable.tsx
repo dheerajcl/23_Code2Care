@@ -1,4 +1,5 @@
 import React from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 
 const AdminTaskTable = ({ tasks }) => {
   return (
@@ -59,9 +60,13 @@ const AdminTaskTable = ({ tasks }) => {
                   {task.status}
                 </span>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <a href="#" className="text-red-700 hover:text-red-900 mr-3">Edit</a>
-                <a href="#" className="text-gray-700 hover:text-gray-900">Delete</a>
+              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end space-x-6">
+                <button aria-label='Edit-button' className="text-gray-700 hover:text-gray-900">
+                  <Pencil className="w-5 h-5" />
+                </button>
+                <button aria-label='Delete-button' className="text-red-700 hover:text-red-900">
+                  <Trash2 className="w-5 h-5" />
+                </button>
               </td>
             </tr>
           ))}
