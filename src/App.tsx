@@ -24,6 +24,7 @@ import AdminEvents from "./admin/pages/AdminEvents";
 import AdminVolunteers from "./admin/pages/AdminVolunteers";
 import AdminReports from "./admin/pages/AdminReports";
 import AuthCallback from "./pages/AuthCallback";
+import AdminEventDetails from "./admin/pages/AdminEventDetails";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,11 @@ const App = () => (
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin/register" element={<AdminRegister />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
+              {/* <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/volunteers" element={<AdminVolunteers />} />
+              <Route path="/admin/events" element={<AdminEvents />} />
+              <Route path="/admin/events/:id" element={<AdminEventDetails />} />
+              <Route path="/admin/reports" element={<AdminReports />} /> */}
 
 
               
@@ -66,6 +72,16 @@ const App = () => (
                 element={
                   <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
                     <AdminEvents />
+                  </ProtectedRoute>
+                } 
+              />
+
+              {/* Protected admin routes */}
+              <Route 
+                path="/admin/events/:id" 
+                element={
+                  <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                    <AdminEventDetails />
                   </ProtectedRoute>
                 } 
               />

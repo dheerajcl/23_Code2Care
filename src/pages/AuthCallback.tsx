@@ -28,7 +28,6 @@ const AuthCallback: React.FC = () => {
         }
 
         // Check user role and redirect accordingly
-        // Use a shorter timeout to ensure faster redirection
         setTimeout(() => {
           if (user) {
             console.log("User role in AuthCallback:", user.role); // Debug log
@@ -37,7 +36,7 @@ const AuthCallback: React.FC = () => {
               // Volunteers always go to volunteer dashboard
               navigate('/volunteer/dashboard', { replace: true });
             } else if (user.role === 'admin') {
-              // Admins go to admin dashboard
+              // Admins always go to admin dashboard - no questions asked
               navigate('/admin/dashboard', { replace: true });
             } else {
               // If role is not determined, go to home page
@@ -50,11 +49,12 @@ const AuthCallback: React.FC = () => {
             navigate('/', { replace: true });
           }
           setLoading(false);
-        }, 1000); // Reduced timeout for faster redirection
-      } catch (err) {
-        console.error('Auth callback error:', err);
-        setError('Authentication error. Please try logging in again.');
+        }, 100); // Minimal delay for faster redirection
+      } catch (err: unknown) {
+        const error = err as Error;
+        setError(error.message);
         setLoading(false);
+        navigate('/', { replace: true });
       }
     };
 
@@ -63,34 +63,31 @@ const AuthCallback: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="h-screen w-full flex flex-col items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-red-600" />
-        <p className="mt-4 text-lg">Processing authentication...</p>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+        <p className="ml-2 text-lg">Redirecting...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="h-screen w-full flex flex-col items-center justify-center">
-        <div className="bg-red-50 p-6 rounded-lg max-w-md text-center">
-          <p className="text-red-600 font-semibold text-lg">Authentication Error</p>
-          <p className="mt-2 text-gray-700">{error}</p>
-          <button 
-            onClick={() => navigate('/login')}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg"
-          >
-            Return to Login
-          </button>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <p className="text-red-500 mb-4">Authentication error: {error}</p>
+        <button 
+          onClick={() => navigate('/')}
+          className="px-4 py-2 bg-black text-white rounded"
+        >
+          Go Home
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="h-screen w-full flex flex-col items-center justify-center">
-      <Loader2 className="h-12 w-12 animate-spin text-red-600" />
-      <p className="mt-4 text-lg">Redirecting...</p>
+    <div className="flex items-center justify-center min-h-screen">
+      <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+      <p className="ml-2 text-lg">Redirecting...</p>
     </div>
   );
 };
