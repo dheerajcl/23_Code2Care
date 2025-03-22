@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/authContext';
-import { Calendar, Clock, MapPin, Users, Plus, List, Columns } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, Plus, List, Columns, Tag, User2 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { eventData } from './AdminEvents';
 
 // Task View Components
 import TaskTable from '../components/AdminTaskTable';
 import TaskKanban from '../components/AdminTaskKanban';
 import AdminHeader from '../components/AdminHeader';
 import AdminSidebar from '../components/AdminSidebar';
+import { Badge } from '@/components/ui/badge';
 
 const AdminEventDetails = () => {
   const [activeView, setActiveView] = useState('table');
@@ -99,60 +101,11 @@ const AdminEventDetails = () => {
     }
   ];
 
-  // Event data based on IDs from the previous page
-  const eventDatabase = [
-    { 
-      id: 1, 
-      title: "Community Cleanup", 
-      date: "April 10, 2025", 
-      location: "Central Park", 
-      registrations: 45,
-      description: "A community initiative to clean and beautify our local park areas. Volunteers will work together to collect trash, plant flowers, and restore park benches.",
-      organizer: "Environmental Protection Group"
-    },
-    { 
-      id: 2, 
-      title: "Charity Fundraiser", 
-      date: "April 15, 2025", 
-      location: "City Hall", 
-      registrations: 78,
-      description: "An evening of entertainment and auctions to raise funds for children's education programs in underserved communities.",
-      organizer: "Education For All Foundation"
-    },
-    { 
-      id: 3, 
-      title: "Workshop Series", 
-      date: "April 25, 2025", 
-      location: "Community Center", 
-      registrations: 32,
-      description: "A series of professional development workshops focusing on career advancement skills, resume building, and interview techniques.",
-      organizer: "Career Development Network"
-    },
-    { 
-      id: 4, 
-      title: "Blood Donation Drive", 
-      date: "March 21, 2025", 
-      location: "Downtown Hospital", 
-      participants: 56,
-      description: "A critical blood donation initiative in partnership with the regional blood bank to address shortages in blood supply.",
-      organizer: "Healthcare Alliance"
-    },
-    { 
-      id: 5, 
-      title: "Winter Coat Drive", 
-      date: "February 15, 2025", 
-      location: "Main Street", 
-      participants: 123,
-      description: "Collection of winter coats and warm clothing for distribution to homeless shelters and families in need during the winter season.",
-      organizer: "Community Outreach Program"
-    }
-  ];
-
   useEffect(() => {
     if (id) {
       // Fetch event data based on ID
-      const eventData = eventDatabase.find(e => e.id === parseInt(id));
-      setEvent(eventData);
+      const event_data = eventData.find(e => e.id === parseInt(id));
+      setEvent(event_data);
       
       // Store all tasks
       setAllTasks(tasks);
@@ -235,40 +188,59 @@ const AdminEventDetails = () => {
             </div>
           </div>
 
-          {/* Event Info */}
+          {/* Event Info Card */}
           <div className="bg-white rounded-lg shadow p-6 mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="flex flex-col">
                 <span className="text-gray-500 mb-1 flex items-center gap-2">
                   <Calendar size={16} />
-                  Date
+                  Date & Time
                 </span>
-                <span className="text-lg font-medium">{event?.date}</span>
+                <span className="text-md font-medium">{event?.date}</span>
+                <span className="text-sm text-gray-600">{event?.time}</span>
               </div>
+              
               <div className="flex flex-col">
                 <span className="text-gray-500 mb-1 flex items-center gap-2">
                   <MapPin size={16} />
                   Location
                 </span>
-                <span className="text-lg font-medium">{event?.location}</span>
+                <span className="text-md font-medium">{event?.location}</span>
               </div>
+              
               <div className="flex flex-col">
                 <span className="text-gray-500 mb-1 flex items-center gap-2">
                   <Users size={16} />
                   Registrations
                 </span>
-                <span className="text-lg font-medium">{event?.registrations || event?.participants}</span>
+                <span className="text-md font-medium">{event?.registrations || event?.participants || 0}</span>
+              </div>
+              
+              <div className="flex flex-col">
+                <span className="text-gray-500 mb-1 flex items-center gap-2">
+                  <Tag size={16} />
+                  Event Type
+                </span>
+                <div className="mt-1">
+                  <Badge className="bg-red-100 text-red-800 hover:bg-red-200 font-medium">
+                    {event?.type || "Uncategorized"}
+                  </Badge>
+                </div>
               </div>
             </div>
-            <div className="mt-6">
-              <h3 className="text-gray-500 mb-1">Description</h3>
-              <p className="text-gray-800">{event?.description}</p>
-            </div>
-            <div className="mt-4">
-              <h3 className="text-gray-500 mb-1">Organizer</h3>
-              <p className="text-gray-800">{event?.organizer}</p>
-            </div>
-          </div>
+  
+  {event?.organizer && (
+    <div className="mt-6 flex items-center">
+      <div className="bg-gray-100 rounded-full h-10 w-10 flex items-center justify-center mr-3">
+        <User2 size={18} className="text-gray-600" />
+      </div>
+      <div>
+        <h3 className="text-gray-500 text-sm">Organizer</h3>
+        <p className="text-gray-800 font-medium">{event?.organizer}</p>
+      </div>
+    </div>
+  )}
+</div>
 
           {/* Task Management */}
           <div className="mb-8">
