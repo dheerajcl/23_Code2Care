@@ -1,12 +1,14 @@
 import React, { useState } from 'react'
 import AdminSidebar from '../components/AdminSidebar'
-import { Calendar, Plus, Clock, CheckCircle } from 'lucide-react'
+import { Calendar, Plus, Clock, CheckCircle, Edit } from 'lucide-react'
 import AdminHeader from '../components/AdminHeader';
 import { useAuth } from '@/lib/authContext';
+import { useNavigate } from 'react-router-dom';
+import {Eye, AlertTriangle  } from 'lucide-react';
 
 const AdminEvents = () => {
-  const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [activeTab, setActiveTab] = useState('upcoming');
+  const navigate = useNavigate();
 
   // Mock data for events
   const upcomingEvents = [
@@ -24,11 +26,6 @@ const AdminEvents = () => {
     { id: 6, title: "Food Bank Volunteering", date: "March 1, 2025", location: "Food Bank Warehouse", participants: 67 },
     { id: 7, title: "Senior Center Visit", date: "March 10, 2025", location: "Sunshine Senior Home", participants: 28 }
   ];
-
-  // Function to handle sidebar toggle
-  const handleSidebarToggle = (expanded) => {
-    setSidebarExpanded(expanded);
-  };
 
   const { user, logout } = useAuth();
   
@@ -107,80 +104,71 @@ const AdminEvents = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {/* Render events based on active tab */}
+                {/* Upcoming Events */}
                 {activeTab === 'upcoming' && upcomingEvents.map(event => (
                   <tr key={event.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{event.title}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{event.date}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{event.location}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{event.registrations}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <a href="#" className="text-red-700 hover:text-red-900 mr-3">Edit</a>
-                      <a href="#" className="text-gray-700 hover:text-gray-900">View</a>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{event.title}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{event.date}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{event.location}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{event.registrations}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex gap-3 justify-end">
+                      <Edit
+                        className="text-red-700 hover:text-red-900 cursor-pointer"
+                        size={18}
+                        onClick={() => navigate(`/admin/events/${event.id}/edit`)}
+                      />
+                      <Eye
+                        className="text-gray-700 hover:text-gray-900 cursor-pointer"
+                        size={18}
+                        onClick={() => navigate(`/admin/events/${event.id}`)}
+                      />
                     </td>
                   </tr>
                 ))}
-                
+
+                {/* Live Events */}
                 {activeTab === 'live' && liveEvents.map(event => (
                   <tr key={event.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{event.title}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{event.date}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{event.location}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{event.participants}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <a href="#" className="text-green-600 hover:text-green-800 mr-3">Live View</a>
-                      <a href="#" className="text-gray-700 hover:text-gray-900">Manage</a>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{event.title}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{event.date}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{event.location}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{event.participants}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex gap-3 justify-end">
+                      <Edit
+                        className="text-red-600 hover:text-red-800 cursor-pointer"
+                        size={18}
+                        onClick={() => navigate(`/admin/events/${event.id}/live`)}
+                      />
+                      <Eye
+                        className="text-gray-700 hover:text-gray-900 cursor-pointer"
+                        size={18}
+                        onClick={() => navigate(`/admin/events/${event.id}`)}
+                      />
                     </td>
                   </tr>
                 ))}
-                
+
+                {/* Past Events */}
                 {activeTab === 'past' && pastEvents.map(event => (
                   <tr key={event.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{event.title}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{event.date}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{event.location}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{event.participants}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <a href="#" className="text-blue-600 hover:text-blue-800 mr-3">Report</a>
-                      <a href="#" className="text-gray-700 hover:text-gray-900">View</a>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{event.title}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{event.date}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{event.location}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{event.participants}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex gap-3 justify-end">
+                      <AlertTriangle 
+                        className="text-red-600 hover:text-red-800 cursor-pointer"
+                        size={18}
+                        onClick={() => navigate(`/admin/events/${event.id}/report`)}
+                      />
+                      <Eye
+                        className="text-gray-700 hover:text-gray-900 cursor-pointer"
+                        size={18}
+                        onClick={() => navigate(`/admin/events/${event.id}`)}
+                      />
                     </td>
                   </tr>
                 ))}
-                
-                {/* Show message if no events */}
-                {((activeTab === 'upcoming' && upcomingEvents.length === 0) ||
-                  (activeTab === 'live' && liveEvents.length === 0) ||
-                  (activeTab === 'past' && pastEvents.length === 0)) && (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
-                      No events to display
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
