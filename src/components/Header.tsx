@@ -70,13 +70,6 @@ const Header: React.FC = () => {
   // Function to get the dashboard URL based on user role
   const getDashboardUrl = () => {
     if (!user) return '/login';
-    
-    // Return the appropriate dashboard URL based on user role
-    // if (user.role === 'admin') {
-    //   return '/admin/dashboard';
-    // }
-    
-    // Default to volunteer dashboard if role is volunteer or not determined
     return '/volunteer/dashboard';
   };
 
@@ -95,12 +88,11 @@ const Header: React.FC = () => {
             aria-label="Samarthanam Trust - Home"
           >
             <img src={Logo} alt="Samarth Connect Logo" className='h-12 w-12 s-logo'/>
-            {/* <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">S</div> */}
             <span className="font-semibold text-xl hidden md:block">Samarth Connect</span>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-1">
+          <nav className="hidden md:flex items-center space-x-6">
             <Link 
               to="/" 
               className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
@@ -124,25 +116,28 @@ const Header: React.FC = () => {
               className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
             >
               Donate
-            </Link>          
-
+            </Link>
             {user ? (
-              // Show dashboard button if user is logged in
-              <Button asChild variant="ghost" className="ml-2">
-                <Link to={getDashboardUrl()}>Dashboard</Link>
-              </Button>
+              <Link 
+                to={getDashboardUrl()}
+                className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
+              >
+                Dashboard
+              </Link>
             ) : (
-              // Show volunteer button if user is not logged in
-              <Button asChild variant="ghost" className="ml-2">
-                <Link to="/join-us">Volunteer</Link>
-              </Button>
+              <Link 
+                to="/join-us" 
+                className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
+              >
+                Volunteer
+              </Link>
             )}
           </nav>
 
           {/* User Menu & Controls */}
-          <div className="flex items-center space-x-1">
-            {/* User Account Dropdown (if logged in) */}
-            {user && (
+          <div className="flex items-center space-x-4">
+            {/* Login or User Menu */}
+            {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative">
@@ -168,6 +163,10 @@ const Header: React.FC = () => {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+            ) : (
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/login">Login</Link>
+              </Button>
             )}
 
             {/* Theme Toggle */}
@@ -266,14 +265,23 @@ const Header: React.FC = () => {
               Dashboard
             </Link>
           ) : (
-            // Show volunteer link if user is not logged in
-            <Link 
-              to="/join-us" 
-              className="block px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Volunteer
-            </Link>
+            // Show login and volunteer links if user is not logged in
+            <>
+              <Link 
+                to="/login"
+                className="block px-3 py-2 rounded-md hover:bg-secondary transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Login
+              </Link>
+              <Link 
+                to="/join-us" 
+                className="block px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Volunteer
+              </Link>
+            </>
           )}
           
           {/* Show logout option if logged in (mobile) */}

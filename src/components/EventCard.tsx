@@ -88,14 +88,14 @@ const EventCard: React.FC<EventCardProps> = ({
         
         <CardFooter className="flex flex-col space-y-2">
           <Link to="/join-us" className="w-full">
-            <Button className="w-full" aria-label={`Register for ${title} as Volunteer`}>
-              Register as Volunteer
+            <Button className="w-full" aria-label={`Volunteer for ${title}`}>
+              Volunteer for Event
             </Button>
           </Link>
           <Link to="/participant" className="w-full">
-          <Button className="w-full" variant="secondary" aria-label={`Register for ${title} as Participant`}>
-            Register as Participant
-          </Button>
+            <Button className="w-full" variant="secondary" aria-label={`Register for ${title} as Participant`}>
+              Register as Participant
+            </Button>
           </Link>
         </CardFooter>
       </Card>
