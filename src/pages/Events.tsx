@@ -29,7 +29,11 @@ const Events: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase.from('event').select('*');
+      
+      const { data, error } = await supabase
+  .from('event')
+  .select('*')
+  .eq('status', 'scheduled');
 
       if (error) {
         console.error('Error fetching events:', error.message);

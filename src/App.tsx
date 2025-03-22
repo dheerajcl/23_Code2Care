@@ -9,6 +9,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { VolunteerTasks } from './volunteer/tasks';
 import { VolunteerBadges } from './volunteer/badges';
 import { VolunteerProgress } from './volunteer/progress';
+import EventFeedback from './volunteer/events/feedback';
 
 // Pages
 import Index from "./pages/Index";
@@ -110,6 +111,14 @@ function App() {
                   element={
                     <ProtectedRoute roles={['volunteer']} redirectTo="/login">
                       <VolunteerEvents />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/volunteer/events/:id/feedback"
+                  element={
+                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
+                      <EventFeedback />
                     </ProtectedRoute>
                   }
                 />
