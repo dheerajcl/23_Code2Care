@@ -149,18 +149,12 @@ importers:
       pg:
         specifier: ^8.14.1
         version: 8.14.1
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
       react-csv:
         specifier: ^2.2.2
         version: 2.2.2
       react-day-picker:
         specifier: ^8.10.1
         version: 8.10.1(date-fns@3.6.0)(react@18.3.1)
-      react-dom:
-        specifier: ^18.3.1
-        version: 18.3.1(react@18.3.1)
       react-hook-form:
         specifier: ^7.53.0
         version: 7.54.2(react@18.3.1)
