@@ -22,6 +22,7 @@ import Community from '../assets/community_cleanup.jpg'
 import Donation from '../assets/donation.png'
 import Cricket from '../assets/cricket.jpg'
 import EventCard from '../components/EventCard';
+import AccessibilityMenu from '@/components/AccessibilityMenu';
 
 // Borrowing event data from the admin page
 export const eventData = [
@@ -469,7 +470,7 @@ const VolunteerEvents = () => {
                     isRegistered={hasVolunteered(event.id)}
                     isRecommended={false}
                     loading={false}
-                    handleVolunteerSignup={() => handleVolunteerSignup(event.id)}
+                    handleVolunteerSignup={() => handleVolunteerSignup(event.id, e)}
                     customButtons={renderCustomButtons(event)}
                   />
                 </div>
@@ -498,6 +499,7 @@ const VolunteerEvents = () => {
           )}
         </main>
       </div>
+      <AccessibilityMenu/>
     </div>
   );
 };

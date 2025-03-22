@@ -498,6 +498,7 @@ export const VolunteerDashboard = () => {
           </div>
         </main>
       </div>
+      <AccessibilityMenu/>
     </div>
   );
 };
