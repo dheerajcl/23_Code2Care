@@ -32,13 +32,13 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="w-[90vw] max-w-[800px] max-h-[90vh] overflow-y-auto p-4 md:p-6">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">{event.title}</DialogTitle>
+          <DialogTitle className="text-xl md:text-2xl font-bold">{event.title}</DialogTitle>
         </DialogHeader>
         
         <div className="mt-4">
-          <div className="aspect-video relative overflow-hidden rounded-lg mb-6">
+          <div className="aspect-video relative overflow-hidden rounded-lg mb-4">
             <img
               src={event.image_url || "https://source.unsplash.com/random/800x600/?volunteer"}
               alt={event.title}
@@ -51,35 +51,35 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
             </div>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* About This Event Section */}
             <div>
-              <h3 className="text-lg font-semibold mb-2">About This Event</h3>
+              <h3 className="text-base md:text-lg font-semibold mb-2">About This Event</h3>
               <p className="text-sm text-muted-foreground">{event.description}</p>
             </div>
 
             {/* Event Details Section */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center text-sm text-muted-foreground">
+            <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex items-center text-sm text-muted-foreground whitespace-nowrap">
                 <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
                 <span>
                   {new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}
                 </span>
               </div>
-              <div className="flex items-center text-sm text-muted-foreground">
+              <div className="flex items-center text-sm text-muted-foreground whitespace-nowrap">
                 <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
                 <span>
                   {new Date(event.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
-              <div className="flex items-start text-sm text-muted-foreground">
-                <MapPin className="h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
+              <div className="flex items-center text-sm text-muted-foreground whitespace-nowrap">
+                <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
                 <span>{event.location}</span>
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end mt-6">
+          <div className="flex justify-end mt-4">
             <Button variant="outline" onClick={onClose}>
               Close
             </Button>
