@@ -303,7 +303,7 @@ const VolunteerEvents = () => {
                     location={event.location}
                     category={event.category}
                     volunteersNeeded={event.volunteers_needed}
-                    imageSrc={event.image_url}
+                    image_url={event.image_url}
                     isRegistered={true}
                     isRecommended={false}
                     loading={false}
