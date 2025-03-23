@@ -24,7 +24,7 @@ interface EventCardProps {
   location: string;
   category: string;
   volunteersNeeded: number;
-  imageSrc?: string;
+  image_url?: string;
   isRegistered?: boolean;
   isRecommended?: boolean;
   loading?: boolean;
@@ -41,7 +41,7 @@ const EventCard: React.FC<EventCardProps> = ({
   location,
   category,
   volunteersNeeded,
-  imageSrc = "https://source.unsplash.com/random/800x600/?volunteer",
+  image_url = "https://source.unsplash.com/random/800x600/?volunteer",
   isRegistered = false,
   isRecommended = false,
   loading = false,
@@ -149,7 +149,7 @@ const EventCard: React.FC<EventCardProps> = ({
       <Card className="h-full overflow-hidden flex flex-col relative">
         <div className="aspect-video relative overflow-hidden">
           <img
-            src={imageSrc}
+            src={image_url}
             alt={title}
             className="object-cover w-full h-full transition-transform duration-500 ease-in-out hover:scale-105"
           />
