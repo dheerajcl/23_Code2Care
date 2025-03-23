@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   CalendarIcon, 
@@ -33,124 +33,233 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
-
-// Mock data for the dashboard
-const eventData = [
-  { name: 'Jan', count: 12 },
-  { name: 'Feb', count: 18 },
-  { name: 'Mar', count: 15 },
-  { name: 'Apr', count: 22 },
-  { name: 'May', count: 30 },
-  { name: 'Jun', count: 28 },
-  { name: 'Jul', count: 35 },
-];
-
-const volunteerData = [
-  { name: 'Jan', active: 30, new: 10 },
-  { name: 'Feb', active: 42, new: 15 },
-  { name: 'Mar', active: 48, new: 12 },
-  { name: 'Apr', active: 55, new: 18 },
-  { name: 'May', active: 70, new: 22 },
-  { name: 'Jun', active: 88, new: 25 },
-  { name: 'Jul', active: 102, new: 30 },
-];
-
-const skillDistribution = [
-  { name: 'Teaching', value: 35 },
-  { name: 'Technology', value: 42 },
-  { name: 'Management', value: 28 },
-  { name: 'Event Coordination', value: 20 },
-  { name: 'Media', value: 15 },
-];
-
-const recentVolunteers = [
-  {
-    id: '1',
-    name: 'Priya Sharma',
-    email: 'priya@example.com',
-    skills: ['Teaching', 'Technology'],
-    joined: '2 days ago',
-    events: 0,
-    status: 'new'
-  },
-  {
-    id: '2',
-    name: 'Arjun Mehta',
-    email: 'arjun@example.com',
-    skills: ['Event Coordination', 'Media'],
-    joined: '5 days ago',
-    events: 1,
-    status: 'active'
-  },
-  {
-    id: '3',
-    name: 'Kavita Reddy',
-    email: 'kavita@example.com',
-    skills: ['Teaching', 'Management'],
-    joined: '1 week ago',
-    events: 2,
-    status: 'active'
-  },
-  {
-    id: '4',
-    name: 'Rahul Singh',
-    email: 'rahul@example.com',
-    skills: ['Technology'],
-    joined: '1 week ago',
-    events: 0,
-    status: 'new'
-  },
-];
-
-const upcomingEvents = [
-  {
-    id: '1',
-    title: 'Digital Literacy Workshop',
-    date: 'Aug 15, 2023',
-    location: 'Bengaluru',
-    volunteers: 8,
-    volunteerNeeded: 12,
-    status: 'Upcoming'
-  },
-  {
-    id: '2',
-    title: 'Community Sports Day',
-    date: 'Aug 20, 2023',
-    location: 'Chennai',
-    volunteers: 15,
-    volunteerNeeded: 20,
-    status: 'Upcoming'
-  },
-  {
-    id: '3',
-    title: 'Educational Support Program',
-    date: 'Aug 28, 2023',
-    location: 'Hyderabad',
-    volunteers: 5,
-    volunteerNeeded: 10,
-    status: 'Upcoming'
-  },
-];
+import { getDashboardStats, getEvents, getVolunteers } from '@/services/database.service';
+import { supabase } from '@/lib/supabase';
 
 const AdminDashboard: React.FC = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  // State for dashboard data
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [dashboardStats, setDashboardStats] = useState({
+    totalVolunteers: 0,
+    totalEvents: 0,
+    newVolunteers: 0,
+    activeEvents: 0,
+    volunteerHours: 0
+  });
+
+  // State for charts data
+  const [eventData, setEventData] = useState<Array<any>>([]);
+  const [volunteerData, setVolunteerData] = useState<Array<any>>([]);
+  const [skillDistribution, setSkillDistribution] = useState<Array<any>>([]);
+  const [recentVolunteers, setRecentVolunteers] = useState<Array<any>>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<Array<any>>([]);
+
+  // Fetch dashboard data on component load
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch dashboard stats
+        const stats = await getDashboardStats();
+        if (stats.error) throw stats.error;
+        
+        // Format volunteer hours (placeholder - no direct API for this yet)
+        const volunteerHours = 854; // This should be replaced with actual data when available
+        
+        setDashboardStats({ 
+          ...stats, 
+          volunteerHours 
+        });
+        
+        // Fetch events for chart data
+        const { data: events, error: eventsError } = await getEvents();
+        if (eventsError) throw eventsError;
+        
+        // Fetch volunteers
+        const { data: volunteers, error: volunteersError } = await getVolunteers();
+        if (volunteersError) throw volunteersError;
+        
+        // Prepare events chart data
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const eventCounts: { [key: string]: number } = {};
+        
+        // Initialize with all months
+        monthNames.forEach(month => {
+          eventCounts[month] = 0;
+        });
+        
+        // Count events by month
+        events.forEach((event: any) => {
+          const eventDate = new Date(event.start_date);
+          const month = monthNames[eventDate.getMonth()];
+          eventCounts[month] = (eventCounts[month] || 0) + 1;
+        });
+        
+        // Convert to chart format
+        const formattedEventData = Object.keys(eventCounts).map(name => ({
+          name,
+          count: eventCounts[name]
+        }));
+        
+        setEventData(formattedEventData);
+        
+        // Prepare volunteer growth data (simplified - would need more historical data for accuracy)
+        const currentMonth = new Date().getMonth();
+        const recentMonths = monthNames.slice(Math.max(0, currentMonth - 6), currentMonth + 1);
+        
+        // Simple sample data - in a real app you'd fetch historical data
+        const formattedVolunteerData = recentMonths.map((name, index) => ({
+          name,
+          active: Math.floor(volunteers.length * 0.7) + (index * 10),
+          new: Math.floor(volunteers.length * 0.1) + (index * 3)
+        }));
+        
+        setVolunteerData(formattedVolunteerData);
+        
+        // Get skill distribution
+        const skills: { [key: string]: number } = {};
+        
+        volunteers.forEach((volunteer: any) => {
+          if (volunteer.skills) {
+            const volunteerSkills = Array.isArray(volunteer.skills) 
+              ? volunteer.skills 
+              : typeof volunteer.skills === 'string' 
+                ? volunteer.skills.split(',') 
+                : [];
+                
+            volunteerSkills.forEach((skill: string) => {
+              const trimmedSkill = skill.trim();
+              skills[trimmedSkill] = (skills[trimmedSkill] || 0) + 1;
+            });
+          }
+        });
+        
+        const formattedSkills = Object.entries(skills)
+          .map(([name, value]) => ({ name, value }))
+          .sort((a, b) => b.value - a.value)
+          .slice(0, 5);
+        
+        setSkillDistribution(formattedSkills);
+        
+        // Get recent volunteers
+        const sortedVolunteers = [...volunteers]
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .slice(0, 4)
+          .map(volunteer => {
+            // Calculate how long ago they joined
+            const joinedDate = new Date(volunteer.created_at);
+            const now = new Date();
+            const diffTime = Math.abs(now.getTime() - joinedDate.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            let joined = diffDays === 0 
+              ? 'Today' 
+              : diffDays === 1 
+                ? '1 day ago' 
+                : diffDays < 7 
+                  ? `${diffDays} days ago` 
+                  : `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
+            
+            return {
+              id: volunteer.id,
+              name: `${volunteer.first_name || ''} ${volunteer.last_name || ''}`.trim(),
+              email: volunteer.email,
+              skills: volunteer.skills 
+                ? (Array.isArray(volunteer.skills) 
+                  ? volunteer.skills 
+                  : typeof volunteer.skills === 'string' 
+                    ? volunteer.skills.split(',').map((s: string) => s.trim()) 
+                    : [])
+                : [],
+              joined,
+              events: volunteer.event_count || 0,
+              status: volunteer.event_count ? 'active' : 'new'
+            };
+          });
+        
+        setRecentVolunteers(sortedVolunteers);
+        
+        // Get upcoming events
+        const upcomingEvts = events
+          .filter((event: any) => new Date(event.start_date) > new Date())
+          .sort((a: any, b: any) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+          .slice(0, 3)
+          .map((event: any) => ({
+            id: event.id,
+            title: event.title,
+            date: new Date(event.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            location: event.location || 'N/A',
+            volunteers: event.registered_count || 0,
+            volunteerNeeded: event.capacity || 0,
+            status: 'Upcoming'
+          }));
+        
+        setUpcomingEvents(upcomingEvts);
+        
+      } catch (err) {
+        console.error("Error fetching dashboard data:", err);
+        setError(err instanceof Error ? err : new Error('Failed to fetch dashboard data'));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
 
   const handleLogout = async () => {
     await logout();
-    // Redirect is handled by the auth context
-
   };
-  const navigate = useNavigate();
 
   const handleViewAllEvents = () => {
-    navigate('/admin/events'); // Update the path as per your routing
-    
+    navigate('/admin/events');
   };
 
   const handleViewAllVolunteers = () => {
-    navigate('/admin/volunteers'); // Adjust this route if needed
+    navigate('/admin/volunteers');
   };
-  
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="h-screen bg-gray-100 flex flex-col">
+        <AdminHeader user={user} handleLogout={handleLogout}/>
+        <div className="flex flex-1 overflow-hidden">
+          <AdminSidebar />
+          <main className="flex-1 overflow-auto p-8 flex items-center justify-center">
+            <div className="text-center">
+              <h2 className="text-xl">Loading dashboard data...</h2>
+              <p className="text-muted-foreground mt-2">Please wait while we fetch the latest information.</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="h-screen bg-gray-100 flex flex-col">
+        <AdminHeader user={user} handleLogout={handleLogout}/>
+        <div className="flex flex-1 overflow-hidden">
+          <AdminSidebar />
+          <main className="flex-1 overflow-auto p-8 flex items-center justify-center">
+            <div className="text-center">
+              <h2 className="text-xl text-red-600">Error Loading Dashboard</h2>
+              <p className="text-muted-foreground mt-2">{error.message}</p>
+              <Button className="mt-4" onClick={() => window.location.reload()}>Retry</Button>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen bg-gray-100 flex flex-col">
@@ -178,13 +287,13 @@ const AdminDashboard: React.FC = () => {
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">102</div>
+                    <div className="text-2xl font-bold">{dashboardStats.totalVolunteers}</div>
                     <p className="text-xs text-muted-foreground mt-1 flex items-center">
                       <span className="text-green-500 flex items-center mr-1">
                         <ArrowUpRight className="h-3 w-3 mr-1" />
-                        12%
+                        {Math.round((dashboardStats.newVolunteers / dashboardStats.totalVolunteers) * 100) || 0}%
                       </span>
-                      from last month
+                      new this month
                     </p>
                   </CardContent>
                 </Card>
@@ -196,13 +305,13 @@ const AdminDashboard: React.FC = () => {
                     <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">3</div>
+                    <div className="text-2xl font-bold">{dashboardStats.activeEvents}</div>
                     <p className="text-xs text-muted-foreground mt-1 flex items-center">
                       <span className="text-green-500 flex items-center mr-1">
                         <ArrowUpRight className="h-3 w-3 mr-1" />
-                        5%
+                        {Math.round((dashboardStats.activeEvents / dashboardStats.totalEvents) * 100) || 0}%
                       </span>
-                      from last month
+                      of total events
                     </p>
                   </CardContent>
                 </Card>
@@ -214,7 +323,7 @@ const AdminDashboard: React.FC = () => {
                     <Clock className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">854</div>
+                    <div className="text-2xl font-bold">{dashboardStats.volunteerHours}</div>
                     <p className="text-xs text-muted-foreground mt-1 flex items-center">
                       <span className="text-green-500 flex items-center mr-1">
                         <ArrowUpRight className="h-3 w-3 mr-1" />
@@ -232,13 +341,12 @@ const AdminDashboard: React.FC = () => {
                     <Award className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">30</div>
+                    <div className="text-2xl font-bold">{dashboardStats.newVolunteers}</div>
                     <p className="text-xs text-muted-foreground mt-1 flex items-center">
-                      <span className="text-red-500 flex items-center mr-1">
-                        <ArrowDownRight className="h-3 w-3 mr-1" />
-                        3%
+                      <span className={dashboardStats.newVolunteers > 0 ? "text-green-500" : "text-red-500"} flex items-center mr-1>
+                        {dashboardStats.newVolunteers > 0 ? <ArrowUpRight className="h-3 w-3 mr-1" /> : <ArrowDownRight className="h-3 w-3 mr-1" />}
+                        this month
                       </span>
-                      from last month
                     </p>
                   </CardContent>
                 </Card>
@@ -306,7 +414,7 @@ const AdminDashboard: React.FC = () => {
                             <div className="text-sm font-medium">{skill.name}</div>
                             <div className="text-sm text-muted-foreground">{skill.value}</div>
                           </div>
-                          <Progress value={skill.value} max={100} className="h-2" />
+                          <Progress value={skill.value} max={Math.max(...skillDistribution.map(s => s.value))} className="h-2" />
                         </div>
                       ))}
                     </div>
@@ -321,28 +429,40 @@ const AdminDashboard: React.FC = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {upcomingEvents.map((event) => (
-                        <div key={event.id} className="border rounded-lg p-3">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h3 className="font-semibold">{event.title}</h3>
-                              <div className="text-sm text-muted-foreground mt-1">
-                                {event.date} | {event.location}
+                      {upcomingEvents.length > 0 ? (
+                        upcomingEvents.map((event) => (
+                          <div key={event.id} className="border rounded-lg p-3">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h3 className="font-semibold">{event.title}</h3>
+                                <div className="text-sm text-muted-foreground mt-1">
+                                  {event.date} | {event.location}
+                                </div>
                               </div>
+                              <Badge variant={event.status === "Upcoming" ? "outline" : "secondary"}>
+                                {event.status}
+                              </Badge>
                             </div>
-                            <Badge variant={event.status === "Upcoming" ? "outline" : "secondary"}>
-                              {event.status}
-                            </Badge>
-                          </div>
-                          <div className="mt-3">
-                            <div className="text-sm flex justify-between mb-1">
-                              <span>Volunteers: {event.volunteers}/{event.volunteerNeeded}</span>
-                              <span className="text-muted-foreground">{Math.round((event.volunteers / event.volunteerNeeded) * 100)}%</span>
+                            <div className="mt-3">
+                              <div className="text-sm flex justify-between mb-1">
+                                <span>Volunteers: {event.volunteers}/{event.volunteerNeeded}</span>
+                                <span className="text-muted-foreground">
+                                  {event.volunteerNeeded > 0 
+                                    ? Math.round((event.volunteers / event.volunteerNeeded) * 100) 
+                                    : 0}%
+                                </span>
+                              </div>
+                              <Progress 
+                                value={event.volunteers} 
+                                max={event.volunteerNeeded || 1} 
+                                className="h-2" 
+                              />
                             </div>
-                            <Progress value={event.volunteers} max={event.volunteerNeeded} className="h-2" />
                           </div>
-                        </div>
-                      ))}
+                        ))
+                      ) : (
+                        <p className="text-muted-foreground">No upcoming events scheduled.</p>
+                      )}
                     </div>
                   </CardContent>
                   <CardFooter>
@@ -350,7 +470,6 @@ const AdminDashboard: React.FC = () => {
                       View All Events
                     </Button>
                   </CardFooter>
-
                 </Card>
               </div>
 
@@ -364,50 +483,59 @@ const AdminDashboard: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b text-left">
-                          <th className="font-medium p-3">Name</th>
-                          <th className="font-medium p-3">Skills</th>
-                          <th className="font-medium p-3">Joined</th>
-                          <th className="font-medium p-3">Events</th>
-                          <th className="font-medium p-3">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {recentVolunteers.map((volunteer) => (
-                          <tr key={volunteer.id} className="border-b">
-                            <td className="p-3">
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
-                                  <AvatarFallback>{volunteer.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <div className="font-medium">{volunteer.name}</div>
-                                  <div className="text-sm text-muted-foreground">{volunteer.email}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="p-3">
-                              <div className="flex flex-wrap gap-1">
-                                {volunteer.skills.map((skill) => (
-                                  <Badge key={skill} variant="secondary" className="font-normal">
-                                    {skill}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </td>
-                            <td className="p-3">{volunteer.joined}</td>
-                            <td className="p-3">{volunteer.events}</td>
-                            <td className="p-3">
-                              <Badge variant={volunteer.status === "new" ? "outline" : "default"}>
-                                {volunteer.status === "new" ? "New" : "Active"}
-                              </Badge>
-                            </td>
+                    {recentVolunteers.length > 0 ? (
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b text-left">
+                            <th className="font-medium p-3">Name</th>
+                            <th className="font-medium p-3">Skills</th>
+                            <th className="font-medium p-3">Joined</th>
+                            <th className="font-medium p-3">Events</th>
+                            <th className="font-medium p-3">Status</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {recentVolunteers.map((volunteer) => (
+                            <tr key={volunteer.id} className="border-b">
+                              <td className="p-3">
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarFallback>{volunteer.name.charAt(0)}</AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <div className="font-medium">{volunteer.name}</div>
+                                    <div className="text-sm text-muted-foreground">{volunteer.email}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <div className="flex flex-wrap gap-1">
+                                  {volunteer.skills.slice(0, 2).map((skill: string) => (
+                                    <Badge key={skill} variant="secondary" className="font-normal">
+                                      {skill}
+                                    </Badge>
+                                  ))}
+                                  {volunteer.skills.length > 2 && (
+                                    <Badge variant="outline" className="font-normal">
+                                      +{volunteer.skills.length - 2}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-3">{volunteer.joined}</td>
+                              <td className="p-3">{volunteer.events}</td>
+                              <td className="p-3">
+                                <Badge className={volunteer.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}>
+                                  {volunteer.status === 'active' ? 'Active' : 'New'}
+                                </Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <p className="text-muted-foreground p-3">No volunteers have registered recently.</p>
+                    )}
                   </div>
                 </CardContent>
                 <CardFooter>
@@ -415,7 +543,6 @@ const AdminDashboard: React.FC = () => {
                     View All Volunteers
                   </Button>
                 </CardFooter>
-
               </Card>
             </div>
           </div>

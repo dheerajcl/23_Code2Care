@@ -31,24 +31,26 @@ import AuthCallback from "./pages/AuthCallback";
 import AdminEventDetails from "./admin/pages/AdminEventDetails";
 import DonationPage from "./pages/Donate";
 import VolunteerEvents from "./volunteer/VolunteerEvents";
-import VolTasks from "./volunteer/VolunteerTasks";
+// import TasksPage from "./volunteer/TasksPage";
+import CreateEvent from "./admin/pages/CreateEvent";
+import EditEvent from "./admin/pages/EditEvent";
 
 function App() {
-  const queryClient = new QueryClient();
+const queryClient = new QueryClient();
 
   return (
-    <QueryClientProvider client={queryClient}>
+  <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <BrowserRouter>
-            <AnimatePresence mode="wait">
-              <Routes>
+    <TooltipProvider>
+      <BrowserRouter>
+        <AnimatePresence mode="wait">
+          <Routes>
                 {/* Public routes */}
-                <Route path="/" element={<Index />} />
-                <Route path="/events" element={<Events />} />
-                <Route path="/about" element={<About />} />
+            <Route path="/" element={<Index />} />
+            <Route path="/events" element={<Events />} />
+            <Route path="/about" element={<About />} />
                 <Route path="/donate" element={<DonationPage />} />
-                <Route path="/register" element={<Register />} />
+            <Route path="/register" element={<Register />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/join-us" element={<JoinUs />} />
                 <Route path="/participant-form" element={<ParticipantForm />} />
@@ -70,6 +72,22 @@ function App() {
                   element={
                     <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
                       <AdminEvents />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/events/create"
+                  element={
+                    <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                      <CreateEvent />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/events/:id/edit"
+                  element={
+                    <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                      <EditEvent />
                     </ProtectedRoute>
                   }
                 />
@@ -116,10 +134,10 @@ function App() {
                   }
                 />
                 <Route
-                  path="volunteer/events/:id/tasks"
+                  path="/volunteer/events/:id/tasks"
                   element={
                     <ProtectedRoute roles={['volunteer']} redirectTo="/login">
-                      <VolTasks />
+                      <VolunteerTasks />
                     </ProtectedRoute>
                   }
                 />
@@ -131,42 +149,18 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-                <Route
-                  path="/volunteer/tasks"
-                  element={
-                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
-                      <VolunteerTasks />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/volunteer/badges"
-                  element={
-                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
-                      <VolunteerBadges />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/volunteer/progress"
-                  element={
-                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
-                      <VolunteerProgress />
-                    </ProtectedRoute>
-                  }
-                />
                 
                 {/* 404 route */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </AnimatePresence>
-          </BrowserRouter>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AnimatePresence>
+      </BrowserRouter>
           <Toaster />
           <Sonner />
-        </TooltipProvider>
+    </TooltipProvider>
       </AuthProvider>
-    </QueryClientProvider>
-  );
+  </QueryClientProvider>
+);
 }
 
 export default App;

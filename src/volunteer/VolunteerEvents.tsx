@@ -15,7 +15,7 @@ import {
   SelectValue 
 } from '../components/ui/select';
 import { motion } from 'framer-motion';
-import { toast } from 'react-hot-toast';
+import { toast } from '@/components/ui/use-toast';
 import Charity from '../assets/charity.jpg'
 import Workshop from '../assets/workshop.jpg'
 import Community from '../assets/community_cleanup.jpg'
@@ -317,7 +317,7 @@ const VolunteerEvents = () => {
 
   return (
     <div className="h-screen bg-gray-100 flex flex-col">
-      <Header/>
+      <Header user={user} handleLogout={handleLogout} />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
         <main className="flex-1 overflow-auto p-8 pt-28">
