@@ -56,8 +56,13 @@ const AdminEventForm = ({ initialData, isEditing = false }: EventFormProps) => {
       title: initialData?.title || '',
       description: initialData?.description || '',
       location: initialData?.location || '',
-      category: initialData?.status || 'Education', // Using status field for category
+      category: initialData?.category || 'Education',
+      status: 'scheduled',
       capacity: initialData?.max_volunteers || 20,
+      start_date: initialData?.start_date || '',
+      end_date: initialData?.end_date || '',
+      image_url: initialData?.image_url || null,
+      image_file: null
     }
   });
 
@@ -137,13 +142,13 @@ const AdminEventForm = ({ initialData, isEditing = false }: EventFormProps) => {
         title: data.title,
         description: data.description,
         location: data.location,
-        status: data.category, // Using status field for category
+        category: data.category, // Now using category field
+        status: 'scheduled', // Set status as scheduled
         start_date: startDateTime.toISOString(),
         end_date: endDateTime.toISOString(),
         image_url: initialData?.image_url || null,
         image_file: data.image_file,
         max_volunteers: parseInt(data.capacity)
-        // Note: organizer_id is intentionally omitted to match database constraints
       };
 
       let result;
@@ -212,7 +217,7 @@ const AdminEventForm = ({ initialData, isEditing = false }: EventFormProps) => {
             <Label htmlFor="category">Category <span className="text-red-500">*</span></Label>
             <Select 
               onValueChange={(value) => setValue('category', value)} 
-              defaultValue={initialData?.status || 'Education'}
+              defaultValue={initialData?.category || 'Education'}
             >
               <SelectTrigger id="category" className="mt-1">
                 <SelectValue placeholder="Select a category" />
@@ -376,4 +381,4 @@ const AdminEventForm = ({ initialData, isEditing = false }: EventFormProps) => {
   );
 };
 
-export default AdminEventForm; 
+export default AdminEventForm;
