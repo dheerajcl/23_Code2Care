@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { getVolunteerLeaderboard, getVolunteerRank } from './database.service';
 
 interface PointsEntry {
   volunteerId: string;
@@ -40,13 +41,45 @@ export const pointsService = {
     return data.reduce((sum, entry) => sum + entry.points, 0);
   },
 
-  // Get leaderboard
+  // Get leaderboard - updated to use the new RPC function
   async getLeaderboard(limit = 10) {
-    const { data, error } = await supabase
-      .rpc('get_volunteer_leaderboard', { limit_count: limit });
+    try {
+      const { data, error } = await getVolunteerLeaderboard();
+      
+      if (error) throw error;
+      return data.slice(0, limit).map(entry => ({
+        volunteer_id: entry.id,
+        first_name: entry.first_name,
+        last_name: entry.last_name,
+        profile_image: entry.profile_image,
+        total_points: entry.points,
+        badge_count: entry.badges ? entry.badges.length : 0,
+        rank: entry.rank
+      }));
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error);
+      return [];
+    }
+  },
 
-    if (error) throw error;
-    return data;
+  // Get volunteer rank
+  async getVolunteerRank(volunteerId: string) {
+    try {
+      const { data, error } = await getVolunteerRank(volunteerId);
+      
+      if (error) throw error;
+      
+      // Format the data for UI consumption
+      return {
+        rank: data.rank || 0,
+        points: data.points || 0,
+        totalHours: data.total_hours || 0,
+        eventsAttended: data.events_attended || 0
+      };
+    } catch (error) {
+      console.error('Error fetching volunteer rank:', error);
+      return null;
+    }
   },
 
   // Track login

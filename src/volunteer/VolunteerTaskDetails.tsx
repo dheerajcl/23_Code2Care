@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/authContext';
 import { Calendar, Clock, MapPin, Users, List, Columns, Tag, User2 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 // Task View Components
 import TaskTable from '../components/TaskTable';
@@ -178,11 +179,21 @@ const VolunteerTaskDetails = () => {
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="h-screen bg-gray-100 flex flex-col vol-dashboard">
+        <Header />
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar />
+          <main className="flex-1 overflow-auto p-8 pt-28 flex items-center justify-center">
+            <LoadingSpinner size="large" text="Loading task details..." color="primary" />
+          </main>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="h-screen bg-gray-100 flex flex-col">
+    <div className="h-screen bg-gray-100 flex flex-col vol-dashboard">
       <Header />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
@@ -193,47 +204,47 @@ const VolunteerTaskDetails = () => {
               <div className="flex items-center gap-2 text-gray-500 mb-2">
                 <button 
                   onClick={() => navigate('/volunteer/events')}
-                  className="hover:text-red-700 transition-colors"
+                  className="hover:text-red-700 transition-colors dark:text-white high-contrast:text-white"
                 >
                   Events
                 </button>
-                <span>/</span>
-                <span className="text-gray-700">{event?.title}</span>
+                <span className='dark:text-white high-contrast:text-white'>/</span>
+                <span className="text-gray-700 dark:text-white high-contrast:text-white">{event?.title}</span>
               </div>
-              <h1 className="text-3xl font-bold">{event?.title}</h1>
+              <h1 className="text-3xl font-bold dark:text-white high-contrast:text-white">{event?.title}</h1>
             </div>
           </div>
 
           {/* Event Info Card */}
-          <div className="bg-white rounded-lg shadow p-6 mb-8">
+          <div className="bg-white rounded-lg shadow p-6 mb-8 event-info-card">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="flex flex-col">
-                <span className="text-gray-500 mb-1 flex items-center gap-2">
+                <span className="text-gray-500 mb-1 flex items-center gap-2 dark:text-white high-contrast:text-white">
                   <Calendar size={16} />
                   Date & Time
                 </span>
-                <span className="text-md font-medium">{event?.date}</span>
+                <span className="text-md font-medium dark:text-white high-contrast:text-white">{event?.date}</span>
                 <span className="text-sm text-gray-600">{event?.time}</span>
               </div>
 
               <div className="flex flex-col">
-                <span className="text-gray-500 mb-1 flex items-center gap-2">
+                <span className="text-gray-500 mb-1 flex items-center gap-2 dark:text-white high-contrast:text-white">
                   <Calendar size={16} />
                   Deadline
                 </span>
-                <span className="text-md font-medium">{event?.deadline}</span>
+                <span className="text-md font-medium dark:text-white high-contrast:text-white">{event?.deadline}</span>
               </div>
               
               <div className="flex flex-col">
-                <span className="text-gray-500 mb-1 flex items-center gap-2">
+                <span className="text-gray-500 mb-1 flex items-center gap-2 dark:text-white high-contrast:text-white">
                   <MapPin size={16} />
                   Location
                 </span>
-                <span className="text-md font-medium">{event?.location}</span>
+                <span className="text-md font-medium dark:text-white high-contrast:text-white">{event?.location}</span>
               </div>
               
               <div className="flex flex-col ml-16">
-                <span className="text-gray-500 mb-1 flex items-center gap-2">
+                <span className="text-gray-500 mb-1 flex items-center gap-2 dark:text-white high-contrast:text-white">
                   <Tag size={16} />
                   Event Type
                 </span>
@@ -252,33 +263,38 @@ const VolunteerTaskDetails = () => {
             
             {/* View Selector */}
             <div className="flex justify-between items-center mb-4">
-              <div className="flex bg-gray-200 rounded-lg p-1">
-                <button 
-                  onClick={() => setActiveView('table')} 
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
-                    activeView === 'table' ? 'bg-white shadow' : 'hover:bg-gray-300'
-                  }`}
-                >
-                  <List size={18} />
-                  <span>Table</span>
-                </button>
-                <button 
-                  onClick={() => setActiveView('kanban')} 
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
-                    activeView === 'kanban' ? 'bg-white shadow' : 'hover:bg-gray-300'
-                  }`}
-                >
-                  <Columns size={18} />
-                  <span>Kanban</span>
-                </button>
+              <div className="flex bg-gray-200 rounded-lg p-1 event-info-card">
+              <button 
+                onClick={() => setActiveView('table')} 
+                className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+                  activeView === 'table' 
+                    ? 'bg-white shadow event-info-card-toggle' 
+                    : 'hover:bg-gray-300 dark:hover:bg-transparent dark:hover:bg-red-950'
+                }`}
+              >
+                <List size={18} />
+                <span>Table</span>
+              </button>
+
+              <button 
+                onClick={() => setActiveView('kanban')} 
+                className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+                  activeView === 'kanban' 
+                    ? 'bg-white shadow event-info-card-toggle' 
+                    : 'hover:bg-gray-300 dark:hover:bg-transparent dark:hover:bg-red-950'
+                }`}
+              >
+                <Columns size={18} />
+                <span>Kanban</span>
+              </button>
               </div>
-              <button className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+              <button className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors event-info-card">
                 Filter
               </button>
             </div>
 
             {/* Task Views */}
-            <div className="bg-white rounded-lg shadow">
+            <div className="bg-white rounded-lg shadow event-info-card">
               {volunteerTasks.length > 0 ? (
                 activeView === 'table' ? (
                   <TaskTable 
@@ -293,7 +309,7 @@ const VolunteerTaskDetails = () => {
                 )
               ) : (
                 <div className="p-8 text-center text-gray-500">
-                  <p>You don't have any tasks assigned for this event.</p>
+                  <p className='dark:text-white high-contrast:text-white'>You don't have any tasks assigned for this event.</p>
                 </div>
               )}
             </div>

@@ -15,7 +15,7 @@ const Sidebar = () => {
   const location = useLocation();
 
   return (
-    <aside className="hidden border-r bg-muted/40 md:block w-64 mt-20 h-full">
+    <aside className="hidden border-r bg-muted/40 md:block w-64 mt-20 h-full vol-dashboard-sidebar">
       <div className="flex flex-col gap-2 p-4 pt-6">
         <div className="text-xs font-medium uppercase text-muted-foreground pl-4 mb-2">
           Navigation

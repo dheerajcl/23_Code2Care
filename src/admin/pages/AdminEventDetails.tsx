@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/authContext';
 import { Calendar, Clock, MapPin, Users, Plus, List, Columns, Tag, User2 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { eventData } from './AdminEvents';
+import { AdminEventsPage } from './AdminEvents';
 import { getEventById, getTasksByEventId, createTask, updateTask, deleteTask, getEventRegistrations, registerVolunteerForEvent, updateEventRegistration, deleteEventRegistration } from '@/services/database.service';
 import { User, Edit, X, UserPlus, Trash2, Check, Mail } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +23,6 @@ import { supabase } from '@/lib/supabase';
 // Task View Components
 import TaskTable from '../components/AdminTaskTable';
 import TaskKanban from '../components/AdminTaskKanban';
-import AdminHeader from '../components/AdminHeader';
 import AdminSidebar from '../components/AdminSidebar';
 
 const AdminEventDetails = () => {
@@ -285,6 +284,11 @@ const AdminEventDetails = () => {
   const handleEditEvent = () => {
     navigate(`/admin/events/${id}/edit`);
   };
+  
+  // Handle done button click - redirect to events page
+  const handleDone = () => {
+    navigate('/admin/events');
+  };
 
   // Task statistics calculated from filtered event tasks
   const totalTasks = eventTasks.length;
@@ -317,38 +321,21 @@ const AdminEventDetails = () => {
     setEventTasks([...eventTasks, newTask]);
   };
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex h-screen bg-gray-100">
-        <AdminSidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <AdminHeader title="Event Details" user={adminUser} />
-          
-          <main className="flex-1 overflow-y-auto p-4">
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
   
   if (error) {
     return (
       <div className="flex h-screen bg-gray-100">
         <AdminSidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <AdminHeader title="Event Details" user={adminUser} />
-          
           <main className="flex-1 overflow-y-auto p-4">
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
               <strong className="font-bold">Error!</strong>
               <span className="block sm:inline"> {error}</span>
+            </div>
+            <div className="mt-6 flex justify-center">
+              <Button onClick={handleDone} className="bg-purple-600 hover:bg-purple-700">
+                Return to Events
+              </Button>
             </div>
           </main>
         </div>
@@ -357,18 +344,16 @@ const AdminEventDetails = () => {
   }
   
   if (!event) {
-  return (
+    return (
       <div className="flex h-screen bg-gray-100">
         <AdminSidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <AdminHeader title="Event Details" user={adminUser} />
-          
           <main className="flex-1 overflow-y-auto p-4">
             <div className="text-center py-10">
               <h3 className="mt-2 text-sm font-medium text-gray-900">Event not found</h3>
               <p className="mt-1 text-sm text-gray-500">The event you're looking for doesn't exist or has been deleted.</p>
               <div className="mt-6">
-                <Button onClick={() => navigate('/admin/events')}>
+                <Button onClick={handleDone}>
                   Back to Events
                 </Button>
               </div>
@@ -383,8 +368,6 @@ const AdminEventDetails = () => {
     <div className="flex h-screen bg-gray-100">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <AdminHeader title="Event Details" user={adminUser} />
-        
         <main className="flex-1 overflow-y-auto p-4">
           <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -409,6 +392,9 @@ const AdminEventDetails = () => {
                 <Edit className="mr-2 h-4 w-4" />
                 Edit Event
               </Button>
+              <Button onClick={handleDone} className="bg-green-600 hover:bg-green-700">
+    Done
+  </Button>
             </div>
           </div>
 
@@ -429,7 +415,7 @@ const AdminEventDetails = () => {
                     <div>
                       <h3 className="text-sm font-medium text-gray-500">Description</h3>
                       <p className="mt-1">{event.description}</p>
-              </div>
+                    </div>
               
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
@@ -441,17 +427,17 @@ const AdminEventDetails = () => {
                         <div className="flex items-center mt-1">
                           <Clock className="h-4 w-4 mr-2 text-gray-400" />
                           {formatTime(event.start_date)} - {formatTime(event.end_date)}
-              </div>
-              </div>
+                        </div>
+                      </div>
               
                       <div>
                         <h3 className="text-sm font-medium text-gray-500">Location</h3>
                         <div className="flex items-center mt-1">
                           <MapPin className="h-4 w-4 mr-2 text-gray-400" />
                           {event.location}
-                </div>
-              </div>
-            </div>
+                        </div>
+                      </div>
+                    </div>
   
                     <div>
                       <h3 className="text-sm font-medium text-gray-500">Volunteer Capacity</h3>
@@ -459,8 +445,8 @@ const AdminEventDetails = () => {
                         <Users className="h-4 w-4 mr-2 text-gray-400" />
                         {registrations.length} / {event.max_volunteers || 'Unlimited'} volunteers registered
                       </div>
-      </div>
-      </div>
+                    </div>
+                  </div>
                 </div>
                 
                 {/* Event Image */}
@@ -471,9 +457,9 @@ const AdminEventDetails = () => {
                     ) : (
                       <div className="w-full h-full bg-gray-200 flex items-center justify-center">
                         <span className="text-gray-400">No image available</span>
-    </div>
-  )}
-</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -545,7 +531,7 @@ const AdminEventDetails = () => {
                     <p className="text-2xl font-bold">
                       {registrations.reduce((sum, reg) => sum + parseFloat(reg.hours_served || 0), 0).toFixed(1)}
                     </p>
-              </div>
+                  </div>
 
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h3 className="font-medium mb-1">Spots Remaining</h3>
@@ -563,7 +549,7 @@ const AdminEventDetails = () => {
                   <div>
                     <h2 className="text-xl font-semibold">Event Tasks</h2>
                     <p className="text-gray-500">Manage tasks for this event</p>
-              </div>
+                  </div>
 
                   <div className="flex gap-2">
                     <Button 
@@ -750,8 +736,8 @@ const AdminEventDetails = () => {
                         </Button>
                       </div>
                     </form>
-              </div>
-            </div>
+                  </div>
+                </div>
               )}
             </TabsContent>
             
@@ -774,6 +760,7 @@ const AdminEventDetails = () => {
                     Register Volunteer
                   </Button>
                 </div>
+                
                 
                 {registrations.length === 0 ? (
                   <div className="text-center py-8">

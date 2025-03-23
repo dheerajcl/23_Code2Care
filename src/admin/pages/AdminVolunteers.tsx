@@ -3,6 +3,7 @@ import {
   Search, Filter, Award, Calendar, MapPin, 
   Code, Activity, ChevronDown, ChevronUp, User, UserCheck, Clock, X
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
 import { useAuth } from '@/lib/authContext';
@@ -27,7 +28,8 @@ const AdminVolunteers = () => {
 
   const [selectedVolunteer, setSelectedVolunteer] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const { adminUser } = useAuth();
+  const { adminUser, logout } = useAuth();
+  const navigate = useNavigate();
 
   // Handle opening the volunteer details modal
   const handleViewVolunteer = (volunteer) => {
@@ -143,6 +145,13 @@ const AdminVolunteers = () => {
             availability: [...availabilitySet]
           });
           
+          // Sort volunteers alphabetically by name
+          processedData.sort((a, b) => {
+            const nameA = `${a.firstname} ${a.lastname}`.toLowerCase();
+            const nameB = `${b.firstname} ${b.lastname}`.toLowerCase();
+            return nameA.localeCompare(nameB);
+          });
+          
           setVolunteers(processedData);
           setFilteredVolunteers(processedData);
         }
@@ -228,10 +237,10 @@ const AdminVolunteers = () => {
   };
 
   const handleLogout = async () => {
-    await auth.signOut();
+    // Fixed logout handler
+    await logout();
     navigate('/admin/login');
   };
-
   // Format date for display
   const formatDate = (dateString) => {
     try {
@@ -430,7 +439,7 @@ const AdminVolunteers = () => {
               Hours
             </th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Status
+              Availability
             </th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Actions
@@ -483,11 +492,11 @@ const AdminVolunteers = () => {
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <Badge className={`
-                  ${volunteer.status === 'Active' ? 'bg-green-100 text-green-800' : ''}
-                  ${volunteer.status === 'Inactive' ? 'bg-gray-100 text-gray-800' : ''}
-                  ${volunteer.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : ''}
+                  ${volunteer.availability === 'weekends' ? 'bg-green-100 text-green-800' : ''}
+                  ${volunteer.availability === 'both' ? 'bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 text-white' : ''}
+                  ${volunteer.availability === 'weekdays' ? 'bg-green-100 text-green-800' : ''}
                 `}>
-                  {volunteer.status}
+                  {volunteer.availability}
                 </Badge>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -546,13 +555,13 @@ const AdminVolunteers = () => {
                     <p>{formatDate(selectedVolunteer.created)}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Status</p>
+                    <p className="text-sm text-gray-500">Availablity</p>
                     <Badge className={`
-                      ${selectedVolunteer.status === 'Active' ? 'bg-green-100 text-green-800' : ''}
-                      ${selectedVolunteer.status === 'Inactive' ? 'bg-gray-100 text-gray-800' : ''}
-                      ${selectedVolunteer.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : ''}
+                      ${selectedVolunteer.availability === 'weekends' ? 'bg-green-100 text-green-800' : ''}
+                      ${selectedVolunteer.availability === 'both' ? 'bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 text-white' : ''}
+                      ${selectedVolunteer.availability === 'weekdays' ? 'bg-green-100 text-green-800' : ''}
                     `}>
-                      {selectedVolunteer.status}
+                      {selectedVolunteer.availability}
                     </Badge>
                   </div>
                 </div>
@@ -607,9 +616,6 @@ const AdminVolunteers = () => {
                   <Button className="w-full bg-purple-600 hover:bg-purple-700">
                     View Event History
                   </Button>
-                  <Button variant="outline" className="w-full">
-                    Edit Profile
-                  </Button>
                 </div>
               </div>
             </div>
@@ -620,10 +626,11 @@ const AdminVolunteers = () => {
   };
 
   return (
+    <div className="h-screen bg-gray-100 flex flex-col">
+      <AdminHeader  user={User} handleLogout={handleLogout} title="Volunteer Management" />
     <div className="flex h-screen bg-gray-100">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <AdminHeader title="Volunteer Management" user={adminUser} onLogout={handleLogout} />
         
         <main className="flex-1 overflow-y-auto p-4">
           <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -792,6 +799,7 @@ const AdminVolunteers = () => {
           {showModal && renderVolunteerModal()}
         </main>
       </div>
+    </div>
     </div>
   );
 };
