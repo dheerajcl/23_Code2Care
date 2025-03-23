@@ -11,6 +11,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/authContext';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 const EventFeedback = () => {
   const { id: eventId } = useParams();
@@ -183,14 +184,8 @@ const EventFeedback = () => {
   if (isLoading) {
     return (
       <VolunteerLayout>
-        <div className="container max-w-2xl py-6">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex justify-center items-center h-40">
-                <p>Loading...</p>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="container max-w-2xl py-6 flex justify-center items-center">
+          <LoadingSpinner size="large" text="Loading feedback form..." color="primary" />
         </div>
       </VolunteerLayout>
     );

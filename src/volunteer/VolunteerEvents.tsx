@@ -19,6 +19,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import EventCard from '../components/EventCard';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 const VolunteerEvents = () => {
   const navigate = useNavigate();
@@ -146,7 +147,17 @@ const VolunteerEvents = () => {
   });
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="h-screen bg-gray-100 flex flex-col vol-dashboard">
+        <Header/>
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar />
+          <main className="flex-1 overflow-auto p-8 pt-28 flex items-center justify-center">
+            <LoadingSpinner size="large" text="Loading your events..." color="primary" />
+          </main>
+        </div>
+      </div>
+    );
   }
 
   // Custom buttons for EventCard

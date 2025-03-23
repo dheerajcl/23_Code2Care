@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   CalendarIcon, 
   Clock, 
@@ -41,34 +41,8 @@ import { Leaderboard } from '@/components/Leaderboard';
 import { Link, useLocation } from 'react-router-dom';
 import Sidebar from '@/components/Sidebar';
 import LandingHeader from '@/components/LandingHeader';
-
-// Mock data for the dashboard
-const upcomingEvents = [
-  {
-    id: '1',
-    title: 'Digital Literacy Workshop',
-    date: 'Aug 15, 2023',
-    time: '10:00 AM - 1:00 PM',
-    location: 'Samarthanam Trust HQ, Bengaluru',
-    status: 'registered'
-  },
-  {
-    id: '2',
-    title: 'Community Sports Day',
-    date: 'Aug 20, 2023',
-    time: '9:00 AM - 5:00 PM',
-    location: 'Sri Kanteerava Stadium, Bengaluru',
-    status: 'open'
-  },
-  {
-    id: '3',
-    title: 'Educational Support Program',
-    date: 'Aug 28, 2023',
-    time: '3:00 PM - 6:00 PM',
-    location: 'Government School, Jayanagar, Bengaluru',
-    status: 'open'
-  },
-];
+import { getEvents } from '@/services/database.service';
+import { toast } from 'sonner';
 
 export const assignedTasks = [
   {
@@ -183,12 +157,48 @@ const feedbackData = [
 export const VolunteerDashboard = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
   
-    const handleLogout = async () => {
-      await logout();
-      // Redirect is handled by the auth context
-  
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        // Fetch events from the database
+        const { data, error } = await getEvents();
+        
+        if (error) throw error;
+        
+        // Filter for upcoming events (where end_date is in the future)
+        const now = new Date();
+        const filtered = data.filter(event => {
+          const endDate = new Date(event.end_date);
+          return endDate >= now;
+        });
+        
+        // Sort by start date ascending (soonest first)
+        filtered.sort((a, b) => {
+          return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
+        });
+        
+        // Take only the first 3 for display
+        setUpcomingEvents(filtered.slice(0, 3));
+      } catch (error) {
+        console.error('Error fetching upcoming events:', error);
+        toast.error('Failed to load upcoming events');
+        setUpcomingEvents([]);
+      } finally {
+        setLoading(false);
+      }
     };
+    
+    fetchEvents();
+  }, []);
+
+  const handleLogout = async () => {
+    await logout();
+    // Redirect is handled by the auth context
+  };
   
   return (
     <div className="h-screen bg-gray-100 flex flex-col vol-dashboard">
@@ -235,17 +245,38 @@ export const VolunteerDashboard = () => {
                 <Leaderboard />
               </div>
 
-              {/* Tabs for different sections */}
-              <Tabs defaultValue="events" className="space-y-4">
-                <TabsList className="grid grid-cols-4 md:w-[400px]">
-                  <TabsTrigger value="events">Upcoming Events</TabsTrigger>
-                  <TabsTrigger value="tasks">My Tasks</TabsTrigger>
-                  <TabsTrigger value="badges">Badges</TabsTrigger>
-                  <TabsTrigger value="progress">Progress</TabsTrigger>
-                </TabsList>
-
-                {/* Events Tab */}
-                <TabsContent value="events" className="space-y-4">
+              {/* Upcoming Events Section */}
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold">Upcoming Events</h2>
+                  <Button variant="outline" asChild>
+                    <Link to="/volunteer/events">
+                      View All Events
+                      <ExternalLink className="h-4 w-4 ml-2" />
+                    </Link>
+                  </Button>
+                </div>
+                
+                {loading ? (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {[1, 2, 3].map((placeholder) => (
+                      <Card key={placeholder} className="overflow-hidden">
+                        <CardHeader className="pb-3">
+                          <div className="h-5 w-2/3 bg-gray-200 rounded animate-pulse"></div>
+                          <div className="space-y-2 mt-2">
+                            <div className="h-3 bg-gray-200 rounded animate-pulse"></div>
+                            <div className="h-3 bg-gray-200 rounded animate-pulse"></div>
+                            <div className="h-3 bg-gray-200 rounded animate-pulse"></div>
+                          </div>
+                        </CardHeader>
+                        <CardFooter className="flex justify-between pb-3">
+                          <div className="h-5 w-1/3 bg-gray-200 rounded animate-pulse"></div>
+                          <div className="h-5 w-1/4 bg-gray-200 rounded animate-pulse"></div>
+                        </CardFooter>
+                      </Card>
+                    ))}
+                  </div>
+                ) : upcomingEvents.length > 0 ? (
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {upcomingEvents.map((event) => (
                       <Card key={event.id} className="overflow-hidden">
@@ -254,11 +285,23 @@ export const VolunteerDashboard = () => {
                           <CardDescription>
                             <div className="flex items-center gap-1">
                               <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span>{event.date}</span>
+                              <span>{new Date(event.start_date).toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                day: 'numeric', 
+                                year: 'numeric' 
+                              })}</span>
                             </div>
                             <div className="flex items-center gap-1 mt-1">
                               <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span>{event.time}</span>
+                              <span>{new Date(event.start_date).toLocaleTimeString('en-US', { 
+                                hour: 'numeric', 
+                                minute: 'numeric', 
+                                hour12: true 
+                              })} - {new Date(event.end_date).toLocaleTimeString('en-US', { 
+                                hour: 'numeric', 
+                                minute: 'numeric', 
+                                hour12: true 
+                              })}</span>
                             </div>
                             <div className="flex items-start gap-1 mt-1">
                               <MapPin className="h-3.5 w-3.5 text-muted-foreground mt-0.5" />
@@ -268,233 +311,35 @@ export const VolunteerDashboard = () => {
                         </CardHeader>
                         <CardFooter className="flex justify-between pb-3">
                           <Badge variant={event.status === 'registered' ? 'default' : 'outline'}>
-                            {event.status === 'registered' ? 'Registered' : 'Open for Registration'}
+                            {event.status === 'Active' ? 'Upcoming' : event.status}
                           </Badge>
-                          <Button variant="ghost" size="sm">
-                            Details
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link to={`/volunteer/events/${event.id}`}>
+                              Details
+                            </Link>
                           </Button>
                         </CardFooter>
                       </Card>
                     ))}
                   </div>
-                  <div className="flex justify-center">
-                    <Button variant="outline">
-                      Browse More Events
-                      <ExternalLink className="h-4 w-4 ml-2" />
-                    </Button>
-                  </div>
-                </TabsContent>
-
-                {/* Tasks Tab */}
-                <TabsContent value="tasks" className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Upcoming Tasks</CardTitle>
-                        <CardDescription>
-                          Your assigned tasks for upcoming events
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          {assignedTasks.filter(task => task.status === 'upcoming').map((task) => (
-                            <div key={task.id} className="border rounded-lg p-3">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <h3 className="font-semibold">{task.title}</h3>
-                                  <div className="text-sm mt-1">{task.description}</div>
-                                  <div className="text-sm text-muted-foreground mt-1">
-                                    <Badge variant="outline" className="mr-2">{task.eventTitle}</Badge>
-                                    {task.date} | {task.time}
-                                  </div>
-                                </div>
-                                <Badge>{task.status}</Badge>
-                              </div>
-                            </div>
-                          ))}
-                          {assignedTasks.filter(task => task.status === 'upcoming').length === 0 && (
-                            <div className="text-center py-6 text-muted-foreground">
-                              No upcoming tasks assigned.
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Completed Tasks</CardTitle>
-                        <CardDescription>
-                          Tasks you have completed
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          {assignedTasks.filter(task => task.status === 'completed').map((task) => (
-                            <div key={task.id} className="border rounded-lg p-3">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <h3 className="font-semibold">{task.title}</h3>
-                                  <div className="text-sm mt-1">{task.description}</div>
-                                  <div className="text-sm text-muted-foreground mt-1">
-                                    <Badge variant="outline" className="mr-2">{task.eventTitle}</Badge>
-                                    {task.date} | {task.time}
-                                  </div>
-                                </div>
-                                <Badge variant="secondary">{task.status}</Badge>
-                              </div>
-                            </div>
-                          ))}
-                          {assignedTasks.filter(task => task.status === 'completed').length === 0 && (
-                            <div className="text-center py-6 text-muted-foreground">
-                              No completed tasks yet.
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
-
-                {/* Badges Tab */}
-                <TabsContent value="badges" className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-3">
-                    {badges.map((badge) => (
-                      <Card key={badge.id}>
-                        <CardHeader className="pb-2">
-                          <div className="flex justify-between items-start">
-                            <CardTitle className="text-lg">{badge.name}</CardTitle>
-                            <div className={`w-12 h-12 flex items-center justify-center text-2xl rounded-full ${badge.color}`}>
-                              {badge.icon}
-                            </div>
-                          </div>
-                          <CardDescription>
-                            {badge.description}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardFooter className="pt-2">
-                          <div className="text-xs text-muted-foreground">
-                            Earned on {badge.date}
-                          </div>
-                        </CardFooter>
-                      </Card>
-                    ))}
-                    <Card className="flex flex-col items-center justify-center p-6 border-dashed">
-                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-2">
-                        <Award className="h-6 w-6 text-muted-foreground" />
-                      </div>
-                      <h3 className="font-medium mb-1">More badges await!</h3>
-                      <p className="text-sm text-muted-foreground text-center">
-                        Participate in more events to unlock additional badges and achievements.
-                      </p>
-                    </Card>
-                  </div>
-                </TabsContent>
-
-                {/* Progress Tab */}
-                <TabsContent value="progress" className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Volunteer Hours</CardTitle>
-                        <CardDescription>
-                          Your volunteering hours over time
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="h-[300px]">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={activityData}>
-                              <Bar dataKey="hours" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Skills Development</CardTitle>
-                        <CardDescription>
-                          Track your skill progression
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <div className="text-sm font-medium">Teaching</div>
-                              <div className="text-sm text-muted-foreground">Beginner</div>
-                            </div>
-                            <Progress value={30} max={100} className="h-2" />
-                          </div>
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <div className="text-sm font-medium">Technology</div>
-                              <div className="text-sm text-muted-foreground">Intermediate</div>
-                            </div>
-                            <Progress value={60} max={100} className="h-2" />
-                          </div>
-                          <div className="pt-4">
-                            <h3 className="text-sm font-medium mb-2">Suggested Skill Development</h3>
-                            <div className="space-y-2">
-                              <div className="p-2 border rounded-md">
-                                <div className="font-medium">Event Management</div>
-                                <div className="text-sm text-muted-foreground">Participate in event organization to develop this skill</div>
-                              </div>
-                              <div className="p-2 border rounded-md">
-                                <div className="font-medium">Sports Coaching</div>
-                                <div className="text-sm text-muted-foreground">Assist in sports events to develop coaching skills</div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
+                ) : (
                   <Card>
-                    <CardHeader>
-                      <CardTitle>Feedback & Recognition</CardTitle>
-                      <CardDescription>
-                        Feedback received from event organizers
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {feedbackData.length > 0 ? (
-                        <div className="space-y-4">
-                          {feedbackData.map((feedback) => (
-                            <div key={feedback.id} className="border rounded-lg p-4">
-                              <div className="flex justify-between items-start mb-2">
-                                <h3 className="font-semibold">{feedback.eventTitle}</h3>
-                                <div className="flex">
-                                  {[...Array(5)].map((_, i) => (
-                                    <svg 
-                                      key={i} 
-                                      className={`w-4 h-4 ${i < feedback.rating ? 'text-yellow-400' : 'text-gray-300'}`} 
-                                      fill="currentColor" 
-                                      viewBox="0 0 20 20"
-                                    >
-                                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                                    </svg>
-                                  ))}
-                                </div>
-                              </div>
-                              <div className="text-sm text-muted-foreground mb-2">
-                                {feedback.date}
-                              </div>
-                              <p className="text-sm">
-                                "{feedback.comment}"
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-8 text-muted-foreground">
-                          No feedback received yet. Feedback will appear here after completing volunteer activities.
-                        </div>
-                      )}
+                    <CardContent className="flex flex-col items-center justify-center py-8">
+                      <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
+                      <p className="text-lg font-medium mb-2">No upcoming events</p>
+                      <p className="text-sm text-muted-foreground mb-4 text-center">
+                        There are no upcoming events scheduled at the moment.
+                      </p>
+                      <Button variant="outline" asChild>
+                        <Link to="/volunteer/events">
+                          Browse All Events
+                        </Link>
+                      </Button>
                     </CardContent>
                   </Card>
-                </TabsContent>
-              </Tabs>
+                )}
+              </div>
+
             </div>
           </div>
         </main>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/authContext';
-import { Loader2 } from 'lucide-react';
+import LoadingSpinner from './LoadingSpinner';
 
 type ProtectedRouteProps = {
   children: React.ReactNode;
@@ -62,9 +62,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // Show loader while checking authentication
   if (loading || !initialized) {
     return (
-      <div className="h-screen w-full flex flex-col items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-red-600" />
-        <p className="mt-4 text-lg">Loading...</p>
+      <div className="flex h-screen items-center justify-center">
+        <LoadingSpinner size="large" text="Loading..." color="primary" />
       </div>
     );
   }

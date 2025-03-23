@@ -638,23 +638,42 @@ export const registerVolunteerForEvent = async (eventId: string, volunteerId: st
     // Ensure user is authenticated first
     await ensureAuthenticated();
     
+    // First check if the volunteer is already registered
+    const { isRegistered, error: checkError } = await checkEventRegistration(eventId, volunteerId);
+    
+    if (checkError) throw checkError;
+    
+    if (isRegistered) {
+      return { 
+        success: false, 
+        error: new Error('Volunteer is already registered for this event') 
+      };
+    }
+    
+    // Now register the volunteer
     const { data, error } = await supabase
       .from('event_signup')
       .insert([{
         event_id: eventId,
         volunteer_id: volunteerId,
-        status: 'registered',
-        ...registrationData,
         created_at: new Date().toISOString(),
+        status: 'registered',
+        attended: false,
+        hours: 0,
+        ...registrationData
       }])
       .select()
       .single();
     
     if (error) throw error;
-    return { data, error: null };
+    
+    // Check if this is their first event and award badge if it is
+    await checkAndAwardFirstEventBadge(volunteerId);
+    
+    return { success: true, data, error: null };
   } catch (error) {
-    console.error('Error registering volunteer for event:', error);
-    return { data: null, error };
+    console.error(`Error registering volunteer ${volunteerId} for event ${eventId}:`, error);
+    return { success: false, error };
   }
 };
 
@@ -828,21 +847,258 @@ export const updateTask = async (id: string, taskData) => {
   }
 };
 
-export const deleteTask = async (id: string) => {
+export const deleteTask = async (taskId: string) => {
   try {
     // Ensure user is authenticated first
     await ensureAuthenticated();
     
-    const { data, error } = await supabase
+    // First delete any task assignments
+    try {
+      const { error: assignmentDeleteError } = await supabase
+        .from('task_assignment')
+        .delete()
+        .eq('task_id', taskId);
+      
+      if (assignmentDeleteError) {
+        console.log('Error deleting task assignments, continuing:', assignmentDeleteError);
+      }
+    } catch (error) {
+      console.log('Error with task assignment deletion, continuing:', error);
+    }
+    
+    // Delete any task feedback
+    try {
+      const { error: feedbackDeleteError } = await supabase
+        .from('task_feedback')
+        .delete()
+        .eq('task_id', taskId);
+      
+      if (feedbackDeleteError && feedbackDeleteError.code !== 'PGRST116') {
+        console.log('Error deleting task feedback, continuing:', feedbackDeleteError);
+      }
+    } catch (error) {
+      console.log('Error with task feedback deletion, continuing:', error);
+    }
+    
+    // Now delete the task itself
+    const { error } = await supabase
       .from('task')
       .delete()
-      .eq('id', id);
+      .eq('id', taskId);
     
     if (error) throw error;
+    
     return { success: true, error: null };
   } catch (error) {
-    console.error(`Error deleting task with id ${id}:`, error);
+    console.error(`Error deleting task with id ${taskId}:`, error);
     return { success: false, error };
+  }
+};
+
+// Get task by ID with related event info
+export const getTaskById = async (taskId: string) => {
+  try {
+    const { data: task, error: taskError } = await supabase
+      .from('task')
+      .select('*, event:event_id(*)')
+      .eq('id', taskId)
+      .single();
+    
+    if (taskError) throw taskError;
+    
+    return { data: task, error: null };
+  } catch (error) {
+    console.error(`Error fetching task with id ${taskId}:`, error);
+    return { data: null, error };
+  }
+};
+
+// Get tasks assigned to a volunteer
+export const getTasksForVolunteer = async (volunteerId: string) => {
+  try {
+    // First try to get task assignments
+    const { data: assignments, error: assignmentError } = await supabase
+      .from('task_assignment')
+      .select('task_id, status')
+      .eq('volunteer_id', volunteerId);
+    
+    if (assignmentError) throw assignmentError;
+    
+    if (!assignments || assignments.length === 0) {
+      return { data: [], error: null };
+    }
+    
+    // Get task details for each assignment
+    const taskIds = assignments.map(a => a.task_id);
+    const { data: tasks, error: taskError } = await supabase
+      .from('task')
+      .select('*, event:event_id(title, start_date, end_date, image_url)')
+      .in('id', taskIds);
+    
+    if (taskError) throw taskError;
+    
+    // Merge task data with assignment status
+    const enrichedTasks = tasks.map(task => {
+      const assignment = assignments.find(a => a.task_id === task.id);
+      return {
+        ...task,
+        assignment_status: assignment ? assignment.status : 'assigned'
+      };
+    });
+    
+    return { data: enrichedTasks, error: null };
+  } catch (error) {
+    console.error(`Error fetching tasks for volunteer ${volunteerId}:`, error);
+    return { data: [], error };
+  }
+};
+
+// Submit task feedback from volunteer
+export const submitTaskFeedback = async (taskId: string, volunteerId: string, feedbackData: any) => {
+  try {
+    // First verify the task exists and is assigned to this volunteer
+    const { data: assignment, error: assignmentError } = await supabase
+      .from('task_assignment')
+      .select('id')
+      .eq('task_id', taskId)
+      .eq('volunteer_id', volunteerId)
+      .single();
+    
+    if (assignmentError) {
+      return { success: false, error: new Error('Task not found or not assigned to this volunteer') };
+    }
+    
+    // Now insert the feedback
+    const { data, error } = await supabase
+      .from('task_feedback')
+      .insert({
+        task_id: taskId,
+        volunteer_id: volunteerId,
+        feedback: feedbackData.feedback,
+        rating: feedbackData.rating,
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    // Update the task assignment status
+    await supabase
+      .from('task_assignment')
+      .update({ status: 'completed' })
+      .eq('task_id', taskId)
+      .eq('volunteer_id', volunteerId);
+    
+    return { success: true, data, error: null };
+  } catch (error) {
+    console.error(`Error submitting feedback for task ${taskId}:`, error);
+    return { success: false, error };
+  }
+};
+
+// Cancel a volunteer's registration for an event
+export const cancelEventRegistration = async (eventId: string, volunteerId: string) => {
+  try {
+    // Ensure the event hasn't started yet (can't cancel registration for events that already began)
+    const { data: eventData, error: eventError } = await supabase
+      .from('event')
+      .select('start_date')
+      .eq('id', eventId)
+      .single();
+    
+    if (eventError) throw eventError;
+    
+    const startDate = new Date(eventData.start_date);
+    if (startDate < new Date()) {
+      return { data: null, error: new Error('Cannot cancel registration for an event that has already started') };
+    }
+    
+    // Find and delete the signup
+    const { data, error } = await supabase
+      .from('event_signup')
+      .delete()
+      .eq('event_id', eventId)
+      .eq('volunteer_id', volunteerId);
+    
+    if (error) throw error;
+    
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error canceling event registration:', error);
+    return { data: null, error };
+  }
+};
+
+// Check if a volunteer is registered for an event
+export const checkEventRegistration = async (eventId: string, volunteerId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('event_signup')
+      .select('id, status')
+      .eq('event_id', eventId)
+      .eq('volunteer_id', volunteerId)
+      .single();
+    
+    if (error && error.code === 'PGRST116') {
+      // Not found - not registered
+      return { 
+        isRegistered: false, 
+        data: null, 
+        error: null 
+      };
+    }
+    
+    if (error) throw error;
+    
+    return { 
+      isRegistered: true, 
+      registrationStatus: data?.status || 'registered',
+      data, 
+      error: null 
+    };
+  } catch (error) {
+    console.error(`Error checking registration for event ${eventId} and volunteer ${volunteerId}:`, error);
+    return { isRegistered: false, data: null, error };
+  }
+};
+
+// Helper function to check and award the first event badge
+const checkAndAwardFirstEventBadge = async (volunteerId: string) => {
+  try {
+    // Count the number of events this volunteer has signed up for
+    const { count, error } = await supabase
+      .from('event_signup')
+      .select('*', { count: 'exact', head: true })
+      .eq('volunteer_id', volunteerId);
+    
+    if (error) throw error;
+    
+    // If this is their first event, award the badge
+    if (count === 1) {
+      // Get current badges
+      const { data: volunteerData, error: volunteerError } = await supabase
+        .from('volunteer')
+        .select('badges')
+        .eq('id', volunteerId)
+        .single();
+      
+      if (volunteerError) throw volunteerError;
+      
+      // Add the first_event badge if not already present
+      const currentBadges = volunteerData.badges || [];
+      if (!currentBadges.includes('first_event')) {
+        const newBadges = [...currentBadges, 'first_event'];
+        
+        // Update the volunteer record
+        await supabase
+          .from('volunteer')
+          .update({ badges: newBadges })
+          .eq('id', volunteerId);
+      }
+    }
+  } catch (error) {
+    console.error('Error checking/awarding first event badge:', error);
   }
 };
 
@@ -1748,5 +2004,117 @@ export const getSkillAnalysis = async (): Promise<{ data: SkillAnalysis[] | null
   } catch (error) {
     console.error('Error analyzing skills gap:', error);
     return { data: null, error };
+  }
+};
+
+// Get volunteer leaderboard
+export const getVolunteerLeaderboard = async () => {
+  try {
+    // Use a simple query that doesn't rely on the status column
+    const { data, error } = await supabase
+      .from('volunteer')
+      .select(`
+        id,
+        first_name,
+        last_name,
+        profile_image,
+        badges,
+        event_signup:event_signup (
+          id,
+          event_id,
+          attended,
+          hours
+        )
+      `)
+      .eq('status', 'Active');
+    
+    if (error) throw error;
+    
+    // Process the data in JavaScript instead of relying on the stored function
+    const leaderboardData = data.map(vol => {
+      const eventSignups = vol.event_signup || [];
+      const attendedEvents = eventSignups.filter(signup => signup.attended);
+      const totalHours = attendedEvents.reduce((sum, signup) => sum + (signup.hours || 0), 0);
+      const eventsAttended = attendedEvents.length;
+      const badgeCount = vol.badges ? vol.badges.length : 0;
+      
+      // Calculate points
+      const points = eventsAttended * 20 + badgeCount * 50;
+      
+      return {
+        id: vol.id,
+        first_name: vol.first_name,
+        last_name: vol.last_name,
+        profile_image: vol.profile_image,
+        total_hours: totalHours,
+        events_attended: eventsAttended,
+        badges: vol.badges,
+        points,
+        score: 0 // Will be calculated after sorting
+      };
+    });
+    
+    // Sort by points (descending)
+    leaderboardData.sort((a, b) => b.points - a.points);
+    
+    // Add rank and calculate score
+    const maxPoints = leaderboardData.length > 0 ? leaderboardData[0].points : 0;
+    
+    const rankedData = leaderboardData.map((vol, index) => {
+      return {
+        ...vol,
+        rank: index + 1,
+        score: maxPoints > 0 ? Math.round((vol.points / maxPoints) * 100) : 0
+      };
+    });
+    
+    return { data: rankedData, error: null };
+  } catch (error) {
+    console.error('Error fetching volunteer leaderboard:', error);
+    return { data: [], error };
+  }
+};
+
+// Get volunteer rank
+export const getVolunteerRank = async (volunteerId: string) => {
+  try {
+    const { data: leaderboardData, error: leaderboardError } = await getVolunteerLeaderboard();
+    
+    if (leaderboardError) throw leaderboardError;
+    
+    const volunteerRank = leaderboardData.find(vol => vol.id === volunteerId);
+    
+    return { 
+      data: volunteerRank || {
+        id: volunteerId,
+        rank: 0,
+        first_name: '',
+        last_name: '',
+        profile_image: null,
+        total_hours: 0,
+        events_attended: 0,
+        badges: [],
+        points: 0,
+        score: 0
+      }, 
+      error: null 
+    };
+  } catch (error) {
+    console.error(`Error fetching rank for volunteer ${volunteerId}:`, error);
+    return { 
+      data: {
+        id: volunteerId,
+        rank: 0,
+        first_name: '',
+        last_name: '',
+        profile_image: null,
+        total_hours: 0,
+        events_attended: 0,
+        badges: [],
+        points: 0,
+        score: 0
+      }, 
+      error 
+    };
   }
 }; 

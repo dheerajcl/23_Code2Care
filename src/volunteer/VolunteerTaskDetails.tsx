@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/authContext';
 import { Calendar, Clock, MapPin, Users, List, Columns, Tag, User2 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 // Task View Components
 import TaskTable from '../components/TaskTable';
@@ -178,7 +179,17 @@ const VolunteerTaskDetails = () => {
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="h-screen bg-gray-100 flex flex-col vol-dashboard">
+        <Header />
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar />
+          <main className="flex-1 overflow-auto p-8 pt-28 flex items-center justify-center">
+            <LoadingSpinner size="large" text="Loading task details..." color="primary" />
+          </main>
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -10,7 +10,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, Medal } from 'lucide-react';
+import { Trophy, Medal, Award } from 'lucide-react';
+import LoadingSpinner from './LoadingSpinner';
+import { useAuth } from '@/lib/authContext';
 
 interface LeaderboardEntry {
   volunteer_id: string;
@@ -19,6 +21,7 @@ interface LeaderboardEntry {
   total_points: number;
   badge_count: number;
   rank: number;
+  profile_image?: string;
 }
 
 const getRankIcon = (rank: number) => {
@@ -35,10 +38,27 @@ const getRankIcon = (rank: number) => {
 };
 
 export const Leaderboard = () => {
-  const { data: leaderboard, isLoading, error } = useQuery({
+  const { user } = useAuth();
+  
+  // Query for the leaderboard
+  const { data: leaderboard, isLoading: leaderboardLoading, error: leaderboardError } = useQuery({
     queryKey: ['leaderboard'],
     queryFn: () => pointsService.getLeaderboard(10),
+    retryDelay: 1000,
+    retry: 3
   });
+  
+  // Query for the user's rank
+  const { data: userRank, isLoading: rankLoading } = useQuery({
+    queryKey: ['volunteer-rank', user?.id],
+    queryFn: () => user?.id ? pointsService.getVolunteerRank(user.id) : null,
+    enabled: !!user?.id,
+    retryDelay: 1000,
+    retry: 3
+  });
+  
+  const isLoading = leaderboardLoading || rankLoading;
+  const error = leaderboardError;
 
   if (isLoading) {
     return (
@@ -47,9 +67,7 @@ export const Leaderboard = () => {
           <CardTitle>Top Volunteers</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center p-4">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
+          <LoadingSpinner size="medium" text="Loading leaderboard..." />
         </CardContent>
       </Card>
     );
@@ -62,8 +80,8 @@ export const Leaderboard = () => {
           <CardTitle>Top Volunteers</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center text-red-500">
-            Failed to load leaderboard
+          <div className="text-center text-red-500 py-4">
+            Failed to load leaderboard. Please try again later.
           </div>
         </CardContent>
       </Card>
@@ -72,8 +90,15 @@ export const Leaderboard = () => {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Top Volunteers</CardTitle>
+        {userRank && (
+          <div className="flex items-center gap-2 bg-blue-50 p-2 rounded-md">
+            <Award className="h-5 w-5 text-blue-500" />
+            <span className="text-sm font-medium">Your Rank: {userRank.rank}</span>
+            <span className="text-sm text-muted-foreground">({userRank.points} points)</span>
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         <Table>
@@ -86,18 +111,29 @@ export const Leaderboard = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {leaderboard?.map((entry: LeaderboardEntry) => (
-              <TableRow key={entry.volunteer_id}>
-                <TableCell className="font-medium">
-                  {getRankIcon(entry.rank)}
+            {leaderboard && leaderboard.length > 0 ? (
+              leaderboard.map((entry: LeaderboardEntry) => (
+                <TableRow 
+                  key={entry.volunteer_id}
+                  className={user?.id === entry.volunteer_id ? "bg-blue-50" : ""}
+                >
+                  <TableCell className="font-medium">
+                    {getRankIcon(entry.rank)}
+                  </TableCell>
+                  <TableCell>
+                    {entry.first_name} {entry.last_name}
+                  </TableCell>
+                  <TableCell className="text-right">{entry.total_points}</TableCell>
+                  <TableCell className="text-right">{entry.badge_count}</TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center py-4 text-muted-foreground">
+                  No volunteers on the leaderboard yet
                 </TableCell>
-                <TableCell>
-                  {entry.first_name} {entry.last_name}
-                </TableCell>
-                <TableCell className="text-right">{entry.total_points}</TableCell>
-                <TableCell className="text-right">{entry.badge_count}</TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </CardContent>
