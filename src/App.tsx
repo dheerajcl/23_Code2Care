@@ -36,6 +36,8 @@ import CreateEvent from "./admin/pages/CreateEvent";
 import EditEvent from "./admin/pages/EditEvent";
 import VolunteerTaskDetails from "./volunteer/VolunteerTaskDetails";
 import CreateTask from "./admin/pages/CreateTask";
+import ParticipantRegistration from "./pages/ParticipantRegistration";
+import ParticipantRegistrationSuccess from "./pages/ParticipantRegistrationSuccess";
 
 function App() {
 const queryClient = new QueryClient();
@@ -48,11 +50,13 @@ const queryClient = new QueryClient();
         <AnimatePresence mode="wait">
           <Routes>
                 {/* Public routes */}
-            <Route path="/" element={<Index />} />
-            <Route path="/events" element={<Events />} />
-            <Route path="/about" element={<About />} />
+                <Route path="/" element={<Index />} />
+                <Route path="/events" element={<Events />} />
+                <Route path="/about" element={<About />} />
                 <Route path="/donate" element={<DonationPage />} />
-            <Route path="/register" element={<Register />} />
+                <Route path="/events/participant" element={<ParticipantRegistration />} />
+                <Route path="/events/participant/success" element={<ParticipantRegistrationSuccess />} />
+                <Route path="/register" element={<Register />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/join-us" element={<JoinUs />} />
                 <Route path="/participant-form" element={<ParticipantForm />} />

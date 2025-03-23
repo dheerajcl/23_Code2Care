@@ -86,7 +86,7 @@ const Login: React.FC = () => {
   };
   
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col mt-12">
       <LandingHeader />
       
       <main className="flex-grow flex items-center justify-center py-16 px-4">
