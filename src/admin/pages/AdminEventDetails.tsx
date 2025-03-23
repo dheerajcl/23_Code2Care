@@ -283,7 +283,6 @@ const AdminEventDetails = () => {
     navigate(`/admin/events/${id}/edit`);
   };
   
-  // Handle done button click - redirect to events page
   const handleDone = () => {
     navigate('/admin/events');
   };
@@ -322,11 +321,6 @@ const AdminEventDetails = () => {
   // Add this function to check if event has ended
   const isEventEnded = (endDate: string) => {
     return new Date(endDate) < new Date();
-  };
-
-  // Add this function to handle viewing feedback
-  const handleViewFeedback = () => {
-    navigate(`/admin/events/${id}/feedback`);
   };
 
   if (error) {
@@ -379,8 +373,18 @@ const AdminEventDetails = () => {
           <div className="container mx-auto py-6">
             {/* Header with buttons */}
             <div className="flex justify-between items-center mb-6">
-              <h1 className="text-3xl font-bold">{event?.title || 'Loading...'}</h1>
-              <div className="flex gap-3">
+              <div>
+                <h1 className="text-3xl font-bold">{event?.title || 'Loading...'}</h1>
+                <div className="flex items-center mt-2">
+                  <Badge variant={event?.status === 'scheduled' ? 'secondary' : 'outline'}>
+                    {event?.status}
+                  </Badge>
+                  <span className="ml-2 text-muted-foreground">
+                    {formatDate(event?.start_date)}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
                 {isEventEnded(event?.end_date) && (
                   <Button 
                     variant="secondary" 

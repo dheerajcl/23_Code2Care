@@ -34,7 +34,7 @@ import VolunteerEvents from "./volunteer/VolunteerEvents";
 import CreateEvent from "./admin/pages/CreateEvent";
 import EditEvent from "./admin/pages/EditEvent";
 import VolunteerTaskDetails from "./volunteer/VolunteerTaskDetails";
-import AdminEventFeedback from "./admin/pages/AdminEventFeedback";
+import CreateTask from "./admin/pages/CreateTask";
 
 function App() {
 const queryClient = new QueryClient();
@@ -101,10 +101,17 @@ const queryClient = new QueryClient();
                   }
                 />
                 <Route
+<<<<<<< HEAD
                   path="/admin/events/:id/feedback"
                   element={
                     <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
                       <AdminEventFeedback />
+=======
+                  path="/admin/events/:id/createtask"
+                  element={
+                    <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                      <CreateTask />
+>>>>>>> 53550fd2f115c5ebab953b3e3a0aee62c3016ef3
                     </ProtectedRoute>
                   }
                 />
