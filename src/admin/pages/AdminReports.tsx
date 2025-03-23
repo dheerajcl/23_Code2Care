@@ -1,357 +1,356 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
+  Legend, PieChart, Pie, Cell, ResponsiveContainer 
+} from 'recharts';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import AdminSidebar from '../components/AdminSidebar';
+import AdminHeader from '../components/AdminHeader';
+import { getReportData, ReportData } from '@/services/database.service';
 import { useAuth } from "@/lib/authContext";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { CSVLink } from "react-csv";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import { BarChart, Bar, PieChart, Pie, XAxis, YAxis, Tooltip, Legend, Cell, ResponsiveContainer } from "recharts";
-import AdminHeader from "../components/AdminHeader";
-import AdminSidebar from "../components/AdminSidebar";
 
+// UI components
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 
-// Mock Data
-const topEvents = [
-  { name: "Community Clean-Up", participants: 120 },
-  { name: "Health Camp", participants: 95 },
-  { name: "Education Workshop", participants: 80 },
-];
-
-const frequentVolunteers = [
-  { name: "Priya Sharma", events: 15 },
-  { name: "Arjun Mehta", events: 12 },
-  { name: "Kavita Reddy", events: 10 },
-];
-
-const retentionRate = 78; // percentage
-
-const skillData = [
-  { skill: "Teaching", available: 40, demand: 50 },
-  { skill: "Technology", available: 35, demand: 60 },
-  { skill: "Event Coordination", available: 20, demand: 30 },
-  
-];
-
-const eventTasks = [
-  { event: "Community Clean-Up", completed: 40, pending: 5, overdue: 2 },
-  { event: "Health Camp", completed: 30, pending: 10, overdue: 1 },
-  { event: "Education Workshop", completed: 25, pending: 3, overdue: 0 },
-];
-
-const volunteerEngagement = [
-  { 
-    name: "Priya Sharma", 
-    frequency: 15,  // number of events participated
-    variety: 4,     // different types of events participated
-    timelyCompletion: 95, // percentage of timely task completion
-    feedbackRating: 4.8,  // average feedback rating (out of 5)
-  },
-  { 
-    name: "Arjun Mehta", 
-    frequency: 12,  
-    variety: 3,     
-    timelyCompletion: 88, 
-    feedbackRating: 4.5,  
-  },
-  { 
-    name: "Kavita Reddy", 
-    frequency: 10,  
-    variety: 3,     
-    timelyCompletion: 90, 
-    feedbackRating: 4.2,  
-  },
-];
-
-const locationData = [
-  { location: "Bengaluru", volunteers: 45, events: 10 },
-  { location: "Chennai", volunteers: 30, events: 8 },
-  { location: "Hyderabad", volunteers: 25, events: 6 },
-  { location: "Mumbai", volunteers: 20, events: 4 },
-  { location: "Delhi", volunteers: 35, events: 7 },
-];
-
-
-
-
-const COLORS = ["#8884d8", "#82ca9d", "#ffc658"];
-
-const AdminReports: React.FC = () => {
+const AdminReports = () => {
   const { user, logout } = useAuth();
-
-  const handleLogout = async () => {
-    await logout();
-  };
-
-  const calculateEngagementScore = (volunteer: any) => {
-    const freqScore = Math.min(volunteer.frequency * 3, 30); // Max 30 points
-    const varietyScore = Math.min(volunteer.variety * 10, 20); // Max 20 points
-    const completionScore = (volunteer.timelyCompletion / 100) * 25; // Max 25 points
-    const feedbackScore = (volunteer.feedbackRating / 5) * 25; // Max 25 points
+  const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-    return Math.round(freqScore + varietyScore + completionScore + feedbackScore);
-  };
-
+  // Colors for charts
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
   
-
-  const generatePDF = () => {
-    const doc = new jsPDF() as jsPDF & { lastAutoTable: { finalY: number } };
-    doc.setFontSize(18);
-    doc.text("Volunteer & Event Reports", 14, 20);
-
-    // Top Events
-    autoTable(doc, {
-      startY: 30,
-      head: [["Event", "Participants"]],
-      body: topEvents.map((e) => [e.name, e.participants]),
-      theme: "striped",
-    });
-
-    const firstTableY = doc.lastAutoTable.finalY;
-
-    // Frequent Volunteers
-    autoTable(doc, {
-      startY: firstTableY + 10,
-      head: [["Volunteer", "Events Participated"]],
-      body: frequentVolunteers.map((v) => [v.name, v.events]),
-      theme: "striped",
-    });
-
-    const secondTableY = doc.lastAutoTable.finalY;
-
-
-    autoTable(doc, {
-      startY: secondTableY + 10,
-      head: [["Event", "Completed", "Pending", "Overdue"]],
-      body: eventTasks.map((t) => [t.event, t.completed, t.pending, t.overdue]),
-      theme: "striped",
-    });
-
-    const thirdTableY = doc.lastAutoTable.finalY;
-
-    const fourthTableY = doc.lastAutoTable.finalY;
-
-    autoTable(doc, {
-      startY: fourthTableY + 10,
-      head: [["Volunteer", "Frequency", "Variety", "Timely Completion (%)", "Feedback Rating", "Engagement Score"]],
-      body: volunteerEngagement.map((v) => [
-        v.name,
-        v.frequency,
-        v.variety,
-        v.timelyCompletion + "%",
-        v.feedbackRating,
-        calculateEngagementScore(v)]),
-        theme: "striped",
-      });
-
-    const fifthTableY = doc.lastAutoTable.finalY;
-
-    autoTable(doc, {
-      startY: fifthTableY + 10,
-      head: [["Location", "Volunteers", "Events"]],
-      body: locationData.map((l) => [l.location, l.volunteers, l.events]),
-      theme: "striped",
-    });
-
-
-
-    doc.setFontSize(14);
-    doc.text(`Volunteer Retention Rate: ${retentionRate}%`, 14, fifthTableY + 20);
-
-    doc.save("Volunteer_Report.pdf");
-
+  useEffect(() => {
+    const fetchReportData = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await getReportData();
+        if (error) throw error;
+        
+        setReportData(data);
+      } catch (err) {
+        console.error('Error fetching report data:', err);
+        setError('Failed to load report data. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
     
-  };
-
-  const csvData = [
-    ["Event", "Participants"],
-    ...topEvents.map((e) => [e.name, e.participants]),
-    [],
-    ["Volunteer", "Events Participated"],
-    ...frequentVolunteers.map((v) => [v.name, v.events]),
-    [],
-    ["Volunteer Retention Rate", `${retentionRate}%`],
-    [], 
-    ["Event Task Completion Report"],
-    ["Event", "Completed", "Pending", "Overdue"],
-    ...eventTasks.map((t) => [t.event, t.completed, t.pending, t.overdue]),
-    [], 
-    ["Volunteer Engagement Score"],
-    ["Volunteer", "Frequency", "Variety", "Timely Completion (%)", "Feedback Rating", "Engagement Score"],
-    ...volunteerEngagement.map((v) => [
-      v.name, 
-      v.frequency, 
-      v.variety, 
-      v.timelyCompletion + "%",
-      v.feedbackRating,
-      calculateEngagementScore(v)]),
-
-      [],
-      ["Location-Wise Volunteer & Event Report"],
-      ["Location", "Volunteers", "Events"],
-      ...locationData.map((l) => [l.location, l.volunteers, l.events]),
-      
-
-  ];
-
+    fetchReportData();
+  }, []);
   
-
+  const handleGeneratePDF = () => {
+    if (!reportData) return;
+    
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text('Volunteer Management System - Reports', 14, 22);
+    doc.setFontSize(11);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+    
+    // Top Events
+    doc.setFontSize(14);
+    doc.text('Top Events by Participation', 14, 45);
+    const topEventsData = reportData.topEvents.map(event => [event.title, event.participant_count.toString()]);
+    
+    autoTable(doc, {
+      startY: 50,
+      head: [['Event Name', 'Number of Participants']],
+      body: topEventsData
+    });
+    
+    // Most Frequent Volunteers
+    const finalY = (doc as any).lastAutoTable.finalY || 120;
+    doc.text('Most Frequent Volunteers', 14, finalY + 10);
+    const frequentVolunteersData = reportData.frequentVolunteers.map(vol => [vol.volunteer_name, vol.event_count.toString()]);
+    
+    autoTable(doc, {
+      startY: finalY + 15,
+      head: [['Volunteer Name', 'Number of Events']],
+      body: frequentVolunteersData
+    });
+    
+    // Volunteer Retention
+    doc.text(`Volunteer Retention Rate: ${reportData.retentionRate}%`, 14, (doc as any).lastAutoTable.finalY + 10);
+    
+    // Add more sections as needed
+    
+    doc.save('volunteer-system-reports.pdf');
+  };
+  
+  // Render loading state
+  if (loading) {
+    return (
+      <div className="h-screen bg-gray-100 flex flex-col">
+        <AdminHeader user={user} handleLogout={logout} />
+        <div className="flex flex-1 overflow-hidden">
+          <AdminSidebar />
+          <main className="flex-1 overflow-auto p-8">
+            <div className="text-center py-10">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+              <p className="mt-4">Loading reports data...</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+  
+  // Render error state
+  if (error) {
+    return (
+      <div className="h-screen bg-gray-100 flex flex-col">
+        <AdminHeader user={user} handleLogout={logout} />
+        <div className="flex flex-1 overflow-hidden">
+          <AdminSidebar />
+          <main className="flex-1 overflow-auto p-8">
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+            <Button variant="default" className="mt-4" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          </main>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className="h-screen bg-gray-100 flex flex-col">
-      <AdminHeader user={user} handleLogout={handleLogout} />
+      <AdminHeader user={user} handleLogout={logout} />
       <div className="flex flex-1 overflow-hidden">
         <AdminSidebar />
         <main className="flex-1 overflow-auto p-8">
-          <h1 className="text-3xl font-bold mb-6">Advanced Insights & Reports</h1>
-
-          {/* Charts */}
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold">Advanced Insights & Reports</h1>
+            <Button onClick={handleGeneratePDF}>Generate PDF Report</Button>
+          </div>
+          
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Top Events */}
             <Card>
               <CardHeader>
-                <CardTitle>Top 3 Events by Participation</CardTitle>
+                <CardTitle>Top Events by Participation</CardTitle>
               </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={topEvents}>
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="participants" fill="#6366f1" />
-                  </BarChart>
-                </ResponsiveContainer>
+              <CardContent className="h-[300px]">
+                {reportData?.topEvents && reportData.topEvents.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={reportData.topEvents.slice(0, 5)}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 50 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="title" angle={-45} textAnchor="end" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="participant_count" name="Participants" fill="#8884d8" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-gray-500 text-center py-4">No event data available</p>
+                )}
               </CardContent>
             </Card>
-
+            
+            {/* Frequent Volunteers */}
             <Card>
               <CardHeader>
                 <CardTitle>Most Frequent Volunteers</CardTitle>
               </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <PieChart>
-                    <Pie data={frequentVolunteers} dataKey="events" nameKey="name" outerRadius={100}>
-                      {frequentVolunteers.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Legend />
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+              <CardContent className="h-[300px]">
+                {reportData?.frequentVolunteers && reportData.frequentVolunteers.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={reportData.frequentVolunteers.slice(0, 5)}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 50 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="volunteer_name" angle={-45} textAnchor="end" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="event_count" name="Events Attended" fill="#82ca9d" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-gray-500 text-center py-4">No volunteer data available</p>
+                )}
               </CardContent>
             </Card>
-
-            <Card className="mt-6">
-            <CardHeader>
-              <CardTitle>Event Task Completion Report</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={eventTasks}>
-                  <XAxis dataKey="event" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="completed" stackId="a" fill="#4ade80" name="Completed" />
-                  <Bar dataKey="pending" stackId="a" fill="#facc15" name="Pending" />
-                  <Bar dataKey="overdue" stackId="a" fill="#f87171" name="Overdue" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle>Location-Wise Volunteer & Event Report</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={locationData}>
-                  <XAxis dataKey="location" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="volunteers" fill="#60a5fa" name="Volunteers" />
-                  <Bar dataKey="events" fill="#34d399" name="Events" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-          </div>
-
-          {/* Retention & Skills */}
-          <div className="grid gap-4 md:grid-cols-2 mt-4">
+            
+            {/* Retention Rate */}
             <Card>
               <CardHeader>
                 <CardTitle>Volunteer Retention Rate</CardTitle>
+                <CardDescription>
+                  Percentage of volunteers who participated in more than one event
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="text-2xl">{retentionRate}%</p>
+              <CardContent className="flex flex-col items-center justify-center h-40">
+                <div className="text-5xl font-bold text-primary">
+                  {reportData?.retentionRate}%
+                </div>
               </CardContent>
             </Card>
-
+            
+            {/* Event Tasks */}
             <Card>
               <CardHeader>
-                <CardTitle>Skill Gap Analysis</CardTitle>
+                <CardTitle>Event Task Completion</CardTitle>
               </CardHeader>
-              <CardContent>
-                {skillData.map((skill) => (
-                  <div key={skill.skill} className="mb-2">
-                    <p>
-                      <strong>{skill.skill}</strong>
-                    </p>
-                    <p>
-                      Available: {skill.available} | Demand: {skill.demand}
-                    </p>
-                  </div>
-                ))}
+              <CardContent className="h-[300px]">
+                {reportData?.eventTasks && reportData.eventTasks.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={reportData.eventTasks.slice(0, 5)}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 50 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="event_name" angle={-45} textAnchor="end" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="completed_tasks" name="Completed" stackId="a" fill="#4ade80" />
+                      <Bar dataKey="pending_tasks" name="Pending" stackId="a" fill="#facc15" />
+                      <Bar dataKey="overdue_tasks" name="Overdue" stackId="a" fill="#f87171" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-gray-500 text-center py-4">No task data available</p>
+                )}
+              </CardContent>
+            </Card>
+            
+            {/* Location Data */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Location-based Analytics</CardTitle>
+              </CardHeader>
+              <CardContent className="h-[300px]">
+                {reportData?.locationData && reportData.locationData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={reportData.locationData.slice(0, 5)}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 50 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="location" angle={-45} textAnchor="end" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="volunteer_count" name="Volunteers" fill="#8884d8" />
+                      <Bar dataKey="event_count" name="Events" fill="#82ca9d" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-gray-500 text-center py-4">No location data available</p>
+                )}
+              </CardContent>
+            </Card>
+            
+            {/* Skill Distribution */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Skill Distribution</CardTitle>
+              </CardHeader>
+              <CardContent className="h-[300px]">
+                {reportData?.skillData && reportData.skillData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={reportData.skillData.slice(0, 5)}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="available"
+                        nameKey="skill"
+                      >
+                        {reportData.skillData.slice(0, 5).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-gray-500 text-center py-4">No skill data available</p>
+                )}
               </CardContent>
             </Card>
           </div>
-
+          
+          {/* Volunteer Engagement */}
           <Card className="mt-6">
             <CardHeader>
-              <CardTitle>Volunteer Engagement Scores</CardTitle>
+              <CardTitle>Top Volunteer Engagement Scores</CardTitle>
             </CardHeader>
             <CardContent>
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b text-left">
-                    <th className="font-medium p-3">Volunteer</th>
-                    <th className="font-medium p-3">Frequency</th>
-                    <th className="font-medium p-3">Variety</th>
-                    <th className="font-medium p-3">Timely Completion (%)</th>
-                    <th className="font-medium p-3">Feedback Rating</th>
-                    <th className="font-medium p-3">Engagement Score</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {volunteerEngagement.map((v) => (
-                    <tr key={v.name} className="border-b">
-                      <td className="p-3">{v.name}</td>
-                      <td className="p-3">{v.frequency}</td>
-                      <td className="p-3">{v.variety}</td>
-                      <td className="p-3">{v.timelyCompletion}%</td>
-                      <td className="p-3">{v.feedbackRating}</td>
-                      <td className="p-3 font-bold">{calculateEngagementScore(v)}</td>
-                    </tr>
+              {reportData?.volunteerEngagement && reportData.volunteerEngagement.length > 0 ? (
+                <div className="space-y-4">
+                  {reportData.volunteerEngagement.slice(0, 5).map((volunteer, index) => (
+                    <div key={index} className="border-b pb-4 last:border-0">
+                      <div className="flex justify-between">
+                        <div>
+                          <h4 className="font-semibold">{volunteer.volunteer_name}</h4>
+                          <div className="text-sm text-gray-500">
+                            Events: {volunteer.event_frequency}, Variety: {volunteer.event_variety}
+                            {volunteer.timely_completion_percentage !== null ? 
+                              `, Task Completion: ${volunteer.timely_completion_percentage.toFixed(0)}%` : 
+                              ', No tasks assigned'}
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-lg font-bold">
+                          Score: {volunteer.engagement_score}/75
+                        </Badge>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-4">No engagement data available</p>
+              )}
             </CardContent>
           </Card>
-
-
-          {/* Download Section */}
+          
           <Card className="mt-6">
             <CardHeader>
               <CardTitle>Download Reports</CardTitle>
             </CardHeader>
             <CardFooter className="flex gap-4">
-              <Button onClick={generatePDF}>Download PDF</Button>
-              <CSVLink data={csvData} filename="Volunteer_Report.csv">
-                <Button variant="outline">Download CSV</Button>
-              </CSVLink>
+              <Button onClick={handleGeneratePDF}>Download PDF</Button>
+              {reportData && (
+                <CSVLink 
+                  data={[
+                    ["Top Events by Participation"],
+                    ["Event", "Participants"],
+                    ...reportData.topEvents.map(e => [e.title, e.participant_count]),
+                    [],
+                    ["Most Frequent Volunteers"],
+                    ["Volunteer", "Events Participated"],
+                    ...reportData.frequentVolunteers.map(v => [v.volunteer_name, v.event_count]),
+                    [],
+                    ["Volunteer Retention Rate", `${reportData.retentionRate}%`]
+                  ]}
+                  filename="volunteer_reports.csv"
+                  className="no-underline"
+                >
+                  <Button variant="outline">Download CSV</Button>
+                </CSVLink>
+              )}
             </CardFooter>
           </Card>
         </main>

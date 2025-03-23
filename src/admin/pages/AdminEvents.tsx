@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/authContext';
-import { Edit, UserPlus, List, Calendar, MapPin, Users, Search, X } from 'lucide-react';
+import { Edit, UserPlus, List, Calendar, MapPin, Users, Search, X, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import AdminHeader from '../components/AdminHeader';
 import AdminSidebar from '../components/AdminSidebar';
 import { Input } from '../../components/ui/input';
@@ -14,138 +14,108 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '../../components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '../../components/ui/dialog';
 import { motion } from 'framer-motion';
-import Charity from '../../assets/charity.jpg'
-import Workshop from '../../assets/workshop.jpg'
-import Community from '../../assets/community_cleanup.jpg'
-import Donation from '../../assets/donation.png'
-import Cricket from '../../assets/cricket.jpg'
-
-export const eventData = [
-  {
-    id: 1,
-    title: "Community Cleanup",
-    description: "A community initiative to clean and beautify our local park areas.",
-    type: "Environmental",
-    date: "April 10, 2025",
-    time: "9:00 AM - 2:00 PM",
-    location: "Central Park",
-    volunteers: 20,
-    skills: "No special skills required, willingness to work outdoors",
-    roles: "Team Lead, Cleanup Crew, Registration Coordinator",
-    accessibility: "Wheelchair accessible paths, rest areas provided",
-    materials: "Gloves, trash bags, recycling bins, water stations",
-    contact: "Sarah Johnson (sarah.j@cleanupinitiative.org, +1 555-234-5678)",
-    deadline: "April 5, 2025",
-    dress: "Comfortable clothing, closed-toe shoes, hats recommended",
-    feedback: "QR code will be provided at the event for immediate feedback",
-    registrations: 45,
-    image: Community
-  },
-  {
-    id: 2,
-    title: "Charity Fundraiser",
-    description: "An evening of entertainment and auctions to raise funds for children's education.",
-    type: "Fundraising",
-    date: "April 15, 2025",
-    time: "6:00 PM - 10:00 PM",
-    location: "City Hall",
-    volunteers: 35,
-    skills: "Customer service, auction management, event coordination",
-    roles: "Greeter, Auction Assistant, Bar Service, Entertainment Coordinator",
-    accessibility: "Elevator access, accessible restrooms, reserved seating available",
-    materials: "Auction items, bidding paddles, payment terminals, decorations",
-    contact: "Michael Rodriguez (m.rodriguez@educationcharity.org, +1 555-987-6543)",
-    deadline: "April 10, 2025",
-    dress: "Semi-formal attire, volunteer badges will be provided",
-    feedback: "Email survey to be sent the following day",
-    registrations: 78,
-    image: Charity
-  },
-  {
-    id: 3,
-    title: "Workshop Series",
-    description: "A series of professional development workshops focusing on career advancement skills.",
-    type: "Education",
-    date: "April 25, 2025",
-    time: "1:00 PM - 5:00 PM",
-    location: "Community Center",
-    volunteers: 15,
-    skills: "Teaching experience, professional background, organization skills",
-    roles: "Workshop Facilitator, Registration Desk, Technical Support",
-    accessibility: "Ground floor venue, materials available in large print",
-    materials: "Projector, laptops, handouts, name tags, refreshments",
-    contact: "Priya Patel (priya@careerdevelopment.org, +1 555-123-4567)",
-    deadline: "April 20, 2025",
-    dress: "Business casual attire",
-    feedback: "Paper forms distributed after each workshop",
-    registrations: 32,
-    image: Workshop
-  },
-  {
-    id: 4,
-    title: "Blood Donation Drive",
-    description: "A critical blood donation initiative in partnership with the regional blood bank.",
-    type: "Healthcare",
-    date: "March 21, 2025",
-    time: "10:00 AM - 4:00 PM",
-    location: "Downtown Hospital",
-    volunteers: 25,
-    skills: "Medical background preferred but not required, good communication",
-    roles: "Check-in Coordinator, Refreshment Station, Donor Support, Outreach",
-    accessibility: "Fully accessible venue with medical staff support",
-    materials: "Medical supplies (provided by hospital), refreshments, donor forms",
-    contact: "Dr. James Wilson (jwilson@healthalliance.org, +1 555-444-3333)",
-    deadline: "March 15, 2025",
-    dress: "Casual clothing with closed-toe shoes, volunteer vests provided",
-    feedback: "In-person interviews with select participants",
-    participants: 56,
-    image: Donation
-  },
-  {
-    id: 5,
-    title: "Blind Cricket Tournament 2023",
-    description: "A cricket tournament for visually impaired players to promote inclusivity.",
-    type: "Sports",
-    date: "October 15, 2023",
-    time: "9:00 AM - 5:00 PM",
-    location: "Samarthanam Sports Complex, Bangalore",
-    volunteers: 20,
-    skills: "Basic knowledge of cricket, good communication skills",
-    roles: "Umpire, Scorekeeper, Logistics Coordinator, Registration Desk Volunteer",
-    accessibility: "Wheelchair ramps, braille scorecards, sign language interpreters",
-    materials: "10 cricket bats, 20 chairs, 1 projector",
-    contact: "John Doe (john.doe@samarthanam.org, +91 9876543210)",
-    deadline: "October 10, 2023",
-    dress: "Comfortable sports attire (volunteer t-shirts provided)",
-    feedback: "Online feedback form will be sent after the event",
-    participants: 48,
-    image: Cricket
-  }
-];
+import { getEvents, deleteEvent } from '@/services/database.service';
+import { format } from 'date-fns';
+import { supabase } from '@/lib/supabase';
+import { toast } from '../../components/ui/use-toast';
 
 const AdminEventsPage = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const auth = useAuth();
   const [events, setEvents] = useState([]);
+  const [filteredEvents, setFilteredEvents] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState('all');
-  const [selectedDate, setSelectedDate] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [eventToDelete, setEventToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const eventTypes = [...new Set(eventData.map(event => event.type))];
+  const fetchEvents = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await getEvents();
+      if (error) throw error;
+      setEvents(data || []);
+      setFilteredEvents(data || []);
+    } catch (err) {
+      console.error('Error fetching events:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Simulate loading events from API
-    setTimeout(() => {
-      setEvents(eventData);
-      setLoading(false);
-    }, 500);
+    fetchEvents();
   }, []);
 
+  useEffect(() => {
+    // Apply filters whenever search term, type filter, or date filter changes
+    let filtered = [...events];
+
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(event => 
+        event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        event.location.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Apply type filter if selected
+    if (typeFilter && typeFilter !== 'all') {
+      filtered = filtered.filter(event => {
+        // Handle the case where event might not have a category or it's stored in a different field
+        const eventType = event.category || event.status || "Uncategorized";
+        return eventType.toLowerCase() === typeFilter.toLowerCase();
+      });
+    }
+
+    // Apply date filter if selected
+    if (dateFilter && dateFilter !== 'all') {
+      const today = new Date();
+      const nextWeek = new Date(today);
+      nextWeek.setDate(today.getDate() + 7);
+      const nextMonth = new Date(today);
+      nextMonth.setMonth(today.getMonth() + 1);
+
+      filtered = filtered.filter(event => {
+        const eventDate = new Date(event.start_date);
+        
+        if (dateFilter === 'upcoming' && eventDate >= today) {
+          return true;
+        }
+        if (dateFilter === 'thisWeek' && eventDate >= today && eventDate <= nextWeek) {
+          return true;
+        }
+        if (dateFilter === 'thisMonth' && eventDate >= today && eventDate <= nextMonth) {
+          return true;
+        }
+        if (dateFilter === 'past' && eventDate < today) {
+          return true;
+        }
+        return false;
+      });
+    }
+
+    setFilteredEvents(filtered);
+  }, [searchTerm, typeFilter, dateFilter, events]);
+
   const handleLogout = async () => {
-    await logout();
-    // Redirect is handled by the auth context
+    await auth.logout();
+    navigate('/admin/login');
   };
 
   const navigateToEventDetails = (id) => {
@@ -154,20 +124,21 @@ const AdminEventsPage = () => {
 
   const handleUpdateEvent = (id, e) => {
     e.stopPropagation();
-    // Navigate to update event form with the event ID
-    navigate(`/admin/events/edit/${id}`);
+    navigate(`/admin/events/${id}/edit`);
   };
 
   const handleAddVolunteers = (id, e) => {
     e.stopPropagation();
-    // Navigate to volunteer management page for this event
     navigate(`/admin/events/${id}/volunteers`);
   };
 
   const handleViewDetails = (id, e) => {
     e.stopPropagation();
-    // Navigate to event details page (tasks, etc.)
     navigate(`/admin/events/${id}`);
+  };
+
+  const handleCreateEvent = () => {
+    navigate('/admin/events/create');
   };
 
   const handleSearch = (e) => {
@@ -175,289 +146,331 @@ const AdminEventsPage = () => {
   };
 
   const handleTypeChange = (value) => {
-    setSelectedType(value);
+    setTypeFilter(value);
   };
 
   const handleDateChange = (value) => {
-    setSelectedDate(value);
+    setDateFilter(value);
   };
 
   const clearFilters = () => {
     setSearchTerm('');
-    setSelectedType('all');
-    setSelectedDate('all');
+    setTypeFilter('all');
+    setDateFilter('all');
   };
 
-  // Filter events based on search term and filters
-  const filteredEvents = events.filter(event => {
-    const matchesSearch = searchTerm === '' || 
-      event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.location.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesType = selectedType === 'all' || 
-      event.type === selectedType;
-    
-    const matchesDate = selectedDate === 'all' || 
-      (selectedDate === 'upcoming' && new Date(event.date) >= new Date()) ||
-      (selectedDate === 'past' && new Date(event.date) < new Date()) ||
-      (selectedDate === 'thisMonth' && new Date(event.date).getMonth() === new Date().getMonth()) ||
-      (selectedDate === 'nextMonth' && new Date(event.date).getMonth() === (new Date().getMonth() + 1) % 12);
-    
-    return matchesSearch && matchesType && matchesDate;
-  });
+  // Function to handle delete event click
+  const handleDeleteEvent = (id, e) => {
+    e.stopPropagation();
+    const event = events.find(e => e.id === id);
+    setEventToDelete(event);
+    setDeleteDialogOpen(true);
+  };
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
+  // Function to confirm delete event
+  const confirmDeleteEvent = async () => {
+    if (!eventToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      const { success, error } = await deleteEvent(eventToDelete.id);
+      if (error) throw error;
+      
+      if (success) {
+        // Remove event from local state
+        const updatedEvents = events.filter(e => e.id !== eventToDelete.id);
+        setEvents(updatedEvents);
+        
+        toast({
+          title: "Event Deleted",
+          description: `"${eventToDelete.title}" has been permanently deleted.`
+        });
+      }
+    } catch (err) {
+      console.error('Error deleting event:', err);
+      toast({
+        title: "Error",
+        description: err.message || 'Failed to delete the event. Please try again.',
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setEventToDelete(null);
+    }
+  };
+
+  // Function to get all unique categories from events
+  const getEventCategories = () => {
+    const categories = events
+      .map(event => event.category || event.status || "Uncategorized")
+      .filter((value, index, self) => self.indexOf(value) === index);
+    return categories;
+  };
+
+  // Function to format date for display
+  const formatEventDate = (dateString) => {
+    try {
+      return format(new Date(dateString), 'MMMM d, yyyy');
+    } catch (err) {
+      return "Invalid date";
+    }
+  };
+
+  // Function to format time for display
+  const formatEventTime = (startDate, endDate) => {
+    try {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      return `${format(start, 'h:mm a')} - ${format(end, 'h:mm a')}`;
+    } catch (err) {
+      return "Time not specified";
+    }
+  };
+
+  // Function to get a default image if none is provided
+  const getEventImage = (event) => {
+    if (event.image_url) {
+      return event.image_url;
+    }
+    // Return a placeholder image URL
+    return 'https://placehold.co/300x200/e2e8f0/1e293b?text=No+Image';
+  };
 
   return (
-    <div className="h-screen bg-gray-100 flex flex-col">
-      <AdminHeader user={user} handleLogout={handleLogout} />
-      <div className="flex flex-1 overflow-hidden">
-        <AdminSidebar />
-        <main className="flex-1 overflow-auto p-8">
-          {/* Events Header */}
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h1 className="text-3xl font-bold">Events</h1>
-              <p className="text-gray-600">Manage all organization events</p>
+    <div className="flex h-screen bg-gray-100">
+      <AdminSidebar />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <AdminHeader title="Events Management" user={auth.user} onLogout={handleLogout} />
+        
+        <main className="flex-1 overflow-y-auto p-4">
+          <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex flex-col md:flex-row gap-2 md:items-center">
+              <h1 className="text-2xl font-bold text-gray-900">Events</h1>
+              <Badge className="w-fit">
+                {filteredEvents.length} Total
+              </Badge>
             </div>
-            <Button 
-              onClick={() => navigate('')}
-              className="bg-red-700 hover:bg-red-800"
-            >
+            
+            <Button onClick={handleCreateEvent} className="bg-purple-600 hover:bg-purple-700">
+              <Plus className="mr-2 h-4 w-4" />
               Create Event
             </Button>
           </div>
           
-          {/* Search and Filter */}
-          <div className="bg-card rounded-xl shadow-sm border border-border mb-8 p-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-grow">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-                <Input 
-                  placeholder="Search events by name, description, or location" 
+          <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+            <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <Input
+                  placeholder="Search events by title, description, or location..."
+                  className="pl-10 w-full"
                   value={searchTerm}
                   onChange={handleSearch}
-                  className="pl-10"
-                  aria-label="Search events"
                 />
               </div>
               
-              <div className="flex gap-4">
-                <Select value={selectedType} onValueChange={handleTypeChange}>
-                  <SelectTrigger className="w-40 md:w-48" aria-label="Filter by type">
-                    <SelectValue placeholder="All Types" />
+              <div className="flex flex-wrap gap-2">
+                <Select value={typeFilter} onValueChange={handleTypeChange}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
-                    {eventTypes.map(type => (
-                      <SelectItem key={type} value={type}>
-                        {type}
-                      </SelectItem>
+                    {getEventCategories().map((category) => (
+                      <SelectItem key={category} value={category}>{category}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 
-                <Select value={selectedDate} onValueChange={handleDateChange}>
-                  <SelectTrigger className="w-40 md:w-48" aria-label="Filter by date">
-                    <SelectValue placeholder="All Dates" />
+                <Select value={dateFilter} onValueChange={handleDateChange}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by date" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Dates</SelectItem>
                     <SelectItem value="upcoming">Upcoming</SelectItem>
-                    <SelectItem value="past">Past</SelectItem>
+                    <SelectItem value="thisWeek">This Week</SelectItem>
                     <SelectItem value="thisMonth">This Month</SelectItem>
-                    <SelectItem value="nextMonth">Next Month</SelectItem>
+                    <SelectItem value="past">Past Events</SelectItem>
                   </SelectContent>
                 </Select>
                 
-                {(searchTerm || selectedType !== 'all' || selectedDate !== 'all') && (
-                  <Button 
-                    variant="outline" 
-                    onClick={clearFilters}
-                    aria-label="Clear filters"
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Clear
+                {(searchTerm || typeFilter !== 'all' || dateFilter !== 'all') && (
+                  <Button variant="outline" onClick={clearFilters} className="flex items-center">
+                    <X className="mr-2 h-4 w-4" />
+                    Clear Filters
                   </Button>
                 )}
               </div>
             </div>
-            
-            {/* Active Filters */}
-            {(searchTerm || selectedType !== 'all' || selectedDate !== 'all') && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {searchTerm && (
-                  <Badge variant="secondary" className="flex items-center">
-                    Search: {searchTerm}
-                    <button 
-                      onClick={() => setSearchTerm('')} 
-                      className="ml-1 hover:text-primary"
-                      aria-label="Remove search filter"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                )}
-                
-                {selectedType !== 'all' && (
-                  <Badge variant="secondary" className="flex items-center">
-                    Type: {selectedType}
-                    <button 
-                      onClick={() => setSelectedType('all')} 
-                      className="ml-1 hover:text-primary"
-                      aria-label="Remove type filter"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                )}
-                
-                {selectedDate !== 'all' && (
-                  <Badge variant="secondary" className="flex items-center">
-                    Date: {selectedDate}
-                    <button 
-                      onClick={() => setSelectedDate('all')} 
-                      className="ml-1 hover:text-primary"
-                      aria-label="Remove date filter"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                )}
-              </div>
-            )}
           </div>
           
-          {/* Events Grid */}
-          {filteredEvents.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredEvents.map((event, index) => (
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-700 mx-auto mb-4"></div>
+                <p className="text-gray-500">Loading events...</p>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+              <p className="text-red-500 mb-2">{error}</p>
+              <Button onClick={fetchEvents}>
+                Try Again
+              </Button>
+            </div>
+          ) : filteredEvents.length === 0 ? (
+            <div className="bg-white rounded-lg shadow-md p-8 text-center">
+              <div className="mx-auto mb-4 w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                <Calendar className="h-8 w-8 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-medium mb-2">No events found</h3>
+              <p className="text-gray-500 mb-6">
+                {searchTerm || typeFilter !== 'all' || dateFilter !== 'all'
+                  ? "No events match your current filters. Try adjusting your search criteria."
+                  : "There are no events in the system yet. Create your first event to get started."}
+              </p>
+              <Button onClick={handleCreateEvent}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create New Event
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredEvents.map((event) => (
                 <motion.div
                   key={event.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="bg-white rounded-lg shadow overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ duration: 0.2 }}
+                  className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer"
                   onClick={() => navigateToEventDetails(event.id)}
                 >
-                  <img 
-                    src={event.image} 
-                    alt={event.title} 
-                    className="w-full h-48 object-cover"
-                  />
-                  <div className="p-4">
-                    <div className="mb-2">
-                      <Badge variant="secondary" className="bg-red-100 text-red-800 hover:bg-red-200">
-                        {event.type}
+                  <div className="h-48 overflow-hidden relative">
+                    <img
+                      src={getEventImage(event)}
+                      alt={event.title}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute top-3 right-3 flex gap-1">
+                      <Badge className="bg-white text-gray-800 hover:bg-gray-100">
+                        {event.category || event.status || "Uncategorized"}
                       </Badge>
                     </div>
-                    <h3 className="text-lg font-bold mb-2 line-clamp-1">{event.title}</h3>
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">{event.description}</p>
+                  </div>
+                  
+                  <div className="p-4">
+                    <h3 className="text-lg font-semibold mb-2 line-clamp-2">{event.title}</h3>
                     
-                    <div className="flex flex-col gap-2 text-sm mb-4">
-                      <div className="flex items-center gap-2">
-                        <Calendar size={16} className="text-gray-400" />
-                        <span>{event.date} • {event.time}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <MapPin size={16} className="text-gray-400" />
-                        <span className="line-clamp-1">{event.location}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Users size={16} className="text-gray-400" />
-                        <span>
-                          {event.registrations || event.participants || 0} Registrations • {event.volunteers} Volunteers
-                        </span>
+                    <div className="flex items-start gap-2 mb-2">
+                      <Calendar className="h-4 w-4 text-gray-500 mt-1 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm text-gray-600">{formatEventDate(event.start_date)}</p>
+                        <p className="text-xs text-gray-500">{formatEventTime(event.start_date, event.end_date)}</p>
                       </div>
                     </div>
                     
-                    {/* Replace the existing button layout in your event card with this code */}
-                    <div className="border-t pt-4 flex flex-col gap-2">
-                    {new Date(event.date) >= new Date() ? (
-                      // For upcoming events, show Update and Volunteers buttons
-                      <div className="flex justify-between gap-4 w-full">
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                    <div className="flex items-start gap-2 mb-2">
+                      <MapPin className="h-4 w-4 text-gray-500 mt-1 flex-shrink-0" />
+                      <p className="text-sm text-gray-600 line-clamp-1">{event.location}</p>
+                    </div>
+                    
+                    <div className="flex items-start gap-2 mb-4">
+                      <Users className="h-4 w-4 text-gray-500 mt-1 flex-shrink-0" />
+                      <p className="text-sm text-gray-600">
+                        {event.registered_count || 0} / {event.max_volunteers || 'unlimited'} volunteers
+                      </p>
+                    </div>
+                    
+                    <p className="text-sm text-gray-500 mb-4 line-clamp-2">{event.description}</p>
+                    
+                    <div className="flex justify-between pt-2 border-t border-gray-100">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                        onClick={(e) => handleViewDetails(event.id, e)}
+                      >
+                        <List className="h-4 w-4 mr-1" />
+                        Details
+                      </Button>
+                      
+                      <div className="flex gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                           onClick={(e) => handleUpdateEvent(event.id, e)}
-                          className="flex items-center bg-rose-900 justify-center gap-1 text-sm text-white w-1/2 hover:bg-red-800"
                         >
-                          <Edit size={16} />
-                          <span>Update</span>
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => handleAddVolunteers(event.id, e)}
-                          className="flex items-center bg-rose-900 justify-center gap-1 text-sm text-white w-1/2 hover:bg-red-800"
+                        
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={(e) => handleDeleteEvent(event.id, e)}
                         >
-                          <UserPlus size={16} />
-                          <span>Volunteers</span>
-                        </Button>
-                      </div>
-                    ) : (
-                      // For past events, show View Feedback and Delete buttons
-                      <div className="flex justify-between gap-4 w-full">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => ({})}
-                          className="flex items-center bg-rose-900 justify-center gap-1 text-sm text-white w-1/2 hover:bg-red-800"
-                        >
-                          <List size={16} />
-                          <span>View Feedback</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => ({})}
-                          className="flex items-center bg-rose-900 justify-center gap-1 text-sm text-white w-1/2 hover:bg-red-800"
-                        >
-                          <X size={16} />
-                          <span>Delete</span>
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Delete
                         </Button>
                       </div>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => handleViewDetails(event.id, e)}
-                      className="flex items-center bg-rose-900 justify-center gap-1 text-sm text-white w-full hover:bg-red-800"
-                    >
-                      <List size={16} />
-                      <span>Tasks</span>
-                    </Button>
-                  </div>
+                    </div>
                   </div>
                 </motion.div>
               ))}
             </div>
-          ) : (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              className="text-center py-16"
-            >
-              <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-xl font-medium mb-2">No events found</h3>
-              <p className="text-gray-500">
-                Try adjusting your search or filter criteria to find events.
-              </p>
-              <Button 
-                variant="outline" 
-                onClick={clearFilters} 
-                className="mt-4"
-              >
-                Clear All Filters
-              </Button>
-            </motion.div>
           )}
         </main>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              Confirm Event Deletion
+            </DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete the event
+              and remove all associated data including volunteer registrations.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {eventToDelete && (
+            <div className="border rounded-md p-3 bg-gray-50 my-2">
+              <h4 className="font-medium">{eventToDelete.title}</h4>
+              <p className="text-sm text-gray-500">
+                {formatEventDate(eventToDelete.start_date)} | {eventToDelete.location}
+              </p>
+            </div>
+          )}
+          
+          <DialogFooter className="sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDeleteEvent}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Event'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
