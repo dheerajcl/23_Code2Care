@@ -1,10 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/authContext';
-<<<<<<< HEAD
-import { Calendar, Clock, MapPin, Users, Plus, List, Columns, Tag, User2, MessageSquare } from 'lucide-react';
-=======
-import { Calendar, Clock, MapPin, Users, Plus, List, Columns, Tag, User2, Edit, X, UserPlus, Trash2, Check, Mail, User } from 'lucide-react';
->>>>>>> 695cb9e (Fixed Feedback Heading Alighnment. Resolves #1)
+import { 
+  Calendar, 
+  Clock, 
+  MapPin, 
+  Users, 
+  Plus, 
+  List, 
+  Columns, 
+  Tag, 
+  User2, 
+  Edit, 
+  X, 
+  UserPlus, 
+  Trash2, 
+  Check, 
+  Mail, 
+  User,
+  MessageSquare 
+} from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getEventById, getTasksByEventId, createTask, updateTask, deleteTask, getEventRegistrations, registerVolunteerForEvent, updateEventRegistration, deleteEventRegistration } from '@/services/database.service';
 import { Badge } from '@/components/ui/badge';
@@ -32,8 +46,6 @@ const AdminEventDetails = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user, logout } = useAuth();
-<<<<<<< HEAD
-=======
 
   // Redirect if not admin
   useEffect(() => {
@@ -47,7 +59,6 @@ const AdminEventDetails = () => {
   if (!user || user.role !== 'admin') {
     return null;
   }
->>>>>>> 695cb9e (Fixed Feedback Heading Alighnment. Resolves #1)
 
   // Event data for the specific ID
   const [event, setEvent] = useState(null);
@@ -504,53 +515,12 @@ const AdminEventDetails = () => {
               </div>
             </div>
             
-<<<<<<< HEAD
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="mb-4">
                 <TabsTrigger value="details">Event Details</TabsTrigger>
                 <TabsTrigger value="tasks">Tasks</TabsTrigger>
                 <TabsTrigger value="volunteers">Volunteers</TabsTrigger>
               </TabsList>
-=======
-            <div className="flex gap-2">
-              <Button onClick={handleEditEvent} className="bg-purple-600 hover:bg-purple-700">
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Event
-              </Button>
-              {(event.status === 'Completed' || new Date(event.start_date) < new Date()) && (
-                <Button 
-                  onClick={() => navigate(`/admin/events/${id}/feedback`)}
-                  className="bg-purple-600 hover:bg-purple-700"
-                >
-                  <User2 className="mr-2 h-4 w-4" />
-                  View Feedback
-                </Button>
-              )}
-              <Button onClick={handleDone} className="bg-green-600 hover:bg-green-700">
-                Done
-              </Button>
-            </div>
-          </div>
-
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="mb-4">
-              <TabsTrigger value="details">Event Details</TabsTrigger>
-              <TabsTrigger value="tasks">Tasks</TabsTrigger>
-              <TabsTrigger value="volunteers">Volunteers</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="details" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Event Info */}
-                <div className="md:col-span-2 bg-white rounded-lg shadow-md p-6">
-                  <h2 className="text-xl font-semibold mb-4">Event Information</h2>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500">Description</h3>
-                      <p className="mt-1">{event.description}</p>
-                    </div>
->>>>>>> 695cb9e (Fixed Feedback Heading Alighnment. Resolves #1)
               
               <TabsContent value="details" className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -563,7 +533,7 @@ const AdminEventDetails = () => {
                         <h3 className="text-sm font-medium text-gray-500">Description</h3>
                         <p className="mt-1">{event.description}</p>
                       </div>
-                
+                  
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <h3 className="text-sm font-medium text-gray-500">Date & Time</h3>
@@ -576,7 +546,7 @@ const AdminEventDetails = () => {
                             {formatTime(event.start_date)} - {formatTime(event.end_date)}
                           </div>
                         </div>
-                
+                  
                         <div>
                           <h3 className="text-sm font-medium text-gray-500">Location</h3>
                           <div className="flex items-center mt-1">
@@ -585,7 +555,7 @@ const AdminEventDetails = () => {
                           </div>
                         </div>
                       </div>
-    
+              
                       <div>
                         <h3 className="text-sm font-medium text-gray-500">Volunteer Capacity</h3>
                         <div className="flex items-center mt-1">
@@ -690,332 +660,332 @@ const AdminEventDetails = () => {
                       <p className="text-gray-500">Manage tasks for this event</p>
                     </div>
 
-                  <div className="flex gap-2">
-                    <Button 
-                      variant={taskView === 'table' ? 'default' : 'outline'}
-                      onClick={() => setTaskView('table')}
-                      className={taskView === 'table' ? 'bg-purple-600 hover:bg-purple-700' : ''}
-                    >
-                      <List className="mr-2 h-4 w-4" />
-                      Table
-                    </Button>
-                    <Button 
-                      variant={taskView === 'kanban' ? 'default' : 'outline'}
-                      onClick={() => setTaskView('kanban')}
-                      className={taskView === 'kanban' ? 'bg-purple-600 hover:bg-purple-700' : ''}
-                    >
-                      <Columns className="mr-2 h-4 w-4" />
-                      Kanban
-                    </Button>
-                    <Button 
-                      onClick={() => navigate(`/admin/events/${id}/createtask`)}
-                      className="bg-purple-600 hover:bg-purple-700"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Task
-                    </Button>
-                  </div>
-                </div>
-                
-                {eventTasks.length === 0 ? (
-                  <div className="text-center py-8">
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">No tasks created yet</h3>
-                    <p className="mt-1 text-sm text-gray-500">Get started by creating a new task for this event.</p>
-                    <div className="mt-6">
-                      <Button onClick={() => navigate(`/admin/events/${id}/createtask`)}>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant={taskView === 'table' ? 'default' : 'outline'}
+                        onClick={() => setTaskView('table')}
+                        className={taskView === 'table' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+                      >
+                        <List className="mr-2 h-4 w-4" />
+                        Table
+                      </Button>
+                      <Button 
+                        variant={taskView === 'kanban' ? 'default' : 'outline'}
+                        onClick={() => setTaskView('kanban')}
+                        className={taskView === 'kanban' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+                      >
+                        <Columns className="mr-2 h-4 w-4" />
+                        Kanban
+                      </Button>
+                      <Button 
+                        onClick={() => navigate(`/admin/events/${id}/createtask`)}
+                        className="bg-purple-600 hover:bg-purple-700"
+                      >
                         <Plus className="mr-2 h-4 w-4" />
-                        Create First Task
+                        Add Task
                       </Button>
                     </div>
-                  </div>
-                ) : (
-                  <>
-                    {taskView === 'table' ? (
-                      <TaskTable 
-                        tasks={eventTasks} 
-                        onStatusChange={handleTaskStatusChange}
-                        onDelete={handleDeleteTask}
-                      />
-                    ) : (
-                      <TaskKanban 
-                        tasks={eventTasks}
-                        onStatusChange={handleTaskStatusChange}
-                        onDelete={handleDeleteTask}
-                      />
-                    )}
-                  </>
-                )}
-              </div>
-              
-              {/* Add Task Form Modal */}
-              {showTaskForm && (
-                <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-                  <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-                    <div className="flex justify-between items-center mb-4">
-                      <h2 className="text-xl font-semibold">Add New Task</h2>
-                      <Button variant="ghost" size="sm" onClick={() => setShowTaskForm(false)}>
-                        <X className="h-5 w-5" />
-                      </Button>
-                    </div>
-                    
-                    <form onSubmit={handleCreateTask}>
-                      <div className="space-y-4">
-                        <div>
-                          <label htmlFor="task-title" className="block text-sm font-medium text-gray-700">
-                            Title
-                          </label>
-                          <Input
-                            id="task-title"
-                            value={taskForm.title}
-                            onChange={(e) => setTaskForm({...taskForm, title: e.target.value})}
-                            className="mt-1"
-                            required
-                          />
-                        </div>
-                        
-                        <div>
-                          <label htmlFor="task-description" className="block text-sm font-medium text-gray-700">
-                            Description
-                          </label>
-                          <Textarea
-                            id="task-description"
-                            value={taskForm.description}
-                            onChange={(e) => setTaskForm({...taskForm, description: e.target.value})}
-                            className="mt-1"
-                            rows={3}
-                          />
-                        </div>
-                        
-                        <div>
-                          <label htmlFor="task-due-date" className="block text-sm font-medium text-gray-700">
-                            Due Date
-                          </label>
-                          <Input
-                            id="task-due-date"
-                            type="datetime-local"
-                            value={taskForm.deadline}
-                            onChange={(e) => setTaskForm({...taskForm, deadline: e.target.value})}
-                            className="mt-1"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label htmlFor="task-priority" className="block text-sm font-medium text-gray-700">
-                            Priority
-                          </label>
-                          <Select
-                            value={taskForm.priority}
-                            onValueChange={(value) => setTaskForm({...taskForm, priority: value})}
-                          >
-                            <SelectTrigger id="task-priority" className="mt-1">
-                              <SelectValue placeholder="Select priority" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Low">Low</SelectItem>
-                              <SelectItem value="Medium">Medium</SelectItem>
-                              <SelectItem value="High">High</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div>
-                          <label htmlFor="task-status" className="block text-sm font-medium text-gray-700">
-                            Status
-                          </label>
-                          <Select
-                            value={taskForm.status}
-                            onValueChange={(value) => setTaskForm({...taskForm, status: value})}
-                          >
-                            <SelectTrigger id="task-status" className="mt-1">
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Todo">To Do</SelectItem>
-                              <SelectItem value="In Progress">In Progress</SelectItem>
-                              <SelectItem value="Review">Review</SelectItem>
-                              <SelectItem value="Done">Done</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div>
-                          <label htmlFor="task-assignee" className="block text-sm font-medium text-gray-700">
-                            Assignee
-                          </label>
-                          <Select
-                            value={taskForm.assignee_id}
-                            onValueChange={(value) => setTaskForm({...taskForm, assignee_id: value})}
-                          >
-                            <SelectTrigger id="task-assignee" className="mt-1">
-                              <SelectValue placeholder="Select assignee" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="">Unassigned</SelectItem>
-                              {user && (
-                                <SelectItem value={user.id}>
-                                  Me ({user.firstName} {user.lastName})
-                                </SelectItem>
-                              )}
-                              {volunteers.map(volunteer => (
-                                <SelectItem key={volunteer.id} value={volunteer.id}>
-                                  {volunteer.first_name} {volunteer.last_name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      
-                      <div className="mt-6 flex justify-end gap-2">
-                        <Button type="button" variant="outline" onClick={() => setShowTaskForm(false)}>
-                          Cancel
-                        </Button>
-                        <Button type="submit" className="bg-purple-600 hover:bg-purple-700">
-                          Create Task
-                        </Button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="volunteers" className="space-y-6">
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-                  <div>
-                    <h2 className="text-xl font-semibold">Event Volunteers</h2>
-                    <p className="text-gray-500">
-                      {registrations.length} / {event.max_volunteers || 'Unlimited'} volunteers registered
-                    </p>
                   </div>
                   
-                  <Button 
-                    onClick={() => setShowRegistrationForm(true)}
-                    className="bg-purple-600 hover:bg-purple-700"
-                    disabled={event.max_volunteers && registrations.length >= event.max_volunteers}
-                  >
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Register Volunteer
-                  </Button>
+                  {eventTasks.length === 0 ? (
+                    <div className="text-center py-8">
+                      <h3 className="mt-2 text-sm font-medium text-gray-900">No tasks created yet</h3>
+                      <p className="mt-1 text-sm text-gray-500">Get started by creating a new task for this event.</p>
+                      <div className="mt-6">
+                        <Button onClick={() => navigate(`/admin/events/${id}/createtask`)}>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Create First Task
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {taskView === 'table' ? (
+                        <TaskTable 
+                          tasks={eventTasks} 
+                          onStatusChange={handleTaskStatusChange}
+                          onDelete={handleDeleteTask}
+                        />
+                      ) : (
+                        <TaskKanban 
+                          tasks={eventTasks}
+                          onStatusChange={handleTaskStatusChange}
+                          onDelete={handleDeleteTask}
+                        />
+                      )}
+                    </>
+                  )}
                 </div>
                 
-                
-                {registrations.length === 0 ? (
-                  <div className="text-center py-8">
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">No volunteers registered yet</h3>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Add volunteers to this event using the Register Volunteer button.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="overflow-hidden rounded-lg border">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Volunteer
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Registration Date
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Hours Served
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {registrations.map((registration) => (
-                          <tr key={registration.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center">
-                                <div className="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
-                                  <User className="h-5 w-5 text-gray-500" />
-                                </div>
-                                <div className="ml-4">
-                                  <div className="text-sm font-medium text-gray-900">
-                                    {registration.volunteer.first_name} {registration.volunteer.last_name}
-                                  </div>
-                                  <div className="text-sm text-gray-500">
-                                    {registration.volunteer.email}
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {formatDate(registration.created_at)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <Badge className={`
-                                ${registration.status === 'Registered' ? 'bg-green-100 text-green-800' : ''}
-                                ${registration.status === 'Cancelled' ? 'bg-red-100 text-red-800' : ''}
-                                ${registration.status === 'Waitlisted' ? 'bg-yellow-100 text-yellow-800' : ''}
-                              `}>
-                                {registration.status}
-                              </Badge>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center gap-2">
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  step="0.5"
-                                  className="w-20"
-                                  value={registration.hours || 0}
-                                  onChange={(e) => handleUpdateHours(registration.id, e.target.value)}
-                                />
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost"
-                                  onClick={() => handleUpdateHours(registration.id, registration.hours || 0)}
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <Check className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                >
-                                  <Mail className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleRemoveVolunteer(registration.id, registration.volunteer.id)}
-                                  className="text-red-600 hover:text-red-800"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                {/* Add Task Form Modal */}
+                {showTaskForm && (
+                  <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+                      <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-semibold">Add New Task</h2>
+                        <Button variant="ghost" size="sm" onClick={() => setShowTaskForm(false)}>
+                          <X className="h-5 w-5" />
+                        </Button>
+                      </div>
+                      
+                      <form onSubmit={handleCreateTask}>
+                        <div className="space-y-4">
+                          <div>
+                            <label htmlFor="task-title" className="block text-sm font-medium text-gray-700">
+                              Title
+                            </label>
+                            <Input
+                              id="task-title"
+                              value={taskForm.title}
+                              onChange={(e) => setTaskForm({...taskForm, title: e.target.value})}
+                              className="mt-1"
+                              required
+                            />
+                          </div>
+                          
+                          <div>
+                            <label htmlFor="task-description" className="block text-sm font-medium text-gray-700">
+                              Description
+                            </label>
+                            <Textarea
+                              id="task-description"
+                              value={taskForm.description}
+                              onChange={(e) => setTaskForm({...taskForm, description: e.target.value})}
+                              className="mt-1"
+                              rows={3}
+                            />
+                          </div>
+                          
+                          <div>
+                            <label htmlFor="task-due-date" className="block text-sm font-medium text-gray-700">
+                              Due Date
+                            </label>
+                            <Input
+                              id="task-due-date"
+                              type="datetime-local"
+                              value={taskForm.deadline}
+                              onChange={(e) => setTaskForm({...taskForm, deadline: e.target.value})}
+                              className="mt-1"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label htmlFor="task-priority" className="block text-sm font-medium text-gray-700">
+                              Priority
+                            </label>
+                            <Select
+                              value={taskForm.priority}
+                              onValueChange={(value) => setTaskForm({...taskForm, priority: value})}
+                            >
+                              <SelectTrigger id="task-priority" className="mt-1">
+                                <SelectValue placeholder="Select priority" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Low">Low</SelectItem>
+                                <SelectItem value="Medium">Medium</SelectItem>
+                                <SelectItem value="High">High</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div>
+                            <label htmlFor="task-status" className="block text-sm font-medium text-gray-700">
+                              Status
+                            </label>
+                            <Select
+                              value={taskForm.status}
+                              onValueChange={(value) => setTaskForm({...taskForm, status: value})}
+                            >
+                              <SelectTrigger id="task-status" className="mt-1">
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Todo">To Do</SelectItem>
+                                <SelectItem value="In Progress">In Progress</SelectItem>
+                                <SelectItem value="Review">Review</SelectItem>
+                                <SelectItem value="Done">Done</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div>
+                            <label htmlFor="task-assignee" className="block text-sm font-medium text-gray-700">
+                              Assignee
+                            </label>
+                            <Select
+                              value={taskForm.assignee_id}
+                              onValueChange={(value) => setTaskForm({...taskForm, assignee_id: value})}
+                            >
+                              <SelectTrigger id="task-assignee" className="mt-1">
+                                <SelectValue placeholder="Select assignee" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="">Unassigned</SelectItem>
+                                {user && (
+                                  <SelectItem value={user.id}>
+                                    Me ({user.firstName} {user.lastName})
+                                  </SelectItem>
+                                )}
+                                {volunteers.map(volunteer => (
+                                  <SelectItem key={volunteer.id} value={volunteer.id}>
+                                    {volunteer.first_name} {volunteer.last_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-6 flex justify-end gap-2">
+                          <Button type="button" variant="outline" onClick={() => setShowTaskForm(false)}>
+                            Cancel
+                          </Button>
+                          <Button type="submit" className="bg-purple-600 hover:bg-purple-700">
+                            Create Task
+                          </Button>
+                        </div>
+                      </form>
+                    </div>
                   </div>
                 )}
-              </div>
+              </TabsContent>
               
-              {/* Register Volunteer Form Modal */}
-              {showRegistrationForm && (
-                <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-                  <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-                    <div className="flex justify-between items-center mb-4">
-                      <h2 className="text-xl font-semibold">Register Volunteer</h2>
-                      <Button variant="ghost" size="sm" onClick={() => setShowRegistrationForm(false)}>
-                        <X className="h-5 w-5" />
-                      </Button>
-            </div>
+              <TabsContent value="volunteers" className="space-y-6">
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                    <div>
+                      <h2 className="text-xl font-semibold">Event Volunteers</h2>
+                      <p className="text-gray-500">
+                        {registrations.length} / {event.max_volunteers || 'Unlimited'} volunteers registered
+                      </p>
+                    </div>
+                    
+                    <Button 
+                      onClick={() => setShowRegistrationForm(true)}
+                      className="bg-purple-600 hover:bg-purple-700"
+                      disabled={event.max_volunteers && registrations.length >= event.max_volunteers}
+                    >
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Register Volunteer
+                    </Button>
+                  </div>
+                  
+                  
+                  {registrations.length === 0 ? (
+                    <div className="text-center py-8">
+                      <h3 className="mt-2 text-sm font-medium text-gray-900">No volunteers registered yet</h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Add volunteers to this event using the Register Volunteer button.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-hidden rounded-lg border">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Volunteer
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Registration Date
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Status
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Hours Served
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {registrations.map((registration) => (
+                            <tr key={registration.id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <div className="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
+                                    <User className="h-5 w-5 text-gray-500" />
+                                  </div>
+                                  <div className="ml-4">
+                                    <div className="text-sm font-medium text-gray-900">
+                                      {registration.volunteer.first_name} {registration.volunteer.last_name}
+                                    </div>
+                                    <div className="text-sm text-gray-500">
+                                      {registration.volunteer.email}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {formatDate(registration.created_at)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <Badge className={`
+                                  ${registration.status === 'Registered' ? 'bg-green-100 text-green-800' : ''}
+                                  ${registration.status === 'Cancelled' ? 'bg-red-100 text-red-800' : ''}
+                                  ${registration.status === 'Waitlisted' ? 'bg-yellow-100 text-yellow-800' : ''}
+                                `}>
+                                  {registration.status}
+                                </Badge>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.5"
+                                    className="w-20"
+                                    value={registration.hours || 0}
+                                    onChange={(e) => handleUpdateHours(registration.id, e.target.value)}
+                                  />
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost"
+                                    onClick={() => handleUpdateHours(registration.id, registration.hours || 0)}
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <Check className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                  >
+                                    <Mail className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleRemoveVolunteer(registration.id, registration.volunteer.id)}
+                                    className="text-red-600 hover:text-red-800"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Register Volunteer Form Modal */}
+                {showRegistrationForm && (
+                  <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+                      <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-semibold">Register Volunteer</h2>
+                        <Button variant="ghost" size="sm" onClick={() => setShowRegistrationForm(false)}>
+                          <X className="h-5 w-5" />
+                        </Button>
+                      </div>
 
                       {availableVolunteers.length === 0 ? (
                         <div className="text-center py-6">
