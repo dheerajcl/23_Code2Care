@@ -40,6 +40,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, FilterIcon, CheckIcon, PlusIcon, XIcon, UserPlusIcon, Trash2, Search } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { createTaskAssignment } from '@/services/database.service';
 
 const CreateTask = () => {
   const navigate = useNavigate();
@@ -287,22 +288,21 @@ if (volunteerIds.length > 0) {
     e.preventDefault();
     
     if (!title) {
-      toast.error('Title is required');
+      toast.error('Please provide a task title');
       return;
     }
     
-    const now = new Date().toISOString();
-    
-    // Check if deadline is after now
-    if (deadline && new Date(deadline) <= new Date()) {
-      toast.error('Deadline must be in the future');
+    if (!eventId) {
+      toast.error('No event selected');
       return;
     }
     
     setIsSubmitting(true);
     
     try {
-      // Create task with event_id
+      const now = new Date().toISOString();
+      
+      // 1. Create the task
       const { data: taskData, error: taskError } = await supabase
         .from('task')
         .insert({
@@ -324,28 +324,18 @@ if (volunteerIds.length > 0) {
       
       const taskId = taskData.id;
       
-      // Assign volunteers
+      // 2. Assign volunteers with notifications
       if (selectedVolunteers.length > 0) {
-        const volunteerAssignments = selectedVolunteers.map(volunteerId => ({
-          task_id: taskId,
-          volunteer_id: volunteerId,
-          created_at: now,
-          backlog: 0,
-          todo: 1, // Mark as todo initially
-          in_progress: 0,
-          in_review: 0,
-          done: 0,
-          assigned: 1 // Mark as assigned
-        }));
+        // Create task assignments with notifications for each volunteer
+        const assignmentPromises = selectedVolunteers.map(volunteerId => 
+          createTaskAssignment(taskId, volunteerId, eventId)
+        );
         
-        const { error: assignmentError } = await supabase
-          .from('task_assignment')
-          .insert(volunteerAssignments);
-          
-        if (assignmentError) throw assignmentError;
+        // Wait for all assignments to be created
+        await Promise.all(assignmentPromises);
       }
       
-      toast.success('Task created successfully!');
+      toast.success('Task created successfully! Notifications sent to volunteers.');
       navigate(`/admin/events/${eventId}`); // Return to event details page
     } catch (error) {
       console.error('Error creating task:', error);

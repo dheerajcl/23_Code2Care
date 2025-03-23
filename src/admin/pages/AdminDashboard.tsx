@@ -11,7 +11,8 @@ import {
   LogOut, 
   User, 
   Settings,
-  ChevronDown
+  ChevronDown,
+  Bell
 } from 'lucide-react';
 import { useAuth } from '@/lib/authContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -541,6 +542,26 @@ const AdminDashboard: React.FC = () => {
                 <CardFooter>
                   <Button variant="outline" className="w-full" onClick={handleViewAllVolunteers}>
                     View All Volunteers
+                  </Button>
+                </CardFooter>
+              </Card>
+
+              {/* Notifications Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Notifications</CardTitle>
+                  <CardDescription>
+                    View and manage volunteer task notifications
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-center">
+                    <Bell className="w-6 h-6 text-blue-500" />
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button variant="outline" className="w-full" onClick={() => navigate('/admin/notifications')}>
+                    View Notifications
                   </Button>
                 </CardFooter>
               </Card>

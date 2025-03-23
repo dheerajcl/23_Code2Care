@@ -2117,4 +2117,104 @@ export const getVolunteerRank = async (volunteerId: string) => {
       error 
     };
   }
+};
+
+// Create a task assignment with notification
+export const createTaskAssignment = async (taskId: string, volunteerId: string, eventId: string) => {
+  try {
+    const now = new Date().toISOString();
+    
+    // Create the task assignment
+    const { data, error } = await supabase
+      .from('task_assignment')
+      .insert({
+        task_id: taskId,
+        volunteer_id: volunteerId,
+        event_id: eventId,
+        created_at: now,
+        backlog: 0,
+        todo: 1, // Mark as todo initially
+        in_progress: 0,
+        in_review: 0,
+        done: 0,
+        assigned: 1, // Mark as assigned
+        notification_status: 'pending'
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    // Import and use the notification service
+    // Note: Using import here to avoid circular dependencies
+    const { notificationService } = await import('./notification.service');
+    
+    // Send notification to the volunteer
+    await notificationService.notifyTaskAssignment(
+      data.id,
+      volunteerId,
+      taskId,
+      eventId
+    );
+    
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error creating task assignment with notification:', error);
+    return { data: null, error };
+  }
+};
+
+// Get task assignments with volunteer details
+export const getTaskAssignmentsWithDetails = async (filters = {}) => {
+  try {
+    let query = supabase
+      .from('task_assignment')
+      .select(`
+        *,
+        task:task_id (
+          *
+        ),
+        volunteer:volunteer_id (
+          id,
+          first_name,
+          last_name,
+          email,
+          profile_image
+        ),
+        event:event_id (
+          id,
+          title
+        )
+      `);
+    
+    // Apply filters if provided
+    if (filters.taskId) {
+      query = query.eq('task_id', filters.taskId);
+    }
+    
+    if (filters.volunteerId) {
+      query = query.eq('volunteer_id', filters.volunteerId);
+    }
+    
+    if (filters.eventId) {
+      query = query.eq('event_id', filters.eventId);
+    }
+    
+    if (filters.status) {
+      query = query.eq('status', filters.status);
+    }
+    
+    if (filters.notificationStatus) {
+      query = query.eq('notification_status', filters.notificationStatus);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error fetching task assignments with details:', error);
+    return { data: [], error };
+  }
 }; 
