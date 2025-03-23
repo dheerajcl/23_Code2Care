@@ -569,12 +569,12 @@ const AdminEventDetails = () => {
                       Kanban
                     </Button>
                     <Button 
-                      onClick={() => setShowTaskForm(true)}
-                      className="bg-purple-600 hover:bg-purple-700"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Task
-                    </Button>
+  onClick={() => navigate(`/admin/events/${id}/createtask`)}
+  className="bg-purple-600 hover:bg-purple-700"
+>
+  <Plus className="mr-2 h-4 w-4" />
+  Add Task
+</Button>
                   </div>
                 </div>
                 
@@ -583,10 +583,10 @@ const AdminEventDetails = () => {
                     <h3 className="mt-2 text-sm font-medium text-gray-900">No tasks created yet</h3>
                     <p className="mt-1 text-sm text-gray-500">Get started by creating a new task for this event.</p>
                     <div className="mt-6">
-                      <Button onClick={() => setShowTaskForm(true)}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Create First Task
-                      </Button>
+                    <Button onClick={() => navigate(`/admin/events/${id}/createtask`)}>
+  <Plus className="mr-2 h-4 w-4" />
+  Create First Task
+</Button>
                     </div>
                   </div>
                 ) : (
