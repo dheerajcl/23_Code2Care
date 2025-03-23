@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/authContext';
 import { Calendar, Clock, MapPin, Users, List, Columns, Tag, User2 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { eventData } from '../admin/pages/AdminEvents'; // Reusing the same event data source
 
 // Task View Components
 import TaskTable from '../components/TaskTable';
@@ -12,7 +11,82 @@ import Sidebar from '../components/Sidebar';
 import { Badge } from '@/components/ui/badge';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
 
-const VolunteerTasks = () => {
+// This can be placed in the admin/pages/AdminEvents.js file
+
+export const eventData = [
+  {
+    id: 1,
+    title: "Annual Charity Gala",
+    date: "April 15, 2025",
+    time: "6:00 PM - 10:00 PM",
+    deadline: "April 5, 2025",
+    location: "Grand Plaza Hotel, 123 Main St",
+    type: "Fundraiser",
+    status: "Upcoming",
+    organizer: "Sarah Johnson",
+    description: "Our flagship fundraising event supporting local education initiatives.",
+    volunteerCount: 15,
+    taskCount: 24
+  },
+  {
+    id: 2,
+    title: "Community Clean-up Day",
+    date: "March 28, 2025",
+    time: "9:00 AM - 2:00 PM",
+    deadline: "March 25, 2025",
+    location: "Riverside Park",
+    type: "Environmental",
+    status: "Upcoming",
+    organizer: "Michael Chen",
+    description: "Join us in cleaning up our local park and riverside area.",
+    volunteerCount: 30,
+    taskCount: 12
+  },
+  {
+    id: 3,
+    title: "Food Drive",
+    date: "May 10, 2025",
+    time: "10:00 AM - 4:00 PM",
+    deadline: "May 1, 2025",
+    location: "Community Center, 456 Oak Avenue",
+    type: "Humanitarian",
+    status: "Planning",
+    organizer: "Lisa Nguyen",
+    description: "Collecting non-perishable food items for local food banks.",
+    volunteerCount: 20,
+    taskCount: 15
+  },
+  {
+    id: 4,
+    title: "Senior Tech Workshop",
+    date: "April 5, 2025",
+    time: "1:00 PM - 3:00 PM",
+    deadline: "March 29, 2025",
+    location: "Senior Living Center, 789 Elm Street",
+    type: "Educational",
+    status: "Upcoming",
+    organizer: "David Williams",
+    description: "Teaching seniors basic computer and smartphone skills.",
+    volunteerCount: 8,
+    taskCount: 10
+  },
+  {
+    id: 5,
+    title: "5K Fun Run for Youth Programs",
+    date: "June 12, 2025",
+    time: "8:00 AM - 11:00 AM",
+    deadline: "June 1, 2025",
+    location: "City Park Trail",
+    type: "Fundraiser",
+    status: "Planning",
+    organizer: "Robert Torres",
+    description: "Annual run/walk event raising funds for after-school programs.",
+    volunteerCount: 25,
+    taskCount: 20
+  }
+];
+
+const VolunteerTaskDetails = () => {
   const [activeView, setActiveView] = useState('table');
   const navigate = useNavigate();
   const { id } = useParams();
@@ -170,18 +244,6 @@ const VolunteerTasks = () => {
                 </div>
               </div>
             </div>
-  
-            {event?.organizer && (
-              <div className="mt-6 flex items-center">
-                <div className="bg-gray-100 rounded-full h-10 w-10 flex items-center justify-center mr-3">
-                  <User2 size={18} className="text-gray-600" />
-                </div>
-                <div>
-                  <h3 className="text-gray-500 text-sm">Organizer</h3>
-                  <p className="text-gray-800 font-medium">{event?.organizer}</p>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* My Tasks Section */}
@@ -243,4 +305,4 @@ const VolunteerTasks = () => {
   );
 };
 
-export default VolunteerTasks;
+export default VolunteerTaskDetails;

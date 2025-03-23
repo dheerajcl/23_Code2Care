@@ -31,9 +31,9 @@ import AuthCallback from "./pages/AuthCallback";
 import AdminEventDetails from "./admin/pages/AdminEventDetails";
 import DonationPage from "./pages/Donate";
 import VolunteerEvents from "./volunteer/VolunteerEvents";
-// import TasksPage from "./volunteer/TasksPage";
 import CreateEvent from "./admin/pages/CreateEvent";
 import EditEvent from "./admin/pages/EditEvent";
+import VolunteerTaskDetails from "./volunteer/VolunteerTaskDetails";
 
 function App() {
 const queryClient = new QueryClient();
@@ -137,7 +137,7 @@ const queryClient = new QueryClient();
                   path="/volunteer/events/:id/tasks"
                   element={
                     <ProtectedRoute roles={['volunteer']} redirectTo="/login">
-                      <VolunteerTasks />
+                      <VolunteerTaskDetails />
                     </ProtectedRoute>
                   }
                 />
@@ -146,6 +146,30 @@ const queryClient = new QueryClient();
                   element={
                     <ProtectedRoute roles={['volunteer']} redirectTo="/login">
                       <EventFeedback />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/volunteer/tasks"
+                  element={
+                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
+                      <VolunteerTasks />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/volunteer/progress"
+                  element={
+                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
+                      <VolunteerProgress />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/volunteer/badges"
+                  element={
+                    <ProtectedRoute roles={['volunteer']} redirectTo="/login">
+                      <VolunteerBadges />
                     </ProtectedRoute>
                   }
                 />

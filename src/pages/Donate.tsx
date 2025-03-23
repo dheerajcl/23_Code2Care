@@ -27,6 +27,10 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
 import LandingHeader from '@/components/LandingHeader';
+import { createClient } from '@supabase/supabase-js';
+
+// Initialize Supabase client
+import { supabase } from '@/lib/supabase';
 
 const donationOptions = [
   { value: 'education', label: 'Education' },
@@ -56,6 +60,7 @@ const DonationPage: React.FC = () => {
   });
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [receiveUpdates, setReceiveUpdates] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handlePersonalInfoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -74,7 +79,16 @@ const DonationPage: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Function to generate a random transaction ID
+  const generateTransactionId = () => {
+    return 'TXN' + Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+  };
+
+  // Function to submit donation to Supabase
+
+
+  // Function to handle donation form submission
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validation
@@ -96,22 +110,152 @@ const DonationPage: React.FC = () => {
       return;
     }
     
-    // Process donation (in a real app, this would connect to payment processing)
+    // Show processing toast
     toast({
-      title: "Donation Processing",
-      description: "Your donation is being processed. Thank you for your support!",
+      title: "Processing Donation",
+      description: "Please wait while we process your donation...",
     });
+
+    setIsSubmitting(true);
     
-    // In a real implementation, you would handle form submission to backend here
-    console.log({
-      donationType,
-      amount,
-      paymentMethod,
-      donationPurpose,
-      personalInfo,
-      agreeToTerms,
-      receiveUpdates
-    });
+    try {
+      // In a real application, you would process the payment here
+      // For demo purposes, we'll assume payment is successful and store the donation
+
+      // Submit donation to Supabase
+      const result = await submitDonationToSupabase();
+      
+      // Success response
+      toast({
+        title: "Donation Successful!",
+        description: `Thank you for your donation of ₹${typeof amount === 'string' ? amount : amount.toLocaleString()}. Transaction ID: ${result.transactionId}`,
+        variant: "default",
+      });
+      
+      // Reset form
+      setAmount(1000);
+      setCustomAmount(false);
+      setDonationType('oneTime');
+      setPaymentMethod('card');
+      setDonationPurpose('general');
+      setPersonalInfo({
+        name: '',
+        email: '',
+        phone: '',
+        address: '',
+        panNumber: '',
+        message: ''
+      });
+      setAgreeToTerms(false);
+      setReceiveUpdates(false);
+      
+    } catch (error) {
+      console.error('Donation processing error:', error);
+      toast({
+        title: "Donation Failed",
+        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+   // Update the submitDonationToSupabase function to match the database schema
+  const submitDonationToSupabase = async () => {
+    try {
+      const numericAmount = Number(amount);
+      if (isNaN(numericAmount) || numericAmount <= 0) {
+        throw new Error('Invalid donation amount');
+      }
+
+      const transactionId = generateTransactionId();
+      
+      // Prepare donation data with snake_case column names to match the DB schema
+      const donationData = {
+        amount: numericAmount,
+        donation_type: donationType,
+        donation_purpose: donationPurpose,
+        payment_method: paymentMethod,
+        payment_status: 'completed', // You might want to change this based on actual payment processing
+        transaction_id: transactionId,
+        donor_name: personalInfo.name,
+        donor_email: personalInfo.email,
+        donor_phone: personalInfo.phone,
+        donor_address: personalInfo.address || null,
+        pan_number: personalInfo.panNumber || null,
+        donor_message: personalInfo.message || null,
+        receive_updates: receiveUpdates,
+        // No need to set created_at and updated_at as they have default values in the schema
+      };
+
+      // Insert donation into Supabase
+      const { data, error } = await supabase
+        .from('donation')
+        .insert([donationData])
+        .select();
+
+      if (error) throw error;
+      
+      return { success: true, data, transactionId };
+    } catch (error) {
+      console.error('Error submitting donation to Supabase:', error);
+      throw error;
+    }
+  };
+
+  // Update the getDonationById function to match the database schema
+  const getDonationById = async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('donation')
+        .select('*')
+        .eq('id', id)
+        .single();
+        
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching donation:', error);
+      throw error;
+    }
+  };
+
+  // Update the updateDonationStatus function to match the database schema
+  const updateDonationStatus = async (id: string, status: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('donation')
+        .update({ 
+          payment_status: status,
+          // No need to update updated_at as it should have a trigger in the database
+        })
+        .eq('id', id)
+        .select();
+        
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating donation status:', error);
+      throw error;
+    }
+  };
+
+  // Update the getDonationsByEmail function to match the database schema
+  const getDonationsByEmail = async (email: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('donation')
+        .select('*')
+        .eq('donor_email', email)
+        .order('created_at', { ascending: false });
+        
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching donations by email:', error);
+      throw error;
+    }
   };
 
   const isFormValid = () => {
@@ -443,10 +587,10 @@ const DonationPage: React.FC = () => {
                     <Button 
                       type="submit" 
                       className="w-full"
-                      disabled={!isFormValid()}
+                      disabled={!isFormValid() || isSubmitting}
                     >
-                      Donate ₹{typeof amount === 'string' ? amount || '0' : amount.toLocaleString()}
-                      <Heart className="ml-2 h-4 w-4" />
+                      {isSubmitting ? 'Processing...' : `Donate ₹${typeof amount === 'string' ? amount || '0' : amount.toLocaleString()}`}
+                      {!isSubmitting && <Heart className="ml-2 h-4 w-4" />}
                     </Button>
                   </form>
                 </CardContent>
