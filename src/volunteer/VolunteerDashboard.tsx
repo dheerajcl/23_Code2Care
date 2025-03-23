@@ -41,41 +41,12 @@ import { Leaderboard } from '@/components/Leaderboard';
 import { Link, useLocation } from 'react-router-dom';
 import Sidebar from '@/components/Sidebar';
 import LandingHeader from '@/components/LandingHeader';
-import { getEvents } from '@/services/database.service';
+import { getEvents, getTasksForVolunteer } from '@/services/database.service';
+import { notificationService } from '@/services/notification.service';
 import { toast } from 'sonner';
-
-export const assignedTasks = [
-  {
-    id: '1',
-    eventId: '1',
-    eventTitle: 'Digital Literacy Workshop',
-    title: 'Setup equipment',
-    description: 'Setup computers and assistive technology devices',
-    date: 'Aug 15, 2023',
-    time: '9:00 AM - 10:00 AM',
-    status: 'upcoming'
-  },
-  {
-    id: '2',
-    eventId: '1',
-    eventTitle: 'Digital Literacy Workshop',
-    title: 'Teaching assistance',
-    description: 'Help participants with hands-on exercises',
-    date: 'Aug 15, 2023',
-    time: '10:00 AM - 1:00 PM',
-    status: 'upcoming'
-  },
-  {
-    id: '3',
-    eventId: '4',
-    eventTitle: 'Blind Cricket Workshop',
-    title: 'Equipment management',
-    description: 'Manage and distribute cricket equipment to participants',
-    date: 'Jul 25, 2023',
-    time: '9:00 AM - 12:00 PM',
-    status: 'completed'
-  },
-];
+import { format } from 'date-fns';
+import { Skeleton } from '@/components/ui/skeleton';
+import { supabase } from '@/lib/supabase';
 
 const badges = [
   {
@@ -100,7 +71,7 @@ const badges = [
     description: 'Arrived early and helped with setup',
     icon: '🐦',
     date: 'Jul 25, 2023',
-    color: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'
+    color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'
   },
 ];
 
@@ -156,50 +127,108 @@ const feedbackData = [
 
 export const VolunteerDashboard = () => {
   const { user, logout } = useAuth();
-  const location = useLocation();
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState([]);
+  const location = useLocation();
   
   useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        setLoading(true);
-        // Fetch events from the database
-        const { data, error } = await getEvents();
-        
-        if (error) throw error;
-        
-        // Filter for upcoming events (where end_date is in the future)
-        const now = new Date();
-        const filtered = data.filter(event => {
-          const endDate = new Date(event.end_date);
-          return endDate >= now;
-        });
-        
-        // Sort by start date ascending (soonest first)
-        filtered.sort((a, b) => {
-          return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
-        });
-        
-        // Take only the first 3 for display
-        setUpcomingEvents(filtered.slice(0, 3));
-      } catch (error) {
-        console.error('Error fetching upcoming events:', error);
-        toast.error('Failed to load upcoming events');
-        setUpcomingEvents([]);
-      } finally {
-        setLoading(false);
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
+  
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // Fetch upcoming events
+      const { data: events } = await getEvents();
+      if (events) {
+        // Filter to get only upcoming events
+        const upcoming = events.filter(event => 
+          new Date(event.start_date) > new Date()
+        ).slice(0, 3); // Get only 3 upcoming events
+        setUpcomingEvents(upcoming);
       }
-    };
+      
+      // Fetch notifications
+      if (user?.id) {
+        const { data: notificationData } = await notificationService.getVolunteerNotifications(user.id);
+        setNotifications(notificationData || []);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleLogout = async () => {
+    await logout();
+    // Redirect is handled by the auth context
+  };
+
+  // Function to render notifications
+  const renderNotifications = () => {
+    if (loading) {
+      return (
+        <div className="space-y-2">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      );
+    }
     
-    fetchEvents();
-  }, []);
-  
-    const handleLogout = async () => {
-      await logout();
-      // Redirect is handled by the auth context
-    };
-  
+    if (!notifications || notifications.length === 0) {
+      return (
+        <p className="text-muted-foreground text-center py-4">
+          No notifications yet.
+        </p>
+      );
+    }
+    
+    return notifications.slice(0, 3).map(notification => (
+      <div key={notification.id} className="flex items-start gap-4 py-2 border-b">
+        <div className={`w-2 h-2 mt-2 rounded-full ${notification.is_read ? 'bg-gray-300' : 'bg-blue-500'}`} />
+        <div className="flex-1">
+          <div className="font-medium">{notification.title}</div>
+          <div className="text-sm text-muted-foreground">{notification.message}</div>
+          {notification.created_at && (
+            <div className="text-xs text-muted-foreground mt-1">
+              {format(new Date(notification.created_at), 'MMM d, yyyy h:mm a')}
+            </div>
+          )}
+        </div>
+        {notification.task_assignment_id && !notification.is_read && (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={async () => {
+              try {
+                // Mark notification as read
+                const { error } = await supabase
+                  .from('notification')
+                  .update({ is_read: true })
+                  .eq('id', notification.id);
+                
+                if (error) throw error;
+                
+                // Refresh notifications
+                const { data } = await notificationService.getVolunteerNotifications(user.id);
+                setNotifications(data || []);
+              } catch (err) {
+                console.error('Error marking notification as read:', err);
+              }
+            }}
+          >
+            Mark as read
+          </Button>
+        )}
+      </div>
+    ));
+  };
+
   return (
     <div className="h-screen bg-gray-100 flex flex-col vol-dashboard">
       <Header/>
@@ -338,6 +367,34 @@ export const VolunteerDashboard = () => {
                     </CardContent>
                   </Card>
                 )}
+              </div>
+
+              {/* Add a redirect to Tasks Section */}
+              <div className="space-y-4 mt-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold">Tasks</h2>
+                  <Button variant="default" asChild>
+                    <Link to="/volunteer/tasks">
+                      Manage Your Tasks
+                      <ExternalLink className="h-4 w-4 ml-2" />
+                    </Link>
+                  </Button>
+                </div>
+                
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-8">
+                    <CheckCircle className="h-12 w-12 text-muted-foreground mb-4" />
+                    <p className="text-lg font-medium mb-2">Task Management</p>
+                    <p className="text-sm text-muted-foreground mb-4 text-center">
+                      Check your task invitations, in-progress tasks, and completed tasks in the dedicated Tasks section.
+                    </p>
+                    <Button variant="outline" asChild>
+                      <Link to="/volunteer/tasks">
+                        Go to Tasks
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
               </div>
 
             </div>

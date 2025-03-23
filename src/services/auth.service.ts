@@ -390,8 +390,29 @@ export const loginVolunteer = async (credentials: z.infer<typeof loginSchema>): 
     
     // Track login and handle badges
     try {
+      // Create a record in login_tracking table
+      const { error: loginTrackingError } = await supabase
+        .from('login_tracking')
+        .insert({
+          volunteer_id: volunteerData.id,
+          login_time: new Date().toISOString(),
+          device_info: navigator.userAgent || 'Unknown',
+          ip_address: 'Not recorded'
+        });
+        
+      if (loginTrackingError) {
+        // If table doesn't exist yet, just continue
+        if (loginTrackingError.code === '42P01') { // "relation does not exist" error code
+          console.warn('login_tracking table does not exist, skipping login tracking');
+        } else {
+          console.error('Error tracking login:', loginTrackingError);
+        }
+      } else {
+        console.log('Login tracked successfully');
+      }
+      
+      // Track login via points service (if this creates a tracking record, continue with that)
       await pointsService.trackLogin(volunteerData.id);
-      console.log('Login tracked successfully');
     } catch (error) {
       console.error('Error tracking login:', error);
       // Don't fail the login if tracking fails

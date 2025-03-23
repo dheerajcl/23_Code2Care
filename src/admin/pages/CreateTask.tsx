@@ -40,7 +40,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, FilterIcon, CheckIcon, PlusIcon, XIcon, UserPlusIcon, Trash2, Search } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
-import { createTaskAssignment } from '@/services/database.service';
+import { createTaskAssignment, Task } from '@/services/database.service';
+import { emailService } from '@/services/email.service';
 
 const CreateTask = () => {
   const navigate = useNavigate();
@@ -54,7 +55,7 @@ const CreateTask = () => {
   // Task State
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [maxVolunteers, setMaxVolunteers] = useState(1);
+  const [maxVolunteers, setMaxVolunteers] = useState<number>(1);
   const [status, setStatus] = useState('todo');
   const [deadline, setDeadline] = useState(null);
   const [selectedVolunteers, setSelectedVolunteers] = useState([]);
@@ -149,30 +150,46 @@ const formatDate = (dateString) => {
         setEvent(eventData);
         
         // Fetch volunteers registered for this event from event_signup table
-        const { data: signupCheck, error: signupError } = await supabase
-  .from('event_signup')
-  .select('volunteer_id, event_id')
-  .eq('event_id', eventId);
+        const { data: signupData, error: signupError } = await supabase
+          .from('event_signup')
+          .select(`
+            id,
+            event_id,
+            volunteer_id,
+            created_at,
+            status,
+            hours,
+            volunteer:volunteer_id (*)
+          `)
+          .eq('event_id', eventId);
   
-if (signupError) throw signupError;
+        if (signupError) {
+          console.error('Error fetching event signups:', signupError);
+          toast.error('Failed to load registered volunteers');
+          setAllVolunteers([]);
+          setFilteredVolunteers([]);
+          setEventLoading(false);
+          setVolunteersLoading(false);
+          return;
+        }
 
-// Here's the problem: you're using signupData but defined signupCheck
-const volunteerIds = signupCheck.map(signup => signup.volunteer_id);
-console.log('Sign up data check:', volunteerIds);
+        console.log('Sign up data check:', signupData);
 
-if (volunteerIds.length > 0) {
-  // Also, the table name is 'volunteer' (singular) not 'volunteers'
-  const { data: volunteersData, error: volunteersError } = await supabase
-    .from('volunteer') 
-    .select('*')
-    .in('id', volunteerIds);
-    
-  if (volunteersError) throw volunteersError;
+        if (signupData && signupData.length > 0) {
+          const volunteerIds = signupData.map(signup => signup.volunteer_id);
+          
+          // Fetch volunteer details
+          const { data: volunteersData, error: volunteersError } = await supabase
+            .from('volunteer')
+            .select('*')
+            .in('id', volunteerIds);
+            
+          if (volunteersError) throw volunteersError;
           
           // Process volunteer data to match the required format
           const formattedVolunteers = volunteersData.map(vol => ({
             id: vol.id,
-            name: vol.name || `${vol.first_name || ''} ${vol.last_name || ''}`.trim(),
+            name: `${vol.first_name || ''} ${vol.last_name || ''}`.trim(),
             email: vol.email,
             availability: vol.availability || 'weekends',
             skills: vol.skills || [],
@@ -287,13 +304,20 @@ if (volunteerIds.length > 0) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!title) {
-      toast.error('Please provide a task title');
+    // Validation
+    if (!title.trim()) {
+      toast.error('Please enter a task title');
       return;
     }
     
     if (!eventId) {
-      toast.error('No event selected');
+      toast.error('Please select an event');
+      return;
+    }
+
+    const maxVolunteersNum = Number(maxVolunteers);
+    if (isNaN(maxVolunteersNum) || maxVolunteersNum <= 0) {
+      toast.error('Please enter a valid number of maximum volunteers');
       return;
     }
     
@@ -303,43 +327,190 @@ if (volunteerIds.length > 0) {
       const now = new Date().toISOString();
       
       // 1. Create the task
+      const taskInput = {
+        title,
+        description,
+        start_time: now,
+        end_time: deadline ? format(deadline, 'yyyy-MM-dd HH:mm:ss') : null,
+        max_volunteers: maxVolunteersNum as number,
+        status,
+        deadline: deadline ? format(deadline, 'yyyy-MM-dd') : null,
+        created_at: now,
+        updated_at: now,
+        event_id: eventId
+      };
+
       const { data: taskData, error: taskError } = await supabase
         .from('task')
-        .insert({
-          title,
-          description,
-          start_time: now,
-          end_time: deadline ? format(deadline, 'yyyy-MM-dd HH:mm:ss') : null,
-          max_volunteers: maxVolunteers,
-          status,
-          deadline: deadline ? format(deadline, 'yyyy-MM-dd') : null,
-          created_at: now,
-          updated_at: now,
-          event_id: eventId // Associate task with the event
-        })
+        .insert(taskInput)
         .select('id')
         .single();
         
-      if (taskError) throw taskError;
-      
-      const taskId = taskData.id;
-      
-      // 2. Assign volunteers with notifications
-      if (selectedVolunteers.length > 0) {
-        // Create task assignments with notifications for each volunteer
-        const assignmentPromises = selectedVolunteers.map(volunteerId => 
-          createTaskAssignment(taskId, volunteerId, eventId)
-        );
-        
-        // Wait for all assignments to be created
-        await Promise.all(assignmentPromises);
+      if (taskError) {
+        throw taskError;
       }
       
-      toast.success('Task created successfully! Notifications sent to volunteers.');
-      navigate(`/admin/events/${eventId}`); // Return to event details page
+      const taskId = taskData.id;
+      console.log('Created task with ID:', taskId);
+      
+      // 2. Assign volunteers
+      if (selectedVolunteers.length > 0) {
+        const assignmentToast = toast.loading(
+          `Assigning ${selectedVolunteers.length} volunteers to task...`
+        );
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        // Process assignments sequentially to avoid race conditions
+        for (const volunteerId of selectedVolunteers) {
+          try {
+            // Instead of using createTaskAssignment, insert directly
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            
+            // Check if volunteer is registered for the event first
+            const { data: registration } = await supabase
+              .from('event_signup')
+              .select('id')
+              .eq('event_id', eventId)
+              .eq('volunteer_id', volunteerId)
+              .single();
+              
+            if (!registration) {
+              console.error(`Volunteer ${volunteerId} is not registered for event ${eventId}`);
+              errorCount++;
+              continue;
+            }
+            
+            // Get volunteer details for email and notification
+            const { data: volunteerData, error: volunteerError } = await supabase
+              .from('volunteer')
+              .select('*')
+              .eq('id', volunteerId)
+              .single();
+              
+            if (volunteerError || !volunteerData) {
+              console.error(`Error fetching volunteer ${volunteerId} details:`, volunteerError);
+              errorCount++;
+              continue;
+            }
+
+            // First check if the volunteer email exists and is valid
+            if (!volunteerData.email || !volunteerData.email.includes('@')) {
+              console.error(`Invalid or missing email for volunteer ${volunteerId}`);
+              errorCount++;
+              continue;
+            }
+
+            // Create the task assignment directly
+            const { data: assignmentData, error: assignError } = await supabase
+              .from('task_assignment')
+              .insert({
+                task_id: taskId,
+                volunteer_id: volunteerId,
+                event_id: eventId,
+                created_at: now,
+                notification_status: 'sent',
+                status: 'pending',
+                response_deadline: tomorrow.toISOString(),
+                todo: 1,
+                assigned: 1,
+                notification_sent_at: now
+              })
+              .select()
+              .single();
+
+            if (assignError) {
+              console.error(`Error assigning volunteer ${volunteerId}:`, assignError);
+              errorCount++;
+            } else {
+              // Create notification for the volunteer and link it to the task assignment
+              const { error: notifError } = await supabase
+                .from('notification')
+                .insert({
+                  recipient_id: volunteerId,
+                  task_assignment_id: assignmentData.id,
+                  title: `New Task Assignment: ${title}`,
+                  message: `You have been assigned to task "${title}" for event "${event.title}"`,
+                  type: 'task_assignment',
+                  is_read: false,
+                  created_at: now
+                });
+                
+              if (notifError) {
+                console.error(`Notification creation failed: ${notifError.message}`);
+                // Rollback task assignment if notification fails
+                await supabase
+                  .from('task_assignment')
+                  .delete()
+                  .eq('id', assignmentData.id);
+                throw notifError;
+              }
+              
+              // Add email sending logic here
+              try {
+                const responseToken = window.btoa(encodeURIComponent(`${assignmentData.id}:${volunteerId}`));
+                const responseLink = `${window.location.origin}/task-response/${assignmentData.id}?action=respond&token=${responseToken}`;
+
+                // Ensure we're passing a valid email address and other required fields
+                const emailParams = {
+                  to_email: volunteerData.email.trim(),  
+                  to_name: `${volunteerData.first_name || ''} ${volunteerData.last_name || ''}`.trim(),
+                  task_name: title || 'New Task',
+                  event_name: event?.title || 'Event',
+                  response_deadline: tomorrow.toISOString(),
+                  response_link: responseLink,
+                  // Add any other required fields for your email template
+                  subject: `New Task Assignment: ${title}`,
+                  message: `You have been assigned to task "${title}" for event "${event?.title}".`
+                };
+                
+                console.log('Sending email with params:', emailParams);
+                await emailService.sendTaskAssignmentEmail(emailParams);
+                
+                // After successful email sending, update notification_status to 'sent'
+                await supabase
+                  .from('task_assignment')
+                  .update({
+                    notification_status: 'sent',
+                    notification_sent_at: now,
+                    email_sent: true  // Update the email_sent flag
+                  })
+                  .eq('id', assignmentData.id);
+                
+                // Increment success count ONLY after all operations succeed
+                successCount++;
+                
+                // Refresh dashboard data
+                window.dispatchEvent(new CustomEvent('task-assignment-update'));
+              } catch (emailError) {
+                console.error('Error sending assignment email:', emailError);
+                errorCount++;  // Count email errors as assignment failures
+              }
+            }
+          } catch (err) {
+            console.error(`Error in assignment process for ${volunteerId}:`, err);
+            errorCount++;
+          }
+        }
+
+        toast.dismiss(assignmentToast);
+
+        if (successCount > 0) {
+          toast.success(`Successfully assigned ${successCount} volunteers to the task`);
+        }
+        if (errorCount > 0) {
+          toast.error(`Failed to assign ${errorCount} volunteers. Check console for details.`);
+        }
+      }
+
+      // 3. Navigate back to event details
+      navigate(`/admin/events/${eventId}`);
+      
     } catch (error) {
       console.error('Error creating task:', error);
-      toast.error('Failed to create task. Please try again.');
+      toast.error('Failed to create task: ' + error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -409,6 +580,73 @@ if (volunteerIds.length > 0) {
     );
   };
 
+  const handleAssignVolunteer = async (volunteerId: string) => {
+    try {
+      console.log(`Assigning volunteer ${volunteerId} to task ${taskId}`);
+      if (!taskId) {
+        console.error('Task ID is undefined');
+        toast.error('Cannot assign volunteer: Task ID is missing');
+        return;
+      }
+
+      // First check if the task assignment already exists
+      const { data: existingAssignment, error: checkError } = await supabase
+        .from('task_assignment')
+        .select('*')
+        .eq('task_id', taskId)
+        .eq('volunteer_id', volunteerId)
+        .maybeSingle();
+
+      if (existingAssignment) {
+        toast.info('This volunteer is already assigned to this task');
+        return;
+      }
+
+      const now = new Date().toISOString();
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      // Directly create the assignment without using the function that might have triggers
+      const { error: assignError } = await supabase
+        .from('task_assignment')
+        .insert({
+          task_id: taskId,
+          volunteer_id: volunteerId,
+          event_id: eventId,
+          created_at: now,
+          notification_status: 'pending',
+          status: 'pending',
+          response_deadline: tomorrow.toISOString(),
+          todo: 1,
+          assigned: 1
+        });
+
+      if (assignError) {
+        console.error('Error assigning volunteer', volunteerId, ':', assignError.message);
+        toast.error(`Failed to assign volunteer: ${assignError.message}`);
+        return;
+      }
+
+      // Create a notification for the volunteer
+      await supabase
+        .from('notification')
+        .insert({
+          recipient_id: volunteerId,
+          title: `New Task Assignment: ${title}`,
+          message: `You have been assigned to task "${title}" for event "${event.title}"`,
+          type: 'task_assignment',
+          is_read: false,
+          created_at: now
+        });
+
+      toast.success('Volunteer assigned successfully');
+      setAssignedVolunteers([...assignedVolunteers, volunteerId]);
+    } catch (error) {
+      console.error('Error assigning volunteer', volunteerId, ':', error);
+      toast.error('Failed to assign volunteer');
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-100">
       <AdminSidebar />
@@ -476,9 +714,9 @@ if (volunteerIds.length > 0) {
                           id="maxVolunteers" 
                           type="number" 
                           min="1"
-                          value={maxVolunteers} 
+                          value={String(maxVolunteers)}
                           onChange={(e) => {
-                            const newMax = parseInt(e.target.value);
+                            const newMax = Math.max(1, parseInt(e.target.value) || 1);
                             setMaxVolunteers(newMax);
                             // If we have more selected volunteers than the new max, trim the selection
                             if (selectedVolunteers.length > newMax) {

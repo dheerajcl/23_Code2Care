@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/authContext';
-import { Calendar, Clock, MapPin, Users, List, Columns, Tag, User2 } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, List, Columns, Tag, User2, Check, X, Info } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { supabase } from '@/lib/supabase';
+import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 // Task View Components
 import TaskTable from '../components/TaskTable';
@@ -10,7 +13,11 @@ import TaskKanban from '../components/TaskKanban';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
+import { getEventById, getTasksForVolunteer } from '@/services/database.service';
+import { notificationService } from '@/services/notification.service';
 
 // This can be placed in the admin/pages/AdminEvents.js file
 
@@ -98,69 +105,82 @@ const VolunteerTaskDetails = () => {
   const [loading, setLoading] = useState(true);
   // Store tasks assigned to the current volunteer for this event
   const [volunteerTasks, setVolunteerTasks] = useState([]);
-
-  // Dummy data for tasks with eventId and assignee fields
-  const tasks = [
-    { 
-      id: 1, 
-      name: 'Confirm venue reservation', 
-      assignee: { id: 1, name: 'John', initial: 'J' }, 
-      status: 'Backlog',
-      dueDate: 'March 2, 2025',
-      eventId: 1
-    },
-    { 
-      id: 2, 
-      name: 'Arrange catering services', 
-      assignee: { id: 2, name: 'Antonio', initial: 'A' }, 
-      status: 'In Progress',
-      dueDate: 'April 3, 2025',
-      eventId: 1
-    },
-    { 
-      id: 3, 
-      name: 'Send invitations', 
-      assignee: { id: 1, name: 'John', initial: 'J' }, 
-      status: 'Todo',
-      dueDate: 'March 23, 2025',
-      eventId: 1
-    },
-    { 
-      id: 4, 
-      name: 'Schedule volunteers', 
-      assignee: { id: 1, name: 'John', initial: 'J' }, 
-      status: 'Done',
-      dueDate: 'March 25, 2025',
-      eventId: 2
-    },
-    { 
-      id: 5, 
-      name: 'Prepare event materials', 
-      assignee: { id: 2, name: 'Antonio', initial: 'A' }, 
-      status: 'In Review',
-      dueDate: 'April 5, 2025',
-      eventId: 2
-    }
-  ];
+  // Task that needs response (pending invitations)
+  const [pendingInvitations, setPendingInvitations] = useState([]);
 
   useEffect(() => {
-    if (id) {
-      // Fetch event data based on ID
-      const event_data = eventData.find(e => e.id === parseInt(id));
-      setEvent(event_data);
-      
-      // Use ID 1 from the dummy data (John's ID)
-      const dummyUserId = 1;
-      
-      // Filter tasks for this specific event AND assigned to our dummy user
-      const filteredTasks = tasks.filter(
-        task => task.eventId === parseInt(id) && task.assignee?.id === dummyUserId
-      );
-      
-      setVolunteerTasks(filteredTasks);
-      setLoading(false);
+    if (id && user?.id) {
+      fetchEventAndTasks();
     }
   }, [id, user]);
+
+  const fetchEventAndTasks = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch event details
+      const { data: eventData, error: eventError } = await getEventById(id);
+      
+      if (eventError) {
+        console.error('Error fetching event details:', eventError);
+        toast.error('Failed to load event details');
+        return;
+      }
+      
+      if (!eventData) {
+        toast.error('Event not found');
+        navigate('/volunteer/events');
+        return;
+      }
+      
+      setEvent(eventData);
+      
+      // Fetch tasks assigned to the volunteer for this event
+      const { data: tasksData, error: tasksError } = await getTasksForVolunteer(user.id);
+      
+      if (tasksError) {
+        console.error('Error fetching tasks:', tasksError);
+        toast.error('Failed to load tasks');
+        return;
+      }
+      
+      // Filter tasks for the current event
+      const eventTasks = tasksData.filter(task => task.event_id === id);
+      
+      console.log('Tasks for this event:', eventTasks);
+      
+      // Find tasks that need response (invitations)
+      const invitations = eventTasks.filter(task => task.notification_status === 'sent');
+      setPendingInvitations(invitations);
+      
+      // Transform tasks to the format expected by the TaskTable/TaskKanban components
+      const formattedTasks = eventTasks.map(task => ({
+        id: task.id,
+        name: task.title,
+        description: task.description,
+        status: task.status === 'completed' ? 'Done' : 
+                task.status === 'accepted' ? 'In Progress' : 
+                task.notification_status === 'accept' ? 'In Progress' : 
+                task.notification_status === 'sent' ? 'Todo' : 'Backlog',
+        dueDate: task.deadline ? format(new Date(task.deadline), 'MMM d, yyyy') : 'No deadline',
+        eventId: task.event_id,
+        assignee: {
+          id: user.id,
+          name: `${user.firstName} ${user.lastName}`,
+          initial: user.firstName.charAt(0)
+        },
+        task_assignment_id: task.id, // The task ID from getTasksForVolunteer is actually the task_assignment ID
+        notification_status: task.notification_status
+      }));
+      
+      setVolunteerTasks(formattedTasks);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('Failed to load event data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -168,14 +188,136 @@ const VolunteerTaskDetails = () => {
   };
 
   // Function to update task status
-  const handleUpdateTaskStatus = (taskId, newStatus) => {
-    const updatedTasks = volunteerTasks.map(task => 
-      task.id === taskId ? { ...task, status: newStatus } : task
-    );
-    setVolunteerTasks(updatedTasks);
-    
-    // Here you would normally make an API call to update the task status
-    console.log(`Task ${taskId} status updated to ${newStatus}`);
+  const handleUpdateTaskStatus = async (taskId, newStatus) => {
+    try {
+      // Find the task_assignment_id
+      const task = volunteerTasks.find(t => t.id === taskId);
+      if (!task) return;
+      
+      // If task is being marked as Done, use handleComplete instead
+      if (newStatus === 'Done') {
+        return await handleComplete(taskId, task.task_assignment_id);
+      }
+      
+      // Map frontend status to backend status
+      let backendStatus;
+      switch (newStatus) {
+        case 'In Progress':
+          backendStatus = 'accepted';
+          break;
+        case 'Todo':
+          backendStatus = 'accepted'; // Still accepted, just not started
+          break;
+        case 'Backlog':
+          backendStatus = 'pending';
+          break;
+        case 'In Review':
+          backendStatus = 'accepted'; // No direct equivalent, treat as accepted
+          break;
+        default:
+          backendStatus = 'pending';
+      }
+      
+      // Update task status in the database
+      const { error } = await supabase
+        .from('task_assignment')
+        .update({ status: backendStatus })
+        .eq('id', task.task_assignment_id);
+      
+      if (error) {
+        console.error('Error updating task status:', error);
+        toast.error('Failed to update task status');
+        return;
+      }
+      
+      // Update local state
+      const updatedTasks = volunteerTasks.map(t => 
+        t.id === taskId ? { ...t, status: newStatus } : t
+      );
+      setVolunteerTasks(updatedTasks);
+      
+      toast.success('Task status updated');
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      toast.error('Failed to update task status');
+    }
+  };
+
+  // Handle accept task invitation
+  const handleAccept = async (taskId) => {
+    try {
+      console.log(`Accepting task: task=${taskId}`);
+      
+      const { success, error } = await notificationService.handleTaskResponse(
+        taskId,
+        user.id,
+        'accept'
+      );
+      
+      if (success) {
+        toast.success('Task accepted successfully');
+        await fetchEventAndTasks(); // Refresh tasks
+      } else {
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error accepting task:', error);
+      toast.error('Failed to accept task');
+    }
+  };
+
+  // Handle reject task invitation
+  const handleReject = async (taskId) => {
+    try {
+      console.log(`Rejecting task: task=${taskId}`);
+      
+      const { success, error } = await notificationService.handleTaskResponse(
+        taskId,
+        user.id,
+        'reject'
+      );
+      
+      if (success) {
+        toast.success('Task rejected');
+        await fetchEventAndTasks(); // Refresh tasks
+      } else {
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error rejecting task:', error);
+      toast.error('Failed to reject task');
+    }
+  };
+
+  // Handle complete task
+  const handleComplete = async (taskId, assignmentId) => {
+    try {
+      console.log(`Completing task: task=${taskId}, assignment=${assignmentId}`);
+      
+      if (!assignmentId) {
+        console.error('Missing assignment ID for task completion');
+        toast.error('Cannot complete task: missing assignment information');
+        return;
+      }
+      
+      // Update task assignment status
+      const { error } = await supabase
+        .from('task_assignment')
+        .update({ status: 'completed' })
+        .eq('id', assignmentId);
+      
+      if (error) {
+        console.error('Error completing task:', error);
+        toast.error('Failed to mark task as complete');
+        return;
+      }
+      
+      toast.success('Task marked as complete');
+      await fetchEventAndTasks(); // Refresh tasks
+    } catch (error) {
+      console.error('Error completing task:', error);
+      toast.error('Failed to mark task as complete');
+    }
   };
 
   if (loading) {
@@ -223,8 +365,14 @@ const VolunteerTaskDetails = () => {
                   <Calendar size={16} />
                   Date & Time
                 </span>
-                <span className="text-md font-medium dark:text-white high-contrast:text-white">{event?.date}</span>
-                <span className="text-sm text-gray-600">{event?.time}</span>
+                <span className="text-md font-medium dark:text-white high-contrast:text-white">
+                  {event?.start_date ? format(new Date(event.start_date), 'MMMM d, yyyy') : 'No date'}
+                </span>
+                <span className="text-sm text-gray-600">
+                  {event?.start_date && event?.end_date ? 
+                    `${format(new Date(event.start_date), 'h:mm a')} - ${format(new Date(event.end_date), 'h:mm a')}` : 
+                    'No time specified'}
+                </span>
               </div>
 
               <div className="flex flex-col">
@@ -232,7 +380,9 @@ const VolunteerTaskDetails = () => {
                   <Calendar size={16} />
                   Deadline
                 </span>
-                <span className="text-md font-medium dark:text-white high-contrast:text-white">{event?.deadline}</span>
+                <span className="text-md font-medium dark:text-white high-contrast:text-white">
+                  {event?.registration_deadline ? format(new Date(event.registration_deadline), 'MMMM d, yyyy') : 'No deadline'}
+                </span>
               </div>
               
               <div className="flex flex-col">
@@ -240,7 +390,7 @@ const VolunteerTaskDetails = () => {
                   <MapPin size={16} />
                   Location
                 </span>
-                <span className="text-md font-medium dark:text-white high-contrast:text-white">{event?.location}</span>
+                <span className="text-md font-medium dark:text-white high-contrast:text-white">{event?.location || 'No location specified'}</span>
               </div>
               
               <div className="flex flex-col ml-16">
@@ -250,12 +400,56 @@ const VolunteerTaskDetails = () => {
                 </span>
                 <div className="mt-1">
                   <Badge className="bg-red-100 text-red-800 hover:bg-red-200 font-medium">
-                    {event?.type || "Uncategorized"}
+                    {event?.category || "Uncategorized"}
                   </Badge>
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Pending Invitations Alert */}
+          {pendingInvitations.length > 0 && (
+            <Alert className="mb-6 bg-yellow-50 border-yellow-200">
+              <Info className="h-5 w-5 text-yellow-600" />
+              <AlertTitle className="text-yellow-800">You have {pendingInvitations.length} pending task invitation(s)</AlertTitle>
+              <AlertDescription className="mt-2">
+                <div className="space-y-4">
+                  {pendingInvitations.map(task => (
+                    <div key={task.id} className="border rounded-lg p-4 bg-white shadow-sm">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold">{task.title}</h3>
+                          <div className="text-sm mt-1">{task.description}</div>
+                          <div className="text-sm text-muted-foreground mt-1">
+                            {task.deadline ? `Due: ${format(new Date(task.deadline), 'MMM d, yyyy')}` : 'No deadline'}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() => handleAccept(task.id)}
+                          >
+                            <Check className="h-4 w-4 mr-1" />
+                            Accept
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-red-600 border-red-600 hover:bg-red-50"
+                            onClick={() => handleReject(task.id)}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Decline
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* My Tasks Section */}
           <div className="mb-8">
@@ -288,9 +482,6 @@ const VolunteerTaskDetails = () => {
                 <span>Kanban</span>
               </button>
               </div>
-              <button className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors event-info-card">
-                Filter
-              </button>
             </div>
 
             {/* Task Views */}
