@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom'; // Import useLocation
 import { Calendar, Clock, MapPin, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from './ui/button';
@@ -22,7 +22,7 @@ interface EventCardProps {
   description: string;
   start_date: string;
   end_date: string;
-  location: string;
+  location: string; // This is the prop, not the variable
   category: string;
   volunteersNeeded: number;
   image_url?: string;
@@ -39,7 +39,7 @@ const EventCard: React.FC<EventCardProps> = ({
   description,
   start_date,
   end_date,
-  location,
+  location: eventLocation, // Rename the prop to avoid conflict
   category,
   volunteersNeeded,
   image_url = "https://source.unsplash.com/random/800x600/?volunteer",
@@ -51,6 +51,7 @@ const EventCard: React.FC<EventCardProps> = ({
 }) => {
   const { user } = useAuth();  // Get user from auth context
   const navigate = useNavigate();
+  const currentLocation = useLocation(); // Rename to avoid conflict with the prop
   const [localIsRegistered, setLocalIsRegistered] = useState(isRegistered);
   const [localLoading, setLocalLoading] = useState(loading);
   const [localIsRecommended, setLocalIsRecommended] = useState(isRecommended);
@@ -171,7 +172,8 @@ const EventCard: React.FC<EventCardProps> = ({
                 {category}
               </Badge>
             </div>
-            {localIsRecommended && (
+            {/* Conditionally render the "Recommended" tag only on the /events route */}
+            {currentLocation.pathname === '/events' && localIsRecommended && (
               <div className="absolute top-3 left-3">
                 <Badge variant="outline" className="font-medium bg-green-200 text-green-700">
                   Recommended
@@ -196,7 +198,7 @@ const EventCard: React.FC<EventCardProps> = ({
             </div>
             <div className="flex items-start text-sm text-muted-foreground">
               <MapPin className="h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
-              <span className="line-clamp-1">{location}</span>
+              <span className="line-clamp-1">{eventLocation}</span> {/* Use the renamed prop */}
             </div>
           </CardContent>
 
@@ -231,7 +233,7 @@ const EventCard: React.FC<EventCardProps> = ({
           description,
           start_date,
           end_date,
-          location,
+          location: eventLocation, // Use the renamed prop
           category,
           volunteersNeeded,
           image_url
