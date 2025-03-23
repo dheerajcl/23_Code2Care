@@ -1,7 +1,10 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { ArrowLeft } from 'lucide-react';
 
 interface FeedbackData {
   overallRating: number;
@@ -26,6 +29,8 @@ interface EventFeedbackViewProps {
 const COLORS = ['#4CAF50', '#FF5252'];
 
 const EventFeedbackView: React.FC<EventFeedbackViewProps> = ({ eventName, feedbackData }) => {
+  const navigate = useNavigate();
+  
   // Calculate percentages for pie charts
   const tasksClearTotal = feedbackData.tasksClear.yes + feedbackData.tasksClear.no;
   const organizerSupportTotal = feedbackData.organizerSupport.yes + feedbackData.organizerSupport.no;
@@ -42,9 +47,19 @@ const EventFeedbackView: React.FC<EventFeedbackViewProps> = ({ eventName, feedba
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold mb-2">Feedback for Event: {eventName}</h1>
-        <p className="text-muted-foreground">Feedback Analytics and Insights</p>
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold">Feedback for Event: {eventName}</h1>
+          <p className="text-muted-foreground mt-1">Feedback Analytics and Insights</p>
+        </div>
+        <Button 
+          variant="outline" 
+          onClick={() => navigate('/admin/events')}
+          className="flex items-center gap-2"
+        >
+          <ArrowLeft size={20} />
+          Back to Events
+        </Button>
       </div>
 
       {/* Average Ratings Section */}

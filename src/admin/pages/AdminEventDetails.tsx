@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/authContext';
+<<<<<<< HEAD
 import { Calendar, Clock, MapPin, Users, Plus, List, Columns, Tag, User2, MessageSquare } from 'lucide-react';
+=======
+import { Calendar, Clock, MapPin, Users, Plus, List, Columns, Tag, User2, Edit, X, UserPlus, Trash2, Check, Mail, User } from 'lucide-react';
+>>>>>>> 695cb9e (Fixed Feedback Heading Alighnment. Resolves #1)
 import { useParams, useNavigate } from 'react-router-dom';
 import { getEventById, getTasksByEventId, createTask, updateTask, deleteTask, getEventRegistrations, registerVolunteerForEvent, updateEventRegistration, deleteEventRegistration } from '@/services/database.service';
-import { User, Edit, X, UserPlus, Trash2, Check, Mail } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -29,6 +32,22 @@ const AdminEventDetails = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user, logout } = useAuth();
+<<<<<<< HEAD
+=======
+
+  // Redirect if not admin
+  useEffect(() => {
+    if (!user || user.role !== 'admin') {
+      navigate('/admin/login');
+      return;
+    }
+  }, [user, navigate]);
+
+  // If no user or not admin, show loading
+  if (!user || user.role !== 'admin') {
+    return null;
+  }
+>>>>>>> 695cb9e (Fixed Feedback Heading Alighnment. Resolves #1)
 
   // Event data for the specific ID
   const [event, setEvent] = useState(null);
@@ -485,12 +504,53 @@ const AdminEventDetails = () => {
               </div>
             </div>
             
+<<<<<<< HEAD
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="mb-4">
                 <TabsTrigger value="details">Event Details</TabsTrigger>
                 <TabsTrigger value="tasks">Tasks</TabsTrigger>
                 <TabsTrigger value="volunteers">Volunteers</TabsTrigger>
               </TabsList>
+=======
+            <div className="flex gap-2">
+              <Button onClick={handleEditEvent} className="bg-purple-600 hover:bg-purple-700">
+                <Edit className="mr-2 h-4 w-4" />
+                Edit Event
+              </Button>
+              {(event.status === 'Completed' || new Date(event.start_date) < new Date()) && (
+                <Button 
+                  onClick={() => navigate(`/admin/events/${id}/feedback`)}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  <User2 className="mr-2 h-4 w-4" />
+                  View Feedback
+                </Button>
+              )}
+              <Button onClick={handleDone} className="bg-green-600 hover:bg-green-700">
+                Done
+              </Button>
+            </div>
+          </div>
+
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="details">Event Details</TabsTrigger>
+              <TabsTrigger value="tasks">Tasks</TabsTrigger>
+              <TabsTrigger value="volunteers">Volunteers</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="details" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Event Info */}
+                <div className="md:col-span-2 bg-white rounded-lg shadow-md p-6">
+                  <h2 className="text-xl font-semibold mb-4">Event Information</h2>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500">Description</h3>
+                      <p className="mt-1">{event.description}</p>
+                    </div>
+>>>>>>> 695cb9e (Fixed Feedback Heading Alighnment. Resolves #1)
               
               <TabsContent value="details" className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -791,9 +851,9 @@ const AdminEventDetails = () => {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="">Unassigned</SelectItem>
-                              {adminUser && (
-                                <SelectItem value={adminUser.id}>
-                                  Me ({adminUser.firstName} {adminUser.lastName})
+                              {user && (
+                                <SelectItem value={user.id}>
+                                  Me ({user.firstName} {user.lastName})
                                 </SelectItem>
                               )}
                               {volunteers.map(volunteer => (
