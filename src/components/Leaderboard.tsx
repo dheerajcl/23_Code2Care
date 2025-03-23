@@ -93,8 +93,8 @@ export const Leaderboard = () => {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Top Volunteers</CardTitle>
         {userRank && (
-          <div className="flex items-center gap-2 bg-blue-50 p-2 rounded-md">
-            <Award className="h-5 w-5 text-blue-500" />
+          <div className="flex items-center gap-2 bg-red-50 p-2 rounded-md dark:bg-red-900 leaderboard-highlight">
+            <Award className="h-5 w-5 text-rose-500 leaderboard-highlight-icon" />
             <span className="text-sm font-medium">Your Rank: {userRank.rank}</span>
             <span className="text-sm text-muted-foreground">({userRank.points} points)</span>
           </div>
@@ -115,7 +115,7 @@ export const Leaderboard = () => {
               leaderboard.map((entry: LeaderboardEntry) => (
                 <TableRow 
                   key={entry.volunteer_id}
-                  className={user?.id === entry.volunteer_id ? "bg-blue-50" : ""}
+                  className={user?.id === entry.volunteer_id ? "bg-red-50 dark:bg-red-900 leaderboard-highlight" : ""}
                 >
                   <TableCell className="font-medium">
                     {getRankIcon(entry.rank)}

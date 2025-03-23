@@ -223,6 +223,14 @@
   .high-contrast button:not(.event-info-card-toggle):hover {
     @apply bg-transparent text-white bg-red-400;
   }
+
+  .high-contrast .leaderboard-highlight {
+    @apply bg-red-600 text-white
+  }
+
+  .high-contrast .leaderboard-highlight-icon {
+    @apply text-orange-200 
+  }
   
   .btn-primary {
     @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors 
