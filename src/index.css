@@ -231,6 +231,14 @@
   .high-contrast .leaderboard-highlight-icon {
     @apply text-orange-200 
   }
+
+  .high-contrast .donate-tax-section {
+    @apply bg-red-600 text-white
+  }
+
+  .high-contrast .donate-tax-section-text {
+    @apply text-white
+  }
   
   .btn-primary {
     @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors 
