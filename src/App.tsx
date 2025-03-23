@@ -31,7 +31,7 @@ import AuthCallback from "./pages/AuthCallback";
 import AdminEventDetails from "./admin/pages/AdminEventDetails";
 import DonationPage from "./pages/Donate";
 import VolunteerEvents from "./volunteer/VolunteerEvents";
-import TasksPage from "./volunteer/TasksPage";
+// import TasksPage from "./volunteer/TasksPage";
 import CreateEvent from "./admin/pages/CreateEvent";
 import EditEvent from "./admin/pages/EditEvent";
 
@@ -137,7 +137,7 @@ const queryClient = new QueryClient();
                   path="/volunteer/events/:id/tasks"
                   element={
                     <ProtectedRoute roles={['volunteer']} redirectTo="/login">
-                      <TasksPage />
+                      <VolunteerTasks />
                     </ProtectedRoute>
                   }
                 />
