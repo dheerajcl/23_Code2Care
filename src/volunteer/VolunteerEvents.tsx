@@ -20,6 +20,7 @@ import { toast } from 'react-hot-toast';
 import EventCard from '../components/EventCard';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import EventDetailsModal from '@/components/EventDetailsModal';
 
 const VolunteerEvents = () => {
   const navigate = useNavigate();
@@ -29,52 +30,49 @@ const VolunteerEvents = () => {
   const [selectedType, setSelectedType] = useState('all');
   const [selectedDate, setSelectedDate] = useState('all');
   const [loading, setLoading] = useState(true);
-  // Track events the user has volunteered for
-  const [myVolunteering, setMyVolunteering] = useState([]);
+  const [feedbackStatus, setFeedbackStatus] = useState({});  // Track feedback status for each event
   const [eventTypes, setEventTypes] = useState([]);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchEvents = async () => {
-      try {
-        if (!user) {
-          setLoading(false);
-          return;
-        }
+      if (!user) return;
 
-        // First, fetch the user's signup events
-        const { data: signupData, error: signupError } = await supabase
-          .from('event_signup')
+      try {
+        setLoading(true);
+        // Fetch registered events
+        const { data: registeredEvents, error: eventsError } = await supabase
+          .from('event')
           .select('*')
+          .eq('status', 'scheduled');
+
+        if (eventsError) throw eventsError;
+
+        // Fetch feedback status for all events
+        const { data: feedbackData, error: feedbackError } = await supabase
+          .from('feedback')
+          .select('event_id')
           .eq('volunteer_id', user.id);
 
-        if (signupError) throw signupError;
-        setMyVolunteering(signupData);
-        
-        // If the user has signed up for events, fetch only those events
-        if (signupData && signupData.length > 0) {
-          const eventIds = signupData.map(signup => signup.event_id);
-          
-          const { data: eventsData, error: eventsError } = await supabase
-            .from('event')
-            .select('*')
-            .in('id', eventIds);
+        if (feedbackError) throw feedbackError;
 
-          if (eventsError) throw eventsError;
-          
-          // Extract unique event types
-          const types = [...new Set(eventsData.map(event => event.category))];
-          setEventTypes(types);
-          setEvents(eventsData);
-        } else {
-          // User hasn't registered for any events
-          setEvents([]);
-          setEventTypes([]);
-        }
+        // Create a map of event_id to feedback status
+        const feedbackMap = {};
+        feedbackData?.forEach(feedback => {
+          feedbackMap[feedback.event_id] = true;
+        });
 
-        setLoading(false);
+        setFeedbackStatus(feedbackMap);
+        setEvents(registeredEvents || []);
+
+        // Extract unique event types
+        const types = [...new Set(events.map(event => event.category))];
+        setEventTypes(types);
       } catch (error) {
-        console.error('Error fetching data:', error);
-        toast.error('Failed to load registered events');
+        console.error('Error:', error);
+        toast.error('Failed to load events');
+      } finally {
         setLoading(false);
       }
     };
@@ -87,8 +85,13 @@ const VolunteerEvents = () => {
     // Redirect is handled by the auth context
   };
 
-  const navigateToEventDetails = (id) => {
-    navigate(`/volunteer/events/${id}`);
+  const navigateToEventDetails = (event) => {
+    // Don't open modal if feedback is submitted and event has ended
+    if (feedbackStatus[event.id] && isEventEnded(event.end_date)) {
+      return;
+    }
+    setSelectedEvent(event);
+    setIsModalOpen(true);
   };
 
   const handleViewTasksOrFeedback = (id, end_date, e) => {
@@ -163,25 +166,45 @@ const VolunteerEvents = () => {
   // Custom buttons for EventCard
   const renderCustomButtons = (event) => {
     const isEnded = isEventEnded(event.end_date);
+    const hasFeedback = feedbackStatus[event.id];
+    
+    if (isEnded) {
+      if (hasFeedback) {
+        return (
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled
+            className="flex items-center bg-gray-400 hover:bg-gray-400 justify-center gap-1 text-sm text-white w-full cursor-not-allowed"
+          >
+            <MessageSquare size={16} />
+            <span>Feedback Submitted</span>
+          </Button>
+        );
+      } else {
+        return (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => handleViewTasksOrFeedback(event.id, event.end_date, e)}
+            className="flex items-center bg-blue-600 hover:bg-blue-700 justify-center gap-1 text-sm text-white w-full"
+          >
+            <MessageSquare size={16} />
+            <span>Provide Feedback</span>
+          </Button>
+        );
+      }
+    }
     
     return (
       <Button
         variant="ghost"
         size="sm"
         onClick={(e) => handleViewTasksOrFeedback(event.id, event.end_date, e)}
-        className={`flex items-center ${isEnded ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} justify-center gap-1 text-sm text-white w-full`}
+        className="flex items-center bg-green-600 hover:bg-green-700 justify-center gap-1 text-sm text-white w-full"
       >
-        {isEnded ? (
-          <>
-            <MessageSquare size={16} />
-            <span>Provide Feedback</span>
-          </>
-        ) : (
-          <>
-            <ListTodo size={16} />
-            <span>View Tasks</span>
-          </>
-        )}
+        <ListTodo size={16} />
+        <span>View Tasks</span>
       </Button>
     );
   };
@@ -303,25 +326,43 @@ const VolunteerEvents = () => {
           {/* Events Grid */}
           {filteredEvents.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredEvents.map((event) => (
-                <div key={event.id} onClick={() => navigateToEventDetails(event.id)}>
-                  <EventCard
-                    id={event.id.toString()}
-                    title={event.title}
-                    description={event.description}
-                    start_date={event.start_date}
-                    end_date={event.end_date}
-                    location={event.location}
-                    category={event.category}
-                    volunteersNeeded={event.volunteers_needed}
-                    image_url={event.image_url}
-                    isRegistered={true}
-                    isRecommended={false}
-                    loading={false}
-                    customButtons={renderCustomButtons(event)}
-                  />
-                </div>
-              ))}
+              {filteredEvents.map((event) => {
+                const isCompleted = feedbackStatus[event.id] && isEventEnded(event.end_date);
+                return (
+                  <div 
+                    key={event.id} 
+                    onClick={(e) => {
+                      if (isCompleted) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return;
+                      }
+                      navigateToEventDetails(event);
+                    }}
+                    className={`${
+                      isCompleted
+                        ? 'opacity-50 grayscale cursor-default pointer-events-none' 
+                        : 'cursor-pointer hover:scale-[1.02] transition-transform duration-200'
+                    }`}
+                  >
+                    <EventCard
+                      id={event.id.toString()}
+                      title={event.title}
+                      description={event.description}
+                      start_date={event.start_date}
+                      end_date={event.end_date}
+                      location={event.location}
+                      category={event.category}
+                      volunteersNeeded={event.volunteers_needed}
+                      image_url={event.image_url}
+                      isRegistered={true}
+                      isRecommended={false}
+                      loading={false}
+                      customButtons={renderCustomButtons(event)}
+                    />
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <motion.div 
@@ -358,6 +399,18 @@ const VolunteerEvents = () => {
         </main>
       </div>
       <AccessibilityMenu/>
+      
+      {/* Event Details Modal */}
+      {selectedEvent && (
+        <EventDetailsModal
+          event={selectedEvent}
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedEvent(null);
+          }}
+        />
+      )}
     </div>
   );
 };
