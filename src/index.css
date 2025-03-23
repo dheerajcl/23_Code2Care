@@ -152,6 +152,77 @@
   .glass-card {
     @apply bg-white/80 dark:bg-black/60 backdrop-blur-md border border-white/20 dark:border-white/10 shadow-sm;
   }
+
+  .vol-dashboard-header, .vol-dashboard-sidebar, .vol-dashboard {
+    @apply dark:bg-black;
+  }
+
+  .high-contrast .vol-dashboard-header,
+  .high-contrast .vol-dashboard-sidebar,
+  .high-contrast .vol-dashboard {
+    @apply bg-black;
+  }
+
+  .vol-dashboard-header {
+    @apply dark:border-b-2 dark:border-b-red-800;
+  }
+
+  .high-contrast .vol-dashboard-header {
+    @apply border-b-2 border-b-red-600;
+  }
+
+  .vol-dashboard-sidebar {
+    @apply dark:border-r-2 dark:border-r-red-800;
+  }
+
+  .high-contrast .vol-dashboard-sidebar {
+    @apply border-r-2 border-r-red-600;
+  }
+
+  .tabs-trigger-dark {
+    @apply dark:bg-red-900;
+  }
+
+  .high-contrast .tabs-trigger-dark {
+    @apply bg-red-600;
+  }
+
+  .event-info-card {
+    @apply bg-white rounded-lg shadow p-6;
+  }
+  
+  /* Dark mode styles - using the muted-foreground color */
+  .dark .event-info-card {
+    @apply bg-[#1c1412] border border-[#4f4b49] text-white
+  }
+  
+  /* High contrast styles - transparent bg with white border */
+  .high-contrast .event-info-card {
+    @apply bg-transparent border border-[#4f4b49] text-white;
+  }
+
+  .event-info-card-toggle {
+    @apply bg-white shadow;
+  }
+  
+  /* Dark mode styles for the toggle buttons */
+  .dark .event-info-card-toggle {
+    @apply bg-red-900 text-white shadow-md;
+  }
+  
+  /* Dark mode hover state for non-active toggle buttons */
+  .dark button:not(.event-info-card-toggle):hover {
+    @apply bg-transparent text-white bg-red-950;
+  }
+  
+  /* High contrast styles for toggle buttons */
+  .high-contrast .event-info-card-toggle {
+    @apply bg-red-600 text-white;
+  }
+
+  .high-contrast button:not(.event-info-card-toggle):hover {
+    @apply bg-transparent text-white bg-red-400;
+  }
   
   .btn-primary {
     @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors 

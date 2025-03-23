@@ -75,7 +75,7 @@ const Header: React.FC = () => {
 
   return (
     <header 
-      className='fixed top-0 left-0 w-full bg-white shadow-sm z-50'
+      className='fixed top-0 left-0 w-full bg-white shadow-sm z-50 vol-dashboard-header'
     >
       <div className="container mx-auto px-4 md:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
