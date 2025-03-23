@@ -176,7 +176,7 @@ const VolunteerEvents = () => {
   };
 
   return (
-    <div className="h-screen bg-gray-100 flex flex-col">
+    <div className="h-screen bg-gray-100 flex flex-col vol-dashboard">
       <Header/>
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
