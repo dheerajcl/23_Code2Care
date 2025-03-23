@@ -198,10 +198,6 @@ const EventCard: React.FC<EventCardProps> = ({
               <MapPin className="h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
               <span className="line-clamp-1">{location}</span>
             </div>
-            <div className="flex items-center text-sm text-muted-foreground">
-              <Users className="h-4 w-4 mr-2 flex-shrink-0" />
-              <span>{volunteersNeeded} volunteer{volunteersNeeded !== 1 ? 's' : ''} needed</span>
-            </div>
           </CardContent>
 
           <CardFooter className="flex flex-col space-y-2">
