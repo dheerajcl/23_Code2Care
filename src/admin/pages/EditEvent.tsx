@@ -56,7 +56,7 @@ const EditEvent = () => {
       <div className="flex h-screen bg-gray-100">
         <AdminSidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <AdminHeader title="Edit Event" user={auth.user} onLogout={handleLogout} />
+          {/* <AdminHeader title="Edit Event" user={auth.user} onLogout={handleLogout} /> */}
           
           <main className="flex-1 overflow-y-auto p-6 flex items-center justify-center">
             <div className="text-center">
@@ -74,7 +74,7 @@ const EditEvent = () => {
       <div className="flex h-screen bg-gray-100">
         <AdminSidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <AdminHeader title="Edit Event" user={auth.user} onLogout={handleLogout} />
+          {/* <AdminHeader title="Edit Event" user={auth.user} onLogout={handleLogout} /> */}
           
           <main className="flex-1 overflow-y-auto p-6 flex items-center justify-center">
             <div className="text-center max-w-md">
@@ -92,8 +92,9 @@ const EditEvent = () => {
 
   return (
     <div className="flex h-screen bg-gray-100">
+      <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <AdminHeader title="Edit Event" user={auth.user} onLogout={handleLogout} />
+        {/* <AdminHeader title="Edit Event" user={auth.user} onLogout={handleLogout} /> */}
         
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-4xl mx-auto">

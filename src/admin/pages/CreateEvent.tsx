@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/authContext';
-import AdminHeader from '../components/AdminHeader';
+// import AdminHeader from '../components/AdminHeader';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminEventForm from '../components/AdminEventForm';
 
@@ -18,7 +18,7 @@ const CreateEvent = () => {
     <div className="flex h-screen bg-gray-100">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <AdminHeader title="Create Event" user={auth.user} onLogout={handleLogout} />
+        {/* <AdminHeader title="Create Event" user={auth.user} onLogout={handleLogout} /> */}
         
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-4xl mx-auto">
