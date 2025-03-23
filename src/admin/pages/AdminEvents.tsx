@@ -7,12 +7,12 @@ import AdminSidebar from '../components/AdminSidebar';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '../../components/ui/select';
 import {
   Dialog,
@@ -30,7 +30,7 @@ import { toast } from '../../components/ui/use-toast';
 
 const AdminEventsPage = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth(); // Correctly destructure logout from useAuth
+  const auth = useAuth();
   const [events, setEvents] = useState([]);
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -67,7 +67,7 @@ const AdminEventsPage = () => {
 
     // Apply search filter
     if (searchTerm) {
-      filtered = filtered.filter(event => 
+      filtered = filtered.filter(event =>
         event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
         event.location.toLowerCase().includes(searchTerm.toLowerCase())
@@ -93,7 +93,7 @@ const AdminEventsPage = () => {
 
       filtered = filtered.filter(event => {
         const eventDate = new Date(event.start_date);
-        
+
         if (dateFilter === 'upcoming' && eventDate >= today) {
           return true;
         }
@@ -114,8 +114,7 @@ const AdminEventsPage = () => {
   }, [searchTerm, typeFilter, dateFilter, events]);
 
   const handleLogout = async () => {
-    // Fixed logout handler
-    await logout();
+    await auth.logout();
     navigate('/admin/login');
   };
 
@@ -171,17 +170,17 @@ const AdminEventsPage = () => {
   // Function to confirm delete event
   const confirmDeleteEvent = async () => {
     if (!eventToDelete) return;
-    
+
     setIsDeleting(true);
     try {
       const { success, error } = await deleteEvent(eventToDelete.id);
       if (error) throw error;
-      
+
       if (success) {
         // Remove event from local state
         const updatedEvents = events.filter(e => e.id !== eventToDelete.id);
         setEvents(updatedEvents);
-        
+
         toast({
           title: "Event Deleted",
           description: `"${eventToDelete.title}" has been permanently deleted.`
@@ -228,6 +227,11 @@ const AdminEventsPage = () => {
       return "Time not specified";
     }
   };
+  // Function to check if an event has ended
+  const isEventEnded = (event) => {
+    if (!event || !event.end_date) return false;
+    return new Date(event.end_date) < new Date();
+  };
 
   // Function to get a default image if none is provided
   const getEventImage = (event) => {
@@ -239,11 +243,12 @@ const AdminEventsPage = () => {
   };
 
   return (
-    <div className="h-screen bg-gray-100 flex flex-col">
-      <AdminHeader user={user} handleLogout={handleLogout} title="Events Management" />
-      <div className="flex flex-1 overflow-hidden">
-        <AdminSidebar />
-        <main className="flex-1 overflow-y-auto p-8">
+    <div className="flex h-screen bg-gray-100">
+      <AdminSidebar />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <AdminHeader title="Events Management" user={auth.user} onLogout={handleLogout} />
+
+        <main className="flex-1 overflow-y-auto p-4">
           <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex flex-col md:flex-row gap-2 md:items-center">
               <h1 className="text-2xl font-bold text-gray-900">Events</h1>
@@ -251,13 +256,13 @@ const AdminEventsPage = () => {
                 {filteredEvents.length} Total
               </Badge>
             </div>
-            
+
             <Button onClick={handleCreateEvent} className="bg-purple-600 hover:bg-purple-700">
               <Plus className="mr-2 h-4 w-4" />
               Create Event
             </Button>
           </div>
-          
+
           <div className="bg-white rounded-lg shadow-md p-4 mb-6">
             <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between mb-4">
               <div className="relative flex-1">
@@ -269,7 +274,7 @@ const AdminEventsPage = () => {
                   onChange={handleSearch}
                 />
               </div>
-              
+
               <div className="flex flex-wrap gap-2">
                 <Select value={typeFilter} onValueChange={handleTypeChange}>
                   <SelectTrigger className="w-[180px]">
@@ -282,7 +287,7 @@ const AdminEventsPage = () => {
                     ))}
                   </SelectContent>
                 </Select>
-                
+
                 <Select value={dateFilter} onValueChange={handleDateChange}>
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Filter by date" />
@@ -295,7 +300,7 @@ const AdminEventsPage = () => {
                     <SelectItem value="past">Past Events</SelectItem>
                   </SelectContent>
                 </Select>
-                
+
                 {(searchTerm || typeFilter !== 'all' || dateFilter !== 'all') && (
                   <Button variant="outline" onClick={clearFilters} className="flex items-center">
                     <X className="mr-2 h-4 w-4" />
@@ -305,7 +310,7 @@ const AdminEventsPage = () => {
               </div>
             </div>
           </div>
-          
+
           {loading ? (
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
@@ -360,10 +365,10 @@ const AdminEventsPage = () => {
                       </Badge>
                     </div>
                   </div>
-                  
+
                   <div className="p-4">
                     <h3 className="text-lg font-semibold mb-2 line-clamp-2">{event.title}</h3>
-                    
+
                     <div className="flex items-start gap-2 mb-2">
                       <Calendar className="h-4 w-4 text-gray-500 mt-1 flex-shrink-0" />
                       <div>
@@ -371,46 +376,61 @@ const AdminEventsPage = () => {
                         <p className="text-xs text-gray-500">{formatEventTime(event.start_date, event.end_date)}</p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-start gap-2 mb-2">
                       <MapPin className="h-4 w-4 text-gray-500 mt-1 flex-shrink-0" />
                       <p className="text-sm text-gray-600 line-clamp-1">{event.location}</p>
                     </div>
-                    
+
                     <div className="flex items-start gap-2 mb-4">
                       <Users className="h-4 w-4 text-gray-500 mt-1 flex-shrink-0" />
                       <p className="text-sm text-gray-600">
                         {event.registered_count || 0} / {event.max_volunteers || 'unlimited'} volunteers
                       </p>
                     </div>
-                    
+
                     <p className="text-sm text-gray-500 mb-4 line-clamp-2">{event.description}</p>
-                    
+
                     <div className="flex justify-between pt-2 border-t border-gray-100">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
                         onClick={(e) => handleViewDetails(event.id, e)}
                       >
                         <List className="h-4 w-4 mr-1" />
                         Details
                       </Button>
-                      
+
                       <div className="flex gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                          onClick={(e) => handleUpdateEvent(event.id, e)}
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Edit
-                        </Button>
-                        
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <div className="flex gap-2">
+                          {!isEventEnded(event) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              onClick={(e) => handleUpdateEvent(event.id, e)}
+                            >
+                              Edit Event
+                            </Button>
+                          )}
+                          {isEventEnded(event) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent event bubbling
+                                navigate(`/admin/events/${event.id}/feedback`);
+                              }}
+                            >
+                              View Feedback
+                            </Button>
+                          )}
+                        </div>
+
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="text-red-600 hover:text-red-700 hover:bg-red-50"
                           onClick={(e) => handleDeleteEvent(event.id, e)}
                         >
@@ -440,7 +460,7 @@ const AdminEventsPage = () => {
               and remove all associated data including volunteer registrations.
             </DialogDescription>
           </DialogHeader>
-          
+
           {eventToDelete && (
             <div className="border rounded-md p-3 bg-gray-50 my-2">
               <h4 className="font-medium">{eventToDelete.title}</h4>
@@ -449,7 +469,7 @@ const AdminEventsPage = () => {
               </p>
             </div>
           )}
-          
+
           <DialogFooter className="sm:justify-end">
             <Button
               type="button"
