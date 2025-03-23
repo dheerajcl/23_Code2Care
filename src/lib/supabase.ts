@@ -90,6 +90,7 @@ export type Event = {
   image_url?: string;
   status?: string;
   max_volunteers?: number;
+  category?:string;
 };
 
 // Export the client

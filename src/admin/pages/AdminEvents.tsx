@@ -30,7 +30,7 @@ import { toast } from '../../components/ui/use-toast';
 
 const AdminEventsPage = () => {
   const navigate = useNavigate();
-  const auth = useAuth();
+  const { user, logout } = useAuth(); // Correctly destructure logout from useAuth
   const [events, setEvents] = useState([]);
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -114,7 +114,8 @@ const AdminEventsPage = () => {
   }, [searchTerm, typeFilter, dateFilter, events]);
 
   const handleLogout = async () => {
-    await auth.logout();
+    // Fixed logout handler
+    await logout();
     navigate('/admin/login');
   };
 
@@ -238,12 +239,11 @@ const AdminEventsPage = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <AdminSidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <AdminHeader title="Events Management" user={auth.user} onLogout={handleLogout} />
-        
-        <main className="flex-1 overflow-y-auto p-4">
+    <div className="h-screen bg-gray-100 flex flex-col">
+      <AdminHeader user={user} handleLogout={handleLogout} title="Events Management" />
+      <div className="flex flex-1 overflow-hidden">
+        <AdminSidebar />
+        <main className="flex-1 overflow-y-auto p-8">
           <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex flex-col md:flex-row gap-2 md:items-center">
               <h1 className="text-2xl font-bold text-gray-900">Events</h1>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/authContext';
 import { Calendar, Clock, MapPin, Users, Plus, List, Columns, Tag, User2 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { eventData } from './AdminEvents';
+import { AdminEventsPage } from './AdminEvents';
 import { getEventById, getTasksByEventId, createTask, updateTask, deleteTask, getEventRegistrations, registerVolunteerForEvent, updateEventRegistration, deleteEventRegistration } from '@/services/database.service';
 import { User, Edit, X, UserPlus, Trash2, Check, Mail } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
