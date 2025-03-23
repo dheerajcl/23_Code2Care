@@ -14,6 +14,7 @@ import {
 import { Badge } from './ui/badge';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/authContext';
+import EventDetailsModal from './EventDetailsModal';
 
 interface EventCardProps {
   id: string;
@@ -53,6 +54,7 @@ const EventCard: React.FC<EventCardProps> = ({
   const [localIsRegistered, setLocalIsRegistered] = useState(isRegistered);
   const [localLoading, setLocalLoading] = useState(loading);
   const [localIsRecommended, setLocalIsRecommended] = useState(isRecommended);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     setLocalIsRegistered(isRegistered);
@@ -139,81 +141,109 @@ const EventCard: React.FC<EventCardProps> = ({
     }
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Prevent modal from opening if clicking on buttons
+    if ((e.target as HTMLElement).closest('button')) {
+      return;
+    }
+    setIsModalOpen(true);
+  };
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
-    >
-      <Card className="h-full overflow-hidden flex flex-col relative">
-        <div className="aspect-video relative overflow-hidden">
-          <img
-            src={image_url}
-            alt={title}
-            className="object-cover w-full h-full transition-transform duration-500 ease-in-out hover:scale-105"
-          />
-          <div className="absolute top-3 right-3">
-            <Badge variant="secondary" className="font-medium">
-              {category}
-            </Badge>
-          </div>
-          {localIsRecommended && (
-            <div className="absolute top-3 left-3">
-              <Badge variant="outline" className="font-medium bg-green-200 text-green-700">
-                Recommended
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+        onClick={handleCardClick}
+        style={{ cursor: 'pointer' }}
+      >
+        <Card className="h-full overflow-hidden flex flex-col relative">
+          <div className="aspect-video relative overflow-hidden">
+            <img
+              src={image_url}
+              alt={title}
+              className="object-cover w-full h-full transition-transform duration-500 ease-in-out hover:scale-105"
+            />
+            <div className="absolute top-3 right-3">
+              <Badge variant="secondary" className="font-medium">
+                {category}
               </Badge>
             </div>
-          )}
-        </div>
+            {localIsRecommended && (
+              <div className="absolute top-3 left-3">
+                <Badge variant="outline" className="font-medium bg-green-200 text-green-700">
+                  Recommended
+                </Badge>
+              </div>
+            )}
+          </div>
 
-        <CardHeader className="pb-2">
-          <CardTitle className="text-xl">{title}</CardTitle>
-          <CardDescription className="line-clamp-2">{description}</CardDescription>
-        </CardHeader>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xl">{title}</CardTitle>
+            <CardDescription className="line-clamp-2">{description}</CardDescription>
+          </CardHeader>
 
-        <CardContent className="space-y-3 flex-grow">
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
-            <span>{new Date(start_date).toLocaleDateString()} - {new Date(end_date).toLocaleDateString()}</span>
-          </div>
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
-            <span>{new Date(start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-          </div>
-          <div className="flex items-start text-sm text-muted-foreground">
-            <MapPin className="h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
-            <span className="line-clamp-1">{location}</span>
-          </div>
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Users className="h-4 w-4 mr-2 flex-shrink-0" />
-            <span>{volunteersNeeded} volunteer{volunteersNeeded !== 1 ? 's' : ''} needed</span>
-          </div>
-        </CardContent>
+          <CardContent className="space-y-3 flex-grow">
+            <div className="flex items-center text-sm text-muted-foreground">
+              <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
+              <span>{new Date(start_date).toLocaleDateString()} - {new Date(end_date).toLocaleDateString()}</span>
+            </div>
+            <div className="flex items-center text-sm text-muted-foreground">
+              <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
+              <span>{new Date(start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+            <div className="flex items-start text-sm text-muted-foreground">
+              <MapPin className="h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
+              <span className="line-clamp-1">{location}</span>
+            </div>
+            <div className="flex items-center text-sm text-muted-foreground">
+              <Users className="h-4 w-4 mr-2 flex-shrink-0" />
+              <span>{volunteersNeeded} volunteer{volunteersNeeded !== 1 ? 's' : ''} needed</span>
+            </div>
+          </CardContent>
 
-        <CardFooter className="flex flex-col space-y-2">
-          {/* Render custom buttons if provided, otherwise default buttons */}
-          {customButtons ? (
-            customButtons
-          ) : (
-            <>
-              <Button 
-                className="w-full" 
-                disabled={localIsRegistered || localLoading} 
-                onClick={handleVolunteerSignup || defaultHandleVolunteerSignup}
-              >
-                {localIsRegistered ? "Already Signed Up" : localLoading ? "Signing Up..." : "Volunteer for Event"}
-              </Button>
-              <Link to="/events/participant" className="w-full">
-                <Button className="w-full" variant="secondary">
-                  Register as Participant
+          <CardFooter className="flex flex-col space-y-2">
+            {/* Render custom buttons if provided, otherwise default buttons */}
+            {customButtons ? (
+              customButtons
+            ) : (
+              <>
+                <Button 
+                  className="w-full" 
+                  disabled={localIsRegistered || localLoading} 
+                  onClick={handleVolunteerSignup || defaultHandleVolunteerSignup}
+                >
+                  {localIsRegistered ? "Already Signed Up" : localLoading ? "Signing Up..." : "Volunteer for Event"}
                 </Button>
-              </Link>
-            </>
-          )}
-        </CardFooter>
-      </Card>
-    </motion.div>
+                <Link to="/events/participant" className="w-full">
+                  <Button className="w-full" variant="secondary">
+                    Register as Participant
+                  </Button>
+                </Link>
+              </>
+            )}
+          </CardFooter>
+        </Card>
+      </motion.div>
+
+      <EventDetailsModal
+        event={{
+          id,
+          title,
+          description,
+          start_date,
+          end_date,
+          location,
+          category,
+          volunteersNeeded,
+          image_url
+        }}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
+    </>
   );
 };
 
