@@ -14,7 +14,7 @@ import {
   SelectValue
 } from '../components/ui/select';
 import LandingHeader from '@/components/LandingHeader';
-
+import AccessibilityMenu from '@/components/AccessibilityMenu';
 // Events Component
 const Events: React.FC = () => {
   const [events, setEvents] = useState<any[]>([]);
@@ -152,6 +152,7 @@ const Events: React.FC = () => {
             )}
           </div>
         </section>
+        <AccessibilityMenu/>
       </main>
 
       <Footer />
