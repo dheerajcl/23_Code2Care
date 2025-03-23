@@ -43,6 +43,7 @@ import Sidebar from '@/components/Sidebar';
 import LandingHeader from '@/components/LandingHeader';
 import { getEvents } from '@/services/database.service';
 import { toast } from 'sonner';
+import Chatbot from "@/components/chatbot";
 
 export const assignedTasks = [
   {
@@ -200,6 +201,7 @@ export const VolunteerDashboard = () => {
     // Redirect is handled by the auth context
   };
   
+  
   return (
     <div className="h-screen bg-gray-100 flex flex-col vol-dashboard">
       <Header/>
@@ -339,13 +341,19 @@ export const VolunteerDashboard = () => {
                   </Card>
                 )}
               </div>
-
+              <div className="h-screen bg-gray-100 flex flex-col vol-dashboard">
+      
+          <Chatbot />  {/* ✅ Add Chatbot here */}
+        
+      <AccessibilityMenu />
+    </div>
             </div>
           </div>
         </main>
       </div>
       <AccessibilityMenu/>
     </div>
+    
   );
 };
 

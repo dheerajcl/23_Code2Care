@@ -1,7 +1,7 @@
-import faiss
+import faiss # type: ignore
 import os
 import numpy as np
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer # type: ignore
 from database import fetch_volunteers, fetch_events
 
 # Load the sentence transformer model
