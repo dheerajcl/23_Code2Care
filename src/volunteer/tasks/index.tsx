@@ -7,6 +7,7 @@ import { VolunteerLayout } from '@/components/layouts/VolunteerLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getTasksForVolunteer } from '@/services/database.service';
 import { notificationService } from '@/services/notification.service';
+import { pointsService } from '@/services/points.service';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -63,7 +64,10 @@ export const VolunteerTasks = () => {
   };
 
   const invitationTasks = tasks.filter(task => task.notification_status === 'sent');
-  const upcomingTasks = tasks.filter(task => task.notification_status === 'accept' || task.status === 'accepted');
+  const upcomingTasks = tasks.filter(task => 
+    (task.notification_status === 'accept' || task.status === 'accepted') && 
+    task.status !== 'completed'
+  );
   const completedTasks = tasks.filter(task => task.status === 'completed');
 
   const handleAccept = async (taskId, assignmentId) => {
@@ -141,7 +145,26 @@ export const VolunteerTasks = () => {
       
       if (error) throw error;
       
-      toast.success('Task marked as completed');
+      // Award points for task completion (10 points per task)
+      try {
+        const task = tasks.find(t => t.task_assignment_id === assignmentId);
+        await pointsService.addPoints({
+          volunteerId: user.id,
+          points: 10,
+          reason: `Completed task: ${task?.title || 'Task'}`,
+          metadata: {
+            taskId: taskId,
+            assignmentId: assignmentId,
+            eventId: task?.event_id
+          }
+        });
+        toast.success('Task marked as completed and points awarded!');
+      } catch (pointsError) {
+        console.error('Error awarding points:', pointsError);
+        // Don't fail the entire operation if points couldn't be awarded
+        toast.success('Task marked as completed, but there was an issue awarding points');
+      }
+      
       await fetchTasks(); // Refresh tasks
     } catch (error) {
       console.error('Error completing task:', error);

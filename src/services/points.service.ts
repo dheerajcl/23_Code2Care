@@ -20,9 +20,17 @@ interface Badge {
 export const pointsService = {
   // Add points to a volunteer
   async addPoints(entry: PointsEntry) {
+    // Map interface properties to database column names
+    const dbEntry = {
+      volunteer_id: entry.volunteerId,
+      points: entry.points,
+      reason: entry.reason,
+      metadata: entry.metadata
+    };
+
     const { data, error } = await supabase
       .from('points')
-      .insert([entry])
+      .insert([dbEntry])
       .select()
       .single();
 

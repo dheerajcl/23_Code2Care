@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
 import { getEventById, getTasksForVolunteer } from '@/services/database.service';
 import { notificationService } from '@/services/notification.service';
+import { pointsService } from '@/services/points.service';
 
 // This can be placed in the admin/pages/AdminEvents.js file
 
@@ -312,7 +313,26 @@ const VolunteerTaskDetails = () => {
         return;
       }
       
-      toast.success('Task marked as complete');
+      // Award points for task completion (10 points per task)
+      try {
+        const task = volunteerTasks.find(t => t.id === taskId);
+        await pointsService.addPoints({
+          volunteerId: user.id,
+          points: 10,
+          reason: `Completed task: ${task?.name || 'Task'}`,
+          metadata: {
+            taskId: taskId,
+            assignmentId: assignmentId,
+            eventId: event.id
+          }
+        });
+        toast.success('Task marked as complete and points awarded!');
+      } catch (pointsError) {
+        console.error('Error awarding points:', pointsError);
+        // Don't fail the entire operation if points couldn't be awarded
+        toast.success('Task marked as complete, but there was an issue awarding points');
+      }
+      
       await fetchEventAndTasks(); // Refresh tasks
     } catch (error) {
       console.error('Error completing task:', error);
