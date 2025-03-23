@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 // Task View Components
 import TaskTable from '../components/AdminTaskTable';
@@ -189,24 +190,42 @@ const AdminEventDetails = () => {
       if (taskError) throw taskError;
 
       // Transform tasks to format expected by UI
-      const formattedTasks = taskData.map(task => ({
-        id: task.id,
-        title: task.title,
-        description: task.description || '',
-        status: task.status || 'Todo',
-        priority: task.priority || 'Medium',
-        due_date: task.deadline,
-        assignee_id: task.assignee_id,
-        event_id: task.event_id,
-        assignees: task.assignments?.map(assignment => ({
-          id: assignment.volunteer?.id,
-          name: `${assignment.volunteer?.first_name || ''} ${assignment.volunteer?.last_name || ''}`.trim(),
-          email: assignment.volunteer?.email,
-          status: assignment.status,
-          assignment_id: assignment.id,
-          notification_status: assignment.notification_status
-        })) || []
-      }));
+      const formattedTasks = taskData.map(task => {
+        // Calculate the effective status based on assignments
+        let effectiveStatus = task.status || 'Todo';
+        
+        // Get all assignment statuses
+        const assignmentStatuses = task.assignments?.map(a => a.status) || [];
+        
+        // If all assignments are completed, mark task as Done
+        if (assignmentStatuses.length > 0 && assignmentStatuses.every(s => s === 'completed')) {
+          effectiveStatus = 'Done';
+        } 
+        // If any assignment is accepted/in progress, mark task as In Progress
+        else if (assignmentStatuses.includes('accepted')) {
+          effectiveStatus = 'In Progress';
+        }
+        
+        return {
+          id: task.id,
+          title: task.title,
+          description: task.description || '',
+          status: effectiveStatus, // Use the calculated status
+          originalStatus: task.status, // Keep the original for reference
+          priority: task.priority || 'Medium',
+          due_date: task.deadline,
+          assignee_id: task.assignee_id,
+          event_id: task.event_id,
+          assignees: task.assignments?.map(assignment => ({
+            id: assignment.volunteer?.id,
+            name: `${assignment.volunteer?.first_name || ''} ${assignment.volunteer?.last_name || ''}`.trim(),
+            email: assignment.volunteer?.email,
+            status: assignment.status,
+            assignment_id: assignment.id,
+            notification_status: assignment.notification_status
+          })) || []
+        };
+      });
 
       setAllTasks(formattedTasks);
       setEventTasks(formattedTasks);
@@ -300,29 +319,70 @@ const AdminEventDetails = () => {
   // Handle task status update
   const handleTaskStatusChange = async (taskId, newStatus) => {
     try {
-      const { data, error } = await supabase
+      const task = allTasks.find(t => t.id === taskId);
+      if (!task) {
+        console.error('Task not found:', taskId);
+        return;
+      }
+      
+      // First update the main task status
+      const { error } = await supabase
         .from('task')
         .update({ status: newStatus })
-        .eq('id', taskId)
-        .select();
+        .eq('id', taskId);
 
       if (error) throw error;
 
-      // Update tasks state
-      if (data) {
-        const updatedTask = data[0];
-
-        setAllTasks(allTasks.map(task =>
-          task.id === taskId ? { ...task, status: newStatus } : task
-        ));
-
-        setEventTasks(eventTasks.map(task =>
-          task.id === taskId ? { ...task, status: newStatus } : task
-        ));
+      // Now, if task has assignments, update their statuses too
+      if (task.assignees && task.assignees.length > 0) {
+        // Map admin UI status to database status values
+        let assignmentStatus;
+        switch (newStatus) {
+          case 'Done':
+            assignmentStatus = 'completed';
+            break;
+          case 'In Progress':
+            assignmentStatus = 'accepted';
+            break;
+          case 'Todo':
+            assignmentStatus = 'pending';
+            break;
+          case 'Review':
+          default:
+            assignmentStatus = 'accepted'; // Map In Review to accepted in DB
+        }
+        
+        // Update all assignments for this task
+        for (const assignee of task.assignees) {
+          const { error: assignmentError } = await supabase
+            .from('task_assignment')
+            .update({ status: assignmentStatus })
+            .eq('id', assignee.assignment_id);
+            
+          if (assignmentError) {
+            console.error('Error updating assignment status:', assignmentError);
+          }
+        }
       }
+
+      // Update tasks state
+      setAllTasks(allTasks.map(task =>
+        task.id === taskId ? { ...task, status: newStatus } : task
+      ));
+
+      setEventTasks(eventTasks.map(task =>
+        task.id === taskId ? { ...task, status: newStatus } : task
+      ));
+      
+      toast.success(`Task status updated to ${newStatus}`);
+      
+      // Refresh tasks to ensure we have the latest data
+      await refreshTasks();
+      
     } catch (err) {
       console.error('Error updating task status:', err);
       setError(err.message);
+      toast.error('Failed to update task status');
     }
   };
 

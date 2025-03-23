@@ -136,26 +136,69 @@ export const VolunteerTasks = () => {
         return;
       }
       
+      // Get the task's original ID (not the assignment ID)
+      let taskOriginalId = null;
+      
+      try {
+        // Query to get the task_id for this assignment
+        const { data, error } = await supabase
+          .from('task_assignment')
+          .select('task_id')
+          .eq('id', assignmentId)
+          .single();
+          
+        if (!error && data) {
+          taskOriginalId = data.task_id;
+          console.log(`Found original task ID: ${taskOriginalId} for assignment ${assignmentId}`);
+        }
+      } catch (err) {
+        console.error('Error getting original task ID:', err);
+      }
+      
       // Update task assignment status to completed
-      const { data, error } = await supabase
+      const { data: taskAssignmentUpdate, error: taskAssignmentError } = await supabase
         .from('task_assignment')
         .update({ status: 'completed' })
         .eq('id', assignmentId)
         .single();
       
-      if (error) throw error;
+      if (taskAssignmentError) throw taskAssignmentError;
+      
+      if (taskOriginalId) {
+        // Check if all assignments for this task are completed
+        const { data: allAssignments, error: assignmentsError } = await supabase
+          .from('task_assignment')
+          .select('status')
+          .eq('task_id', taskOriginalId);
+          
+        if (!assignmentsError && allAssignments) {
+          // If all assignments are completed, update the main task status to 'Done'
+          const allCompleted = allAssignments.every(a => a.status === 'completed');
+          
+          if (allCompleted) {
+            await supabase
+              .from('task')
+              .update({ status: 'Done' })
+              .eq('id', taskOriginalId);
+              
+            console.log(`All assignments completed, updated task ${taskOriginalId} status to Done`);
+          }
+        }
+      }
       
       // Award points for task completion (10 points per task)
       try {
-        const task = tasks.find(t => t.task_assignment_id === assignmentId);
+        // Find task information for points metadata
+        const taskInfo = tasks.find(t => t.task_assignment_id === assignmentId);
+        
         await pointsService.addPoints({
           volunteerId: user.id,
           points: 10,
-          reason: `Completed task: ${task?.title || 'Task'}`,
+          reason: `Completed task: ${taskInfo?.title || 'Task'}`,
           metadata: {
-            taskId: taskId,
+            taskId: taskOriginalId,
             assignmentId: assignmentId,
-            eventId: task?.event_id
+            eventId: taskInfo?.event_id
           }
         });
         toast.success('Task marked as completed and points awarded!');
