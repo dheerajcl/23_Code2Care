@@ -1,23 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/authContext';
-import { 
-  Calendar, 
-  Clock, 
-  MapPin, 
-  Users, 
-  Plus, 
-  List, 
-  Columns, 
-  Tag, 
-  User2, 
-  Edit, 
-  X, 
-  UserPlus, 
-  Trash2, 
-  Check, 
-  Mail, 
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  Users,
+  Plus,
+  List,
+  Columns,
+  Tag,
+  User2,
+  Edit,
+  X,
+  UserPlus,
+  Trash2,
+  Check,
+  Mail,
   User,
-  MessageSquare 
+  MessageSquare
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getEventById, getTasksByEventId, createTask, updateTask, deleteTask, getEventRegistrations, registerVolunteerForEvent, updateEventRegistration, deleteEventRegistration } from '@/services/database.service';
@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -74,7 +74,7 @@ const AdminEventDetails = () => {
   const [activeTab, setActiveTab] = useState('details');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   // Task form state
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [taskForm, setTaskForm] = useState({
@@ -85,7 +85,7 @@ const AdminEventDetails = () => {
     status: 'Todo',
     assignee_id: ''
   });
-  
+
   // Volunteer registration form state
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [selectedVolunteer, setSelectedVolunteer] = useState('');
@@ -94,16 +94,16 @@ const AdminEventDetails = () => {
   useEffect(() => {
     const fetchEventDetails = async () => {
       if (!id) return;
-      
+
       setIsLoading(true);
       try {
         // Get event details
         const { data: eventData, error: eventError } = await getEventById(id);
         if (eventError) throw eventError;
-        
+
         if (eventData) {
           setEvent(eventData);
-          
+
           // Get tasks for this event - Updated to fetch from task table
           const { data: tasksData, error: tasksError } = await supabase
             .from('task')
@@ -124,9 +124,9 @@ const AdminEventDetails = () => {
               deadline
             `)
             .eq('event_id', id);
-          
+
           if (tasksError) throw tasksError;
-          
+
           // For each task, fetch task assignments to calculate progress
           const tasksWithProgress = await Promise.all(tasksData.map(async (task) => {
             // Get task assignments for this task
@@ -134,16 +134,16 @@ const AdminEventDetails = () => {
               .from('task_assignment')
               .select('*')
               .eq('task_id', task.id);
-            
+
             if (assignmentsError) throw assignmentsError;
-            
+
             // Calculate progress as done/assigned
             const totalAssigned = assignments ? assignments.length : 0;
             const totalDone = assignments ? assignments.filter(a => a.done > 0).length : 0;
-            
+
             // Calculate progress percentage
             const progress = totalAssigned > 0 ? (totalDone / totalAssigned) * 100 : 0;
-            
+
             return {
               ...task,
               progress,
@@ -153,27 +153,27 @@ const AdminEventDetails = () => {
               tasksData
             };
           }));
-          
+
           setAllTasks(tasksWithProgress || []);
           setEventTasks(tasksWithProgress || []);
-          
+
           // Get volunteer registrations for this event
           const { data: registrationsData, error: registrationsError } = await getEventRegistrations(id);
           if (registrationsError) throw registrationsError;
           setRegistrations(registrationsData || []);
-          
+
           // Get all volunteers 
           const { data: allVolunteers, error: volunteersError } = await supabase
             .from('volunteer')
             .select('*')
             .order('first_name', { ascending: true });
-          
+
           if (volunteersError) throw volunteersError;
-          
+
           // Filter out volunteers already registered
           const registeredIds = registrationsData ? registrationsData.map(reg => reg.volunteer.id) : [];
           const available = allVolunteers.filter(vol => !registeredIds.includes(vol.id));
-          
+
           setVolunteers(allVolunteers || []);
           setAvailableVolunteers(available || []);
         }
@@ -184,10 +184,10 @@ const AdminEventDetails = () => {
         setIsLoading(false);
       }
     };
-    
+
     fetchEventDetails();
   }, [id]);
-  
+
   // Format date for display
   const formatDate = (dateString) => {
     try {
@@ -196,7 +196,7 @@ const AdminEventDetails = () => {
       return "Date not specified";
     }
   };
-  
+
   // Format time for display
   const formatTime = (dateString) => {
     try {
@@ -205,11 +205,11 @@ const AdminEventDetails = () => {
       return "Time not specified";
     }
   };
-  
+
   // Handle task form submission - updated to match schema
   const handleCreateTask = async (e) => {
     e.preventDefault();
-    
+
     try {
       const newTask = {
         title: taskForm.title,
@@ -220,14 +220,14 @@ const AdminEventDetails = () => {
         assignee_id: taskForm.assignee_id || null,
         assignee_type: taskForm.assignee_id ? 'volunteer' : null
       };
-      
+
       const { data, error } = await supabase
         .from('task')
         .insert(newTask)
         .select();
-        
+
       if (error) throw error;
-      
+
       // Add the new task to state
       if (data) {
         const newTaskWithProgress = {
@@ -237,10 +237,10 @@ const AdminEventDetails = () => {
           totalDone: 0,
           assignments: []
         };
-        
+
         setAllTasks([...allTasks, newTaskWithProgress]);
         setEventTasks([...eventTasks, newTaskWithProgress]);
-        
+
         // Reset form
         setTaskForm({
           title: '',
@@ -250,7 +250,7 @@ const AdminEventDetails = () => {
           status: 'Todo',
           assignee_id: ''
         });
-        
+
         setShowTaskForm(false);
       }
     } catch (err) {
@@ -258,7 +258,7 @@ const AdminEventDetails = () => {
       setError(err.message);
     }
   };
-  
+
   // Handle task status update
   const handleTaskStatusChange = async (taskId, newStatus) => {
     try {
@@ -267,18 +267,18 @@ const AdminEventDetails = () => {
         .update({ status: newStatus })
         .eq('id', taskId)
         .select();
-        
+
       if (error) throw error;
-      
+
       // Update tasks state
       if (data) {
         const updatedTask = data[0];
-        
-        setAllTasks(allTasks.map(task => 
+
+        setAllTasks(allTasks.map(task =>
           task.id === taskId ? { ...task, status: newStatus } : task
         ));
-        
-        setEventTasks(eventTasks.map(task => 
+
+        setEventTasks(eventTasks.map(task =>
           task.id === taskId ? { ...task, status: newStatus } : task
         ));
       }
@@ -287,7 +287,7 @@ const AdminEventDetails = () => {
       setError(err.message);
     }
   };
-  
+
   // Handle task deletion
   const handleDeleteTask = async (taskId) => {
     try {
@@ -296,17 +296,17 @@ const AdminEventDetails = () => {
         .from('task_assignment')
         .delete()
         .eq('task_id', taskId);
-        
+
       if (assignmentError) throw assignmentError;
-      
+
       // Then delete the task
       const { error } = await supabase
         .from('task')
         .delete()
         .eq('id', taskId);
-        
+
       if (error) throw error;
-      
+
       // Remove task from state
       setAllTasks(allTasks.filter(task => task.id !== taskId));
       setEventTasks(eventTasks.filter(task => task.id !== taskId));
@@ -315,20 +315,20 @@ const AdminEventDetails = () => {
       setError(err.message);
     }
   };
-  
+
   // Handle volunteer registration
   const handleRegisterVolunteer = async (e) => {
     e.preventDefault();
-    
+
     if (!selectedVolunteer) {
       setError('Please select a volunteer to register');
       return;
     }
-    
+
     try {
       const { data, error } = await registerVolunteerForEvent(id, selectedVolunteer);
       if (error) throw error;
-      
+
       // Update registrations state
       if (data) {
         // Fetch the volunteer details
@@ -337,17 +337,17 @@ const AdminEventDetails = () => {
           .select('*')
           .eq('id', selectedVolunteer)
           .single();
-          
+
         const newRegistration = {
           ...data,
           volunteer: volunteerData
         };
-        
+
         setRegistrations([...registrations, newRegistration]);
-        
+
         // Update available volunteers
         setAvailableVolunteers(availableVolunteers.filter(vol => vol.id !== selectedVolunteer));
-        
+
         // Reset form
         setSelectedVolunteer('');
         setShowRegistrationForm(false);
@@ -357,19 +357,19 @@ const AdminEventDetails = () => {
       setError(err.message);
     }
   };
-  
+
   // Handle volunteer hours update
   const handleUpdateHours = async (registrationId, hours) => {
     try {
-      const { data, error } = await updateEventRegistration(registrationId, { 
-        hours: parseFloat(hours) 
+      const { data, error } = await updateEventRegistration(registrationId, {
+        hours: parseFloat(hours)
       });
-      
+
       if (error) throw error;
-      
+
       // Update registrations state
       if (data) {
-        setRegistrations(registrations.map(reg => 
+        setRegistrations(registrations.map(reg =>
           reg.id === registrationId ? { ...reg, hours: parseFloat(hours) } : reg
         ));
       }
@@ -378,16 +378,16 @@ const AdminEventDetails = () => {
       setError(err.message);
     }
   };
-  
+
   // Handle removing volunteer registration
   const handleRemoveVolunteer = async (registrationId, volunteerId) => {
     try {
       const { error } = await deleteEventRegistration(registrationId);
       if (error) throw error;
-      
+
       // Remove registration from state
       setRegistrations(registrations.filter(reg => reg.id !== registrationId));
-      
+
       // Add volunteer back to available volunteers
       const volunteer = volunteers.find(vol => vol.id === volunteerId);
       if (volunteer) {
@@ -398,12 +398,12 @@ const AdminEventDetails = () => {
       setError(err.message);
     }
   };
-  
+
   // Handle edit event
   const handleEditEvent = () => {
     navigate(`/admin/events/${id}/edit`);
   };
-  
+
   const handleDone = () => {
     navigate('/admin/events');
   };
@@ -451,7 +451,7 @@ const AdminEventDetails = () => {
       </div>
     );
   }
-  
+
   if (!event) {
     return (
       <div className="flex h-screen bg-gray-100">
@@ -494,8 +494,8 @@ const AdminEventDetails = () => {
               </div>
               <div className="flex items-center gap-3">
                 {isEventEnded(event?.end_date) && (
-                  <Button 
-                    variant="secondary" 
+                  <Button
+                    variant="secondary"
                     onClick={() => navigate(`/admin/events/${id}/feedback`)}
                     className="flex items-center gap-2"
                   >
@@ -503,8 +503,8 @@ const AdminEventDetails = () => {
                     View Feedback
                   </Button>
                 )}
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={handleEditEvent}
                   className="flex items-center gap-2"
                 >
@@ -514,39 +514,44 @@ const AdminEventDetails = () => {
                 <Button onClick={handleDone}>Done</Button>
               </div>
             </div>
-            
+
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="mb-4">
                 <TabsTrigger value="details">Event Details</TabsTrigger>
                 <TabsTrigger value="tasks">Tasks</TabsTrigger>
                 <TabsTrigger value="volunteers">Volunteers</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="details" className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Event Info */}
                   <div className="md:col-span-2 bg-white rounded-lg shadow-md p-6">
                     <h2 className="text-xl font-semibold mb-4">Event Information</h2>
-                    
+                    <div className="flex justify-between items-center">
+                      <h2 className="text-lg font-semibold">{event?.name || 'Event Name'}</h2>
+                      <Badge variant="outline" className="bg-purple-100 text-purple-800 hover:bg-purple-200 ml-auto">
+                        {event?.category || 'Uncategorized'}
+                      </Badge>
+                    </div>
+
                     <div className="space-y-4">
                       <div>
                         <h3 className="text-sm font-medium text-gray-500">Description</h3>
                         <p className="mt-1">{event.description}</p>
                       </div>
-                  
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <h3 className="text-sm font-medium text-gray-500">Date & Time</h3>
                           <div className="flex items-center mt-1">
                             <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                            {formatDate(event.start_date)}
+                            {formatDate(event.start_date)} - {formatDate(event.end_date)}
                           </div>
                           <div className="flex items-center mt-1">
                             <Clock className="h-4 w-4 mr-2 text-gray-400" />
                             {formatTime(event.start_date)} - {formatTime(event.end_date)}
                           </div>
                         </div>
-                  
+
                         <div>
                           <h3 className="text-sm font-medium text-gray-500">Location</h3>
                           <div className="flex items-center mt-1">
@@ -555,7 +560,7 @@ const AdminEventDetails = () => {
                           </div>
                         </div>
                       </div>
-              
+
                       <div>
                         <h3 className="text-sm font-medium text-gray-500">Volunteer Capacity</h3>
                         <div className="flex items-center mt-1">
@@ -565,7 +570,7 @@ const AdminEventDetails = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Event Image */}
                   <div className="bg-white rounded-lg shadow-md overflow-hidden">
                     <div className="h-48 md:h-full overflow-hidden">
@@ -584,31 +589,31 @@ const AdminEventDetails = () => {
                 <div className="bg-white rounded-lg shadow-md p-6">
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-semibold">Tasks Overview</h2>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => setActiveTab('tasks')}
                     >
                       View All Tasks
                     </Button>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h3 className="font-medium mb-1">Todo</h3>
                       <p className="text-2xl font-bold">{taskStats.todo}</p>
                     </div>
-                    
+
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h3 className="font-medium mb-1">In Progress</h3>
                       <p className="text-2xl font-bold">{taskStats.inProgress}</p>
                     </div>
-                    
+
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h3 className="font-medium mb-1">Review</h3>
                       <p className="text-2xl font-bold">{taskStats.review}</p>
                     </div>
-                    
+
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h3 className="font-medium mb-1">Done</h3>
                       <p className="text-2xl font-bold">{taskStats.done}</p>
@@ -620,21 +625,21 @@ const AdminEventDetails = () => {
                 <div className="bg-white rounded-lg shadow-md p-6">
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-semibold">Volunteers Overview</h2>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => setActiveTab('volunteers')}
                     >
                       Manage Volunteers
                     </Button>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h3 className="font-medium mb-1">Registered</h3>
                       <p className="text-2xl font-bold">{registrations.length}</p>
                     </div>
-                    
+
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h3 className="font-medium mb-1">Total Hours</h3>
                       <p className="text-2xl font-bold">
@@ -651,7 +656,7 @@ const AdminEventDetails = () => {
                   </div>
                 </div>
               </TabsContent>
-              
+
               <TabsContent value="tasks" className="space-y-6">
                 <div className="bg-white rounded-lg shadow-md p-6">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
@@ -661,7 +666,7 @@ const AdminEventDetails = () => {
                     </div>
 
                     <div className="flex gap-2">
-                      <Button 
+                      <Button
                         variant={taskView === 'table' ? 'default' : 'outline'}
                         onClick={() => setTaskView('table')}
                         className={taskView === 'table' ? 'bg-purple-600 hover:bg-purple-700' : ''}
@@ -669,7 +674,7 @@ const AdminEventDetails = () => {
                         <List className="mr-2 h-4 w-4" />
                         Table
                       </Button>
-                      <Button 
+                      <Button
                         variant={taskView === 'kanban' ? 'default' : 'outline'}
                         onClick={() => setTaskView('kanban')}
                         className={taskView === 'kanban' ? 'bg-purple-600 hover:bg-purple-700' : ''}
@@ -677,7 +682,7 @@ const AdminEventDetails = () => {
                         <Columns className="mr-2 h-4 w-4" />
                         Kanban
                       </Button>
-                      <Button 
+                      <Button
                         onClick={() => navigate(`/admin/events/${id}/createtask`)}
                         className="bg-purple-600 hover:bg-purple-700"
                       >
@@ -686,7 +691,7 @@ const AdminEventDetails = () => {
                       </Button>
                     </div>
                   </div>
-                  
+
                   {eventTasks.length === 0 ? (
                     <div className="text-center py-8">
                       <h3 className="mt-2 text-sm font-medium text-gray-900">No tasks created yet</h3>
@@ -701,13 +706,13 @@ const AdminEventDetails = () => {
                   ) : (
                     <>
                       {taskView === 'table' ? (
-                        <TaskTable 
-                          tasks={eventTasks} 
+                        <TaskTable
+                          tasks={eventTasks}
                           onStatusChange={handleTaskStatusChange}
                           onDelete={handleDeleteTask}
                         />
                       ) : (
-                        <TaskKanban 
+                        <TaskKanban
                           tasks={eventTasks}
                           onStatusChange={handleTaskStatusChange}
                           onDelete={handleDeleteTask}
@@ -716,7 +721,7 @@ const AdminEventDetails = () => {
                     </>
                   )}
                 </div>
-                
+
                 {/* Add Task Form Modal */}
                 {showTaskForm && (
                   <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
@@ -727,7 +732,7 @@ const AdminEventDetails = () => {
                           <X className="h-5 w-5" />
                         </Button>
                       </div>
-                      
+
                       <form onSubmit={handleCreateTask}>
                         <div className="space-y-4">
                           <div>
@@ -737,12 +742,12 @@ const AdminEventDetails = () => {
                             <Input
                               id="task-title"
                               value={taskForm.title}
-                              onChange={(e) => setTaskForm({...taskForm, title: e.target.value})}
+                              onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
                               className="mt-1"
                               required
                             />
                           </div>
-                          
+
                           <div>
                             <label htmlFor="task-description" className="block text-sm font-medium text-gray-700">
                               Description
@@ -750,12 +755,12 @@ const AdminEventDetails = () => {
                             <Textarea
                               id="task-description"
                               value={taskForm.description}
-                              onChange={(e) => setTaskForm({...taskForm, description: e.target.value})}
+                              onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
                               className="mt-1"
                               rows={3}
                             />
                           </div>
-                          
+
                           <div>
                             <label htmlFor="task-due-date" className="block text-sm font-medium text-gray-700">
                               Due Date
@@ -764,18 +769,18 @@ const AdminEventDetails = () => {
                               id="task-due-date"
                               type="datetime-local"
                               value={taskForm.deadline}
-                              onChange={(e) => setTaskForm({...taskForm, deadline: e.target.value})}
+                              onChange={(e) => setTaskForm({ ...taskForm, deadline: e.target.value })}
                               className="mt-1"
                             />
                           </div>
-                          
+
                           <div>
                             <label htmlFor="task-priority" className="block text-sm font-medium text-gray-700">
                               Priority
                             </label>
                             <Select
                               value={taskForm.priority}
-                              onValueChange={(value) => setTaskForm({...taskForm, priority: value})}
+                              onValueChange={(value) => setTaskForm({ ...taskForm, priority: value })}
                             >
                               <SelectTrigger id="task-priority" className="mt-1">
                                 <SelectValue placeholder="Select priority" />
@@ -787,14 +792,14 @@ const AdminEventDetails = () => {
                               </SelectContent>
                             </Select>
                           </div>
-                          
+
                           <div>
                             <label htmlFor="task-status" className="block text-sm font-medium text-gray-700">
                               Status
                             </label>
                             <Select
                               value={taskForm.status}
-                              onValueChange={(value) => setTaskForm({...taskForm, status: value})}
+                              onValueChange={(value) => setTaskForm({ ...taskForm, status: value })}
                             >
                               <SelectTrigger id="task-status" className="mt-1">
                                 <SelectValue placeholder="Select status" />
@@ -807,14 +812,14 @@ const AdminEventDetails = () => {
                               </SelectContent>
                             </Select>
                           </div>
-                          
+
                           <div>
                             <label htmlFor="task-assignee" className="block text-sm font-medium text-gray-700">
                               Assignee
                             </label>
                             <Select
                               value={taskForm.assignee_id}
-                              onValueChange={(value) => setTaskForm({...taskForm, assignee_id: value})}
+                              onValueChange={(value) => setTaskForm({ ...taskForm, assignee_id: value })}
                             >
                               <SelectTrigger id="task-assignee" className="mt-1">
                                 <SelectValue placeholder="Select assignee" />
@@ -835,7 +840,7 @@ const AdminEventDetails = () => {
                             </Select>
                           </div>
                         </div>
-                        
+
                         <div className="mt-6 flex justify-end gap-2">
                           <Button type="button" variant="outline" onClick={() => setShowTaskForm(false)}>
                             Cancel
@@ -849,7 +854,7 @@ const AdminEventDetails = () => {
                   </div>
                 )}
               </TabsContent>
-              
+
               <TabsContent value="volunteers" className="space-y-6">
                 <div className="bg-white rounded-lg shadow-md p-6">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
@@ -859,8 +864,8 @@ const AdminEventDetails = () => {
                         {registrations.length} / {event.max_volunteers || 'Unlimited'} volunteers registered
                       </p>
                     </div>
-                    
-                    <Button 
+
+                    <Button
                       onClick={() => setShowRegistrationForm(true)}
                       className="bg-purple-600 hover:bg-purple-700"
                       disabled={event.max_volunteers && registrations.length >= event.max_volunteers}
@@ -869,8 +874,8 @@ const AdminEventDetails = () => {
                       Register Volunteer
                     </Button>
                   </div>
-                  
-                  
+
+
                   {registrations.length === 0 ? (
                     <div className="text-center py-8">
                       <h3 className="mt-2 text-sm font-medium text-gray-900">No volunteers registered yet</h3>
@@ -940,8 +945,8 @@ const AdminEventDetails = () => {
                                     value={registration.hours || 0}
                                     onChange={(e) => handleUpdateHours(registration.id, e.target.value)}
                                   />
-                                  <Button 
-                                    size="sm" 
+                                  <Button
+                                    size="sm"
                                     variant="ghost"
                                     onClick={() => handleUpdateHours(registration.id, registration.hours || 0)}
                                     className="h-8 w-8 p-0"
@@ -975,7 +980,7 @@ const AdminEventDetails = () => {
                     </div>
                   )}
                 </div>
-                
+
                 {/* Register Volunteer Form Modal */}
                 {showRegistrationForm && (
                   <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
@@ -990,9 +995,9 @@ const AdminEventDetails = () => {
                       {availableVolunteers.length === 0 ? (
                         <div className="text-center py-6">
                           <p className="text-gray-500">All volunteers are already registered for this event.</p>
-                          <Button 
-                            className="mt-4" 
-                            variant="outline" 
+                          <Button
+                            className="mt-4"
+                            variant="outline"
                             onClick={() => setShowRegistrationForm(false)}
                           >
                             Close
@@ -1022,13 +1027,13 @@ const AdminEventDetails = () => {
                               </Select>
                             </div>
                           </div>
-                          
+
                           <div className="mt-6 flex justify-end gap-2">
                             <Button type="button" variant="outline" onClick={() => setShowRegistrationForm(false)}>
                               Cancel
                             </Button>
-                            <Button 
-                              type="submit" 
+                            <Button
+                              type="submit"
                               className="bg-purple-600 hover:bg-purple-700"
                               disabled={!selectedVolunteer}
                             >

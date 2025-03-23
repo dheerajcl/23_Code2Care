@@ -108,7 +108,28 @@ const CreateTask = () => {
     { value: 'Sports', label: 'Sports' },
     { value: 'Helping', label: 'Helping' }
   ];
+// For modal management
+const [selectedVolunteer, setSelectedVolunteer] = useState(null);
 
+// Function to view volunteer details
+const handleViewVolunteer = (volunteer) => {
+  setSelectedVolunteer(volunteer);
+};
+
+// Function to close modal
+const closeModal = () => {
+  setSelectedVolunteer(null);
+};
+
+// Helper function to format dates
+const formatDate = (dateString) => {
+  if (!dateString) return 'Not available';
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+};
   // Fetch event details and registered volunteers
   useEffect(() => {
     const fetchEventAndVolunteers = async () => {
@@ -154,8 +175,9 @@ if (volunteerIds.length > 0) {
             email: vol.email,
             availability: vol.availability || 'weekends',
             skills: vol.skills || [],
-            location: vol.location || vol.city || 'Not specified',
-            state: vol.state || 'Karnataka'
+            location: vol.city || 'Not specified',
+            state: vol.state || 'Karnataka',
+            isRecommended: eventData.category && vol.skills && vol.skills.includes(eventData.category)
           }));
           
           setAllVolunteers(formattedVolunteers);
@@ -605,6 +627,7 @@ if (volunteerIds.length > 0) {
                             size="sm"
                             onClick={handleSelectAll}
                             disabled={filteredVolunteers.length === 0}
+                            type="button"
                           >
                             {selectAll ? 'Deselect All' : 'Select All'}
                           </Button>
@@ -613,91 +636,108 @@ if (volunteerIds.length > 0) {
                           </span>
                         </div>
                         
-                        {/* Volunteer List Table */}
-                        <div className="overflow-x-auto">
-                          <table className="w-full">
-                            <thead className="bg-gray-50 text-xs uppercase">
-                              <tr>
-                                <th className="px-4 py-2 text-left">Volunteer</th>
-                                <th className="px-4 py-2 text-left">Location</th>
-                                <th className="px-4 py-2 text-left">Skills</th>
-                                <th className="px-4 py-2 text-center">Availability</th>
-                                <th className="px-4 py-2 text-center">Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                              {filteredVolunteers.length > 0 ? (
-                                filteredVolunteers.map((volunteer) => (
-                                  <tr key={volunteer.id} className="hover:bg-gray-50">
-                                    <td className="px-4 py-4">
-                                      <div className="flex items-center">
-                                        <Checkbox
-                                          checked={selectedVolunteers.includes(volunteer.id)}
-                                          onCheckedChange={() => toggleVolunteer(volunteer.id)}
-                                          aria-label={`Select ${volunteer.name}`}
-                                          disabled={!selectedVolunteers.includes(volunteer.id) && selectedVolunteers.length >= maxVolunteers}
-                                        />
-                                        <div className="ml-3">
-                                          <div className="font-medium">{volunteer.name}</div>
-                                          <div className="text-sm text-gray-500">{volunteer.email}</div>
-                                        </div>
-                                      </div>
-                                    </td>
-                                    <td className="px-4 py-4">
-                                      <div>
-                                        <div>{volunteer.location}</div>
-                                        <div className="text-sm text-gray-500">{volunteer.state}</div>
-                                      </div>
-                                    </td>
-                                    <td className="px-4 py-4">
-                                      <div className="flex flex-wrap gap-1">
-                                        {volunteer.skills && volunteer.skills.length > 0 ? (
-                                          volunteer.skills.map((skill, index) => (
-                                            <span 
-                                              key={index} 
-                                              className="text-xs px-2 py-1 bg-gray-100 rounded-full"
-                                            >
-                                              {skill}
-                                            </span>
-                                          ))
-                                        ) : (
-                                          <span className="text-xs text-gray-500">No skills listed</span>
-                                        )}
-                                      </div>
-                                    </td>
-                                    <td className="px-4 py-4 text-center">
-                                      <span className={`text-xs px-3 py-1 rounded-full ${
-                                        volunteer.availability === 'both'
-                                        ? 'bg-green-100 text-green-800'
-                                          : volunteer.availability === 'weekends' || volunteer.availability === 'Weekends'
-                                            ? 'bg-blue-100 text-blue-800'
-                                            : 'bg-yellow-100 text-yellow-800'
-                                      }`}>
-                                        {volunteer.availability}
-                                      </span>
-                                    </td>
-                                    <td className="px-4 py-4 text-center">
-                                      <Button
-                                        variant={selectedVolunteers.includes(volunteer.id) ? "default" : "outline"}
-                                        size="sm"
-                                        onClick={() => toggleVolunteer(volunteer.id)}
-                                        disabled={!selectedVolunteers.includes(volunteer.id) && selectedVolunteers.length >= maxVolunteers}
-                                      >
-                                        {selectedVolunteers.includes(volunteer.id) ? 'Selected' : 'Select'}
-                                      </Button>
-                                    </td>
-                                  </tr>
-                                ))
-                              ) : (
-                                <tr>
-                                  <td colSpan="5" className="px-4 py-8 text-center text-gray-500">
-                                    No volunteers found matching your filters
-                                  </td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
+          {/* Volunteer List Table */}
+<div className="overflow-x-auto">
+  <table className="min-w-full divide-y divide-gray-200">
+    <thead className="bg-gray-50">
+      <tr>
+        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Volunteer
+        </th>
+        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Location
+        </th>
+        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Skills
+        </th>
+        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Availability
+        </th>
+        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Actions
+        </th>
+      </tr>
+    </thead>
+    <tbody className="divide-y">
+      {filteredVolunteers.length > 0 ? (
+        filteredVolunteers.map((volunteer) => (
+          <tr key={volunteer.id} className="hover:bg-gray-50 transition-colors">
+            <td className="px-4 py-4">
+              <div className="flex items-center">
+                <Checkbox
+                  checked={selectedVolunteers.includes(volunteer.id)}
+                  onCheckedChange={() => toggleVolunteer(volunteer.id)}
+                  aria-label={`Select ${volunteer.name}`}
+                  disabled={!selectedVolunteers.includes(volunteer.id) && selectedVolunteers.length >= maxVolunteers}
+                />
+                <div className="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center ml-3">
+                  <UserPlusIcon className="h-5 w-5 text-gray-500" />
+                </div>
+                <div className="ml-3">
+                  <div className="font-medium">{volunteer.name}{volunteer.isRecommended && (
+      <Badge className="ml-2 bg-green-100 text-green-800 text-xs">Recommended</Badge>
+    )}</div>
+                  <div className="text-sm text-gray-500">{volunteer.email}</div>
+                </div>
+              </div>
+            </td>
+            <td className="px-4 py-4">
+              <div>
+                <div>{volunteer.location}</div>
+                <div className="text-sm text-gray-500">{volunteer.state}</div>
+              </div>
+            </td>
+            <td className="px-4 py-4">
+              <div className="flex flex-wrap gap-1">
+                {volunteer.skills && volunteer.skills.length > 0 ? (
+                  volunteer.skills.slice(0, 2).map((skill, index) => (
+                    <Badge key={index} variant="outline" className="text-xs">
+                      {skill}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-xs text-gray-500">No skills listed</span>
+                )}
+                {volunteer.skills && volunteer.skills.length > 2 && (
+                  <Badge variant="outline" className="text-xs">
+                    +{volunteer.skills.length - 2} more
+                  </Badge>
+                )}
+              </div>
+            </td>
+            <td className="px-4 py-4 text-center">
+              <span className={`text-xs px-3 py-1 rounded-full ${
+                volunteer.availability === 'both'
+                ? 'bg-green-100 text-green-800'
+                  : volunteer.availability === 'weekends' || volunteer.availability === 'Weekends'
+                    ? 'bg-blue-100 text-blue-800'
+                    : 'bg-yellow-100 text-yellow-800'
+              }`}>
+                {volunteer.availability}
+              </span>
+            </td>
+            <td className="px-4 py-4 text-center">
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() => handleViewVolunteer(volunteer)}
+              >
+                View
+              </Button>
+            </td>
+          </tr>
+        ))
+      ) : (
+        <tr>
+          <td colSpan="5" className="px-4 py-8 text-center text-gray-500">
+            No volunteers found matching your filters
+          </td>
+        </tr>
+      )}
+    </tbody>
+  </table>
+</div>
                       </>
                     )}
                   </CardContent>
@@ -713,6 +753,100 @@ if (volunteerIds.length > 0) {
                     {isSubmitting ? 'Creating...' : 'Create Task'}
                   </Button>
                 </div>
+              {/* Volunteer details modal */}
+{selectedVolunteer && (
+  <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">Volunteer Profile</h2>
+          <Button variant="ghost" size="sm" onClick={closeModal} type="button">
+            <XIcon className="h-5 w-5" />
+          </Button>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Left column - Personal info */}
+          <div className="md:col-span-1">
+            <div className="flex flex-col items-center mb-4">
+              <div className="h-24 w-24 rounded-full bg-gray-200 flex items-center justify-center mb-2">
+                <UserPlusIcon className="h-12 w-12 text-gray-500" />
+              </div>
+              <h3 className="text-xl font-semibold">{selectedVolunteer.name}</h3>
+              <p className="text-sm text-gray-500">{selectedVolunteer.email}</p>
+            </div>
+            
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm text-gray-500">Location</p>
+                <p>{selectedVolunteer.location}{selectedVolunteer.state ? `, ${selectedVolunteer.state}` : ''}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Availability</p>
+                <Badge className={`
+                  ${selectedVolunteer.availability === 'weekends' || selectedVolunteer.availability === 'Weekends' ? 'bg-blue-100 text-blue-800' : ''}
+                  ${selectedVolunteer.availability === 'both' ? 'bg-green-100 text-green-800' : ''}
+                  ${selectedVolunteer.availability === 'weekdays' ? 'bg-yellow-100 text-yellow-800' : ''}
+                `}>
+                  {selectedVolunteer.availability}
+                </Badge>
+              </div>
+            </div>
+          </div>
+          
+          {/* Right column - Skills and interests */}
+          <div className="md:col-span-2">
+            <h3 className="text-lg font-semibold mb-3">Skills & Interests</h3>
+            
+            <div className="mb-4">
+              <p className="text-sm text-gray-500 mb-2">Skills</p>
+              <div className="flex flex-wrap gap-2">
+                {selectedVolunteer.skills && selectedVolunteer.skills.length > 0 ? (
+                  selectedVolunteer.skills.map((skill, index) => (
+                    <Badge key={index} variant="outline">
+                      {skill}
+                    </Badge>
+                  ))
+                ) : (
+                  <p className="text-gray-400">No skills specified</p>
+                )}
+              </div>
+            </div>
+            
+            <div className="mt-6 space-y-3">
+              <Button 
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => {
+                  // Select this volunteer if not already selected and if possible
+                  if (!selectedVolunteers.includes(selectedVolunteer.id) && selectedVolunteers.length < maxVolunteers) {
+                    toggleVolunteer(selectedVolunteer.id);
+                  }
+                  closeModal();
+                }}
+                disabled={!selectedVolunteers.includes(selectedVolunteer.id) && selectedVolunteers.length >= maxVolunteers}
+                type="button"
+              >
+                {selectedVolunteers.includes(selectedVolunteer.id) 
+                  ? 'Selected for Task' 
+                  : selectedVolunteers.length >= maxVolunteers 
+                    ? 'Maximum Volunteers Reached' 
+                    : 'Select for Task'}
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={closeModal}
+                type="button"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
               </form>
             )}
           </div>
