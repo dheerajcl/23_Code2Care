@@ -195,11 +195,11 @@ export const VolunteerDashboard = () => {
     
     fetchEvents();
   }, []);
-
-  const handleLogout = async () => {
-    await logout();
-    // Redirect is handled by the auth context
-  };
+  
+    const handleLogout = async () => {
+      await logout();
+      // Redirect is handled by the auth context
+    };
   
   
   return (
@@ -317,7 +317,7 @@ export const VolunteerDashboard = () => {
                           </Badge>
                           <Button variant="ghost" size="sm" asChild>
                             <Link to={`/volunteer/events/${event.id}`}>
-                              Details
+                            Details
                             </Link>
                           </Button>
                         </CardFooter>
@@ -325,7 +325,7 @@ export const VolunteerDashboard = () => {
                     ))}
                   </div>
                 ) : (
-                  <Card>
+                    <Card>
                     <CardContent className="flex flex-col items-center justify-center py-8">
                       <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
                       <p className="text-lg font-medium mb-2">No upcoming events</p>

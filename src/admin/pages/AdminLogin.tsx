@@ -125,10 +125,6 @@ const AdminLogin: React.FC = () => {
         <div className="max-w-md mx-auto w-full">
           <h2 className="text-2xl font-bold mb-1">Samarth Connect</h2>
           <h3 className="text-xl font-medium mb-8">Welcome Back!</h3>
-          <p className="text-sm mb-6">
-            Don't have an account? <a href="/admin/register" className="text-blue-600 underline">Register</a>.
-          </p>
-
           <form onSubmit={handleSubmit(onSubmit)}>
             <div className="mb-4">
               <input 
@@ -166,7 +162,7 @@ const AdminLogin: React.FC = () => {
                 'Login Now'
               )}
             </button>
-            <button 
+            {/* <button 
               type="button" 
               className="w-full border border-gray-300 py-3 rounded-md flex items-center justify-center mb-4"
             >
@@ -189,7 +185,7 @@ const AdminLogin: React.FC = () => {
                 />
               </svg>
               Login with Google
-            </button>
+            </button> */}
             <div className="text-center text-sm">
               Forgot password? <a href="#" className="text-blue-600">Click here</a>
             </div>

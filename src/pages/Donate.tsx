@@ -299,9 +299,9 @@ const DonationPage: React.FC = () => {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="flex justify-center gap-4 items-center bg-white p-4 rounded-lg shadow-sm border border-border mb-8 max-w-md mx-auto"
+                className="flex justify-center gap-4 items-center bg-white p-4 rounded-lg shadow-sm border border-border mb-8 max-w-md mx-auto dark:bg-red-900 donate-tax-section"
               >
-                <Info className="text-primary h-5 w-5" />
+                <Info className="text-primary h-8 w-8 dark:text-white donate-tax-section-text" />
                 <p className="text-sm">
                   All donations to Samarthanam Trust are eligible for tax exemption under Section 80G in India.
                 </p>
