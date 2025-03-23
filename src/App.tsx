@@ -10,6 +10,7 @@ import { VolunteerTasks } from './volunteer/tasks';
 import { VolunteerBadges } from './volunteer/badges';
 import { VolunteerProgress } from './volunteer/progress';
 import EventFeedback from './volunteer/events/feedback';
+import AdminEventFeedback from './admin/pages/AdminEventFeedback';
 
 // Pages
 import Index from "./pages/Index";
@@ -97,6 +98,14 @@ const queryClient = new QueryClient();
                   element={
                     <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
                       <AdminEventDetails />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/events/:id/feedback"
+                  element={
+                    <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                      <AdminEventFeedback />
                     </ProtectedRoute>
                   }
                 />
