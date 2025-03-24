@@ -23,6 +23,8 @@ interface TalkBackProviderProps {
 export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
   const [isActive, setIsActive] = useState(false);
   const speechSynthesis = window.speechSynthesis;
+  let lastTap = 0;
+  let lastTarget: EventTarget | null = null;
 
   useEffect(() => {
     // Keyboard shortcuts for desktop
@@ -35,54 +37,72 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
       }
     };
 
-    // Focus and click for element reading
+    // Focus for desktop tab navigation
     const handleFocus = (e: FocusEvent) => {
       if (isActive && e.target instanceof HTMLElement) {
         const selection = window.getSelection();
         const selectedText = selection?.toString().trim();
-        if (!selectedText) { // Only speak element if no text is selected
+        if (!selectedText) {
           speakElement(e.target);
         }
       }
     };
 
+    // Click for desktop mouse use
     const handleClick = (e: MouseEvent) => {
       if (isActive && e.target instanceof HTMLElement) {
         const selection = window.getSelection();
         const selectedText = selection?.toString().trim();
-        if (!selectedText) { // Only speak element if no text is selected
+        if (!selectedText) {
           speakElement(e.target);
         }
       }
     };
 
-    // Gesture for mobile (two-finger double-tap)
-    let lastTap = 0;
+    // Mobile touch handling (single tap speaks, double tap activates)
     const handleTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 2) {
-        const now = Date.now();
-        if (now - lastTap < 300) {
-          e.preventDefault();
-          toggleTalkBack();
+      if (!isActive || e.touches.length > 1) { // Ignore multi-touch except for toggle
+        if (e.touches.length === 2) {
+          const now = Date.now();
+          if (now - lastTap < 300) {
+            e.preventDefault();
+            toggleTalkBack();
+          }
+          lastTap = now;
         }
-        lastTap = now;
+        return;
       }
+
+      const target = e.target as HTMLElement;
+      const now = Date.now();
+
+      if (now - lastTap < 300 && target === lastTarget) { // Double tap
+        e.preventDefault(); // Prevent default single-tap action
+        const clickEvent = new Event('click', { bubbles: true });
+        target.dispatchEvent(clickEvent); // Trigger the original action
+      } else { // Single tap
+        e.preventDefault(); // Stop immediate action
+        speakElement(target); // Speak the element
+      }
+
+      lastTap = now;
+      lastTarget = target;
     };
 
-    // Speak selected text only
+    // Speak selected text
     const handleSelectionChange = () => {
       if (!isActive) return;
       const selection = window.getSelection();
       const selectedText = selection?.toString().trim();
       if (selectedText) {
-        speak(selectedText); // Speak only the selected text
+        speak(selectedText);
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('focusin', handleFocus, true);
     document.addEventListener('click', handleClick, true);
-    document.addEventListener('touchstart', handleTouchStart);
+    document.addEventListener('touchstart', handleTouchStart, { passive: false });
     document.addEventListener('selectionchange', handleSelectionChange);
 
     return () => {
@@ -105,7 +125,7 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
   };
 
   const speak = (text: string) => {
-    console.log('Speaking:', text); // Debug
+    console.log('Speaking:', text);
     speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'en-US';
