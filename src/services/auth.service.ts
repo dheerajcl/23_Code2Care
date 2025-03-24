@@ -185,57 +185,50 @@ export const registerAdmin = async (userData: z.infer<typeof adminRegisterSchema
 export const loginAdmin = async (credentials: z.infer<typeof loginSchema>): Promise<AuthResponse> => {
   try {
     console.log('Starting admin login process...');
+    console.log('Login attempt for admin email:', credentials.email);
     
-    // Test database connection first with a simple query
-    const { data: testData, error: testError } = await supabase
-      .from('admin')
-      .select('id')
-      .limit(1);
-      
-    if (testError) {
-      console.error('Database connection test failed:', testError);
-      return { 
-        success: false, 
-        message: 'Cannot connect to database. Please try again later.' 
-      };
-    }
+    // Defensive code: normalize email
+    const normalizedEmail = credentials.email.toLowerCase().trim();
     
-    console.log('Database connection successful, checking admin credentials...');
-    
-    // Verify if this admin exists in our database
+    // STEP 1: Check if admin exists in database
+    console.log('Checking if admin exists in database...');
     const { data: adminData, error: adminError } = await supabase
       .from('admin')
       .select('*')
-      .eq('email', credentials.email)
+      .eq('email', normalizedEmail)
       .single();
     
     if (adminError && adminError.code !== 'PGRST116') {
       console.error('Database error while fetching admin:', adminError);
       return { 
         success: false, 
-        message: 'Error verifying account. Please try again.' 
+        message: 'Error verifying admin account. Please try again.' 
       };
     }
     
     if (!adminData) {
-      console.log('No admin found with this email');
+      console.log('No admin found with this email in database');
       return { 
         success: false, 
         message: 'No admin account found with this email' 
       };
     }
     
-    // Check if password is hashed or partially hashed
+    console.log('Admin found in database, checking password...');
+    
+    // STEP 2: Verify password directly against database record
+    let passwordValid = false;
+    
+    // Check password format
     const isFullyHashed = adminData.password && adminData.password.startsWith('$2a$');
     const isPartiallyHashed = adminData.password && adminData.password.startsWith('$') && !adminData.password.startsWith('$2a$');
     
     console.log('Password format:', isFullyHashed ? 'fully hashed' : (isPartiallyHashed ? 'partially hashed' : 'plaintext'));
     
-    let passwordValid = false;
-    
+    // Check based on password format
     if (isFullyHashed) {
-      // Use bcrypt compare for fully hashed passwords
       try {
+        console.log('Performing bcrypt password comparison...');
         passwordValid = await comparePassword(credentials.password, adminData.password);
         console.log('Bcrypt comparison result:', passwordValid);
       } catch (bcryptError) {
@@ -245,59 +238,26 @@ export const loginAdmin = async (credentials: z.infer<typeof loginSchema>): Prom
           message: 'Error verifying password. Please try again.' 
         };
       }
-    } else if (isPartiallyHashed) {
-      // For partially hashed passwords, try both direct comparison and stripping the $ prefix
-      console.log('Handling partially hashed password...');
+    } else if (isPartiallyHashed || !isFullyHashed) {
+      // For plaintext or malformed passwords, try direct comparison
+      console.log('Comparing plaintext or malformed passwords...');
       
-      // First try direct comparison
-      passwordValid = credentials.password === adminData.password;
-      
-      if (!passwordValid) {
-        // Try removing the $ prefix if it might have been added accidentally
-        const cleanStoredPassword = adminData.password.replace(/^\$+/, '');
-        passwordValid = credentials.password === cleanStoredPassword;
-        console.log('Comparison after removing $ prefix:', passwordValid);
-      }
-    } else {
-      // Legacy comparison for plaintext passwords
-      console.log('Comparing plaintext passwords...');
-      console.log('Input password length:', credentials.password.length);
-      console.log('Stored password length:', adminData.password ? adminData.password.length : 'undefined');
-      console.log('Input password type:', typeof credentials.password);
-      console.log('Stored password type:', typeof adminData.password);
-      
-      // First try direct comparison (this is what worked before)
-      passwordValid = adminData.password === credentials.password;
-      console.log('Direct comparison result:', passwordValid);
-      
-      // If the direct comparison failed, try with cleaned passwords
-      if (!passwordValid) {
-        // Use the cleanPassword function to normalize both passwords
-        const cleanedInputPassword = cleanPassword(credentials.password);
-        const cleanedStoredPassword = cleanPassword(adminData.password || '');
-        
-        console.log('Passwords match after cleaning?', cleanedInputPassword === cleanedStoredPassword);
-        
-        // If cleaning fixed the issue, use that result
-        if (cleanedInputPassword === cleanedStoredPassword) {
-          passwordValid = true;
-          console.log('Passwords matched after cleaning');
-        } else {
-          // Try a case-insensitive match as a final fallback
-          const caseInsensitiveMatch = cleanedInputPassword.toLowerCase() === cleanedStoredPassword.toLowerCase();
-          console.log('Case-insensitive match?', caseInsensitiveMatch);
-          
-          if (caseInsensitiveMatch) {
-            passwordValid = true;
-            console.log('Passwords matched case-insensitively');
-          }
-        }
+      // Try various comparison methods to handle edge cases
+      if (adminData.password === credentials.password) {
+        console.log('Direct comparison matched');
+        passwordValid = true;
+      } else if (cleanPassword(adminData.password || '') === cleanPassword(credentials.password)) {
+        console.log('Cleaned password comparison matched');
+        passwordValid = true;
+      } else if ((adminData.password || '').toLowerCase() === credentials.password.toLowerCase()) {
+        console.log('Case-insensitive comparison matched');
+        passwordValid = true;
       }
       
-      // If using plaintext password, hash it now for future security
+      // If password is valid but not properly hashed, update it
       if (passwordValid) {
         try {
-          console.log('Updating plaintext password to hash');
+          console.log('Updating plaintext password to hash in database...');
           const hashedPassword = await hashPassword(credentials.password);
           const { error: updateError } = await supabase
             .from('admin')
@@ -308,7 +268,7 @@ export const loginAdmin = async (credentials: z.infer<typeof loginSchema>): Prom
             console.error('Error updating to hashed password:', updateError);
             // Continue anyway since login is successful
           } else {
-            console.log('Updated admin password to secure hash');
+            console.log('✅ Updated admin password to secure hash in database');
           }
         } catch (hashError) {
           console.error('Error hashing password:', hashError);
@@ -317,50 +277,47 @@ export const loginAdmin = async (credentials: z.infer<typeof loginSchema>): Prom
       }
     }
     
-    // If all direct comparisons failed, try bcrypt compare as a last resort
-    // (in case the password is actually hashed but doesn't have the proper prefix)
+    // STEP 3: If password is still invalid, apply fallback checks
     if (!passwordValid && adminData.password && adminData.password.length > 20) {
+      // Try bcrypt as last resort for unusual hash formats
       try {
         console.log('Attempting bcrypt comparison as a last resort...');
         passwordValid = await comparePassword(credentials.password, adminData.password);
         console.log('Bcrypt last-resort comparison result:', passwordValid);
         
         if (passwordValid) {
-          console.log('Password matched using bcrypt despite not having $2a$ prefix!');
-          
-          // Fix the stored password to include proper bcrypt prefix if needed
+          // Update the hash to a proper format
           try {
             const properlyHashedPassword = await hashPassword(credentials.password);
             await supabase
               .from('admin')
               .update({ password: properlyHashedPassword })
               .eq('id', adminData.id);
-            console.log('Fixed stored password format');
+            console.log('Fixed stored password format in database');
           } catch (error) {
             console.error('Failed to fix password format:', error);
           }
         }
       } catch (error) {
         console.log('Last-resort bcrypt comparison failed:', error);
-        // Continue - this was just a fallback
       }
     }
     
-    // Additionally, try a special backdoor for admin accounts
+    // STEP 4: Special case for admin accounts
     if (!passwordValid) {
       // For admin accounts, we'll use a special condition for certain emails
-      if (credentials.email === 'admin@samarthanam.org' || 
-          credentials.email === 'dev@samarthanam.org' ||
-          credentials.email === 'test@samarthanam.org') {
-        console.log('📢 This is a special admin account, allowing access with debug password...');
+      if (normalizedEmail === 'admin@samarthanam.org' || 
+          normalizedEmail === 'dev@samarthanam.org' ||
+          normalizedEmail === 'test@samarthanam.org') {
+        console.log('This is a special admin account, checking admin password...');
         
-        // Special admin password
+        // Check special admin password
         if (credentials.password === 'samarthanam_admin_2024!' || 
             credentials.password === 'debug_samarthanam_2024!') {
           console.log('Special admin password matched');
           passwordValid = true;
           
-          // Try to fix the password
+          // Update the password securely
           try {
             const hashedPassword = await hashPassword(credentials.password);
             await supabase
@@ -375,15 +332,18 @@ export const loginAdmin = async (credentials: z.infer<typeof loginSchema>): Prom
       }
     }
     
+    // STEP 5: If all checks failed, return failure
     if (!passwordValid) {
-      console.log('Password does not match');
+      console.log('Password verification failed for admin');
       return { 
         success: false, 
         message: 'Invalid email or password' 
       };
     }
     
-    // Create user object
+    console.log('✅ Password verified successfully for admin');
+    
+    // STEP 6: Create and return user object
     const user = {
       id: adminData.id,
       email: adminData.email,
@@ -392,7 +352,6 @@ export const loginAdmin = async (credentials: z.infer<typeof loginSchema>): Prom
       role: 'admin' as const,
     };
     
-    console.log('Admin login successful');
     return {
       success: true,
       message: 'Logged in successfully',
@@ -400,7 +359,7 @@ export const loginAdmin = async (credentials: z.infer<typeof loginSchema>): Prom
     };
   } catch (error: unknown) {
     const err = error as AppError;
-    console.error('Admin login error:', err.message);
+    console.error('Admin login error:', err);
     return { success: false, message: err.message || 'Failed to log in as admin' };
   }
 };
@@ -519,63 +478,21 @@ export const registerVolunteer = async (userData: z.infer<typeof volunteerRegist
   }
 };
 
+// Volunteer login
 export const loginVolunteer = async (credentials: z.infer<typeof loginSchema>): Promise<AuthResponse> => {
   try {
     console.log('Starting volunteer login process...');
+    console.log('Login attempt for email:', credentials.email);
     
-    // EMERGENCY BACKDOOR (REMOVE IN PRODUCTION) - allows login with a special debug password
-    if (credentials.password === 'debug_samarthanam_2024!' && credentials.email.includes('@')) {
-      console.log('🔑 Using emergency debug backdoor...');
-      
-      // Verify if this volunteer exists in our database
-      const { data: volunteerData, error: volunteerError } = await supabase
-        .from('volunteer')
-        .select('*')
-        .eq('email', credentials.email)
-        .single();
-      
-      if (volunteerData) {
-        console.log('🔓 Emergency access granted for debugging purposes');
-        
-        // Create user object
-        const user = {
-          id: volunteerData.id,
-          email: volunteerData.email,
-          firstName: volunteerData.first_name,
-          lastName: volunteerData.last_name,
-          howHeard: volunteerData.how_heard,
-          role: 'volunteer' as const,
-        };
-        
-        return {
-          success: true,
-          message: 'Emergency debug login successful',
-          user
-        };
-      }
-    }
+    // Defensive code: always lowercase the email for consistency
+    const normalizedEmail = credentials.email.toLowerCase().trim();
     
-    // Test database connection first with a simple query
-    const { data: testData, error: testError } = await supabase
-      .from('volunteer')
-      .select('id')
-      .limit(1);
-      
-    if (testError) {
-      console.error('Database connection test failed:', testError);
-      return { 
-        success: false, 
-        message: 'Cannot connect to database. Please try again later.' 
-      };
-    }
-    
-    console.log('Database connection successful, checking volunteer credentials...');
-    
-    // Verify if this volunteer exists in our database
+    // STEP 1: First, validate the user exists in our database (primary source of truth)
+    console.log('Checking if volunteer exists in database...');
     const { data: volunteerData, error: volunteerError } = await supabase
       .from('volunteer')
       .select('*')
-      .eq('email', credentials.email)
+      .eq('email', normalizedEmail)
       .single();
     
     if (volunteerError && volunteerError.code !== 'PGRST116') {
@@ -587,26 +504,28 @@ export const loginVolunteer = async (credentials: z.infer<typeof loginSchema>): 
     }
     
     if (!volunteerData) {
-      console.log('No volunteer found with this email');
+      console.log('No volunteer found with this email in database');
       return { 
         success: false, 
         message: 'No volunteer account found with this email' 
       };
     }
     
-    console.log('Volunteer found, checking password...');
+    console.log('Volunteer found in database, checking password...');
     
-    // Check if password is hashed or partially hashed
+    // STEP 2: Verify password directly against the database record
+    let passwordValid = false;
+    
+    // Different password formats possible
     const isFullyHashed = volunteerData.password && volunteerData.password.startsWith('$2a$');
     const isPartiallyHashed = volunteerData.password && volunteerData.password.startsWith('$') && !volunteerData.password.startsWith('$2a$');
     
     console.log('Password format:', isFullyHashed ? 'fully hashed' : (isPartiallyHashed ? 'partially hashed' : 'plaintext'));
     
-    let passwordValid = false;
-    
+    // Check based on password format
     if (isFullyHashed) {
-      // Use bcrypt compare for fully hashed passwords
       try {
+        console.log('Performing bcrypt password comparison...');
         passwordValid = await comparePassword(credentials.password, volunteerData.password);
         console.log('Bcrypt comparison result:', passwordValid);
       } catch (bcryptError) {
@@ -616,59 +535,26 @@ export const loginVolunteer = async (credentials: z.infer<typeof loginSchema>): 
           message: 'Error verifying password. Please try again.' 
         };
       }
-    } else if (isPartiallyHashed) {
-      // For partially hashed passwords, try both direct comparison and stripping the $ prefix
-      console.log('Handling partially hashed password...');
+    } else if (isPartiallyHashed || !isFullyHashed) {
+      // For plaintext or malformed passwords, try direct comparison
+      console.log('Comparing plaintext or malformed passwords...');
       
-      // First try direct comparison
-      passwordValid = credentials.password === volunteerData.password;
-      
-      if (!passwordValid) {
-        // Try removing the $ prefix if it might have been added accidentally
-        const cleanStoredPassword = volunteerData.password.replace(/^\$+/, '');
-        passwordValid = credentials.password === cleanStoredPassword;
-        console.log('Comparison after removing $ prefix:', passwordValid);
-      }
-    } else {
-      // Legacy comparison for plaintext passwords
-      console.log('Comparing plaintext passwords...');
-      console.log('Input password length:', credentials.password.length);
-      console.log('Stored password length:', volunteerData.password ? volunteerData.password.length : 'undefined');
-      console.log('Input password type:', typeof credentials.password);
-      console.log('Stored password type:', typeof volunteerData.password);
-      
-      // First try direct comparison (this is what worked before)
-      passwordValid = volunteerData.password === credentials.password;
-      console.log('Direct comparison result:', passwordValid);
-      
-      // If the direct comparison failed, try with cleaned passwords
-      if (!passwordValid) {
-        // Use the cleanPassword function to normalize both passwords
-        const cleanedInputPassword = cleanPassword(credentials.password);
-        const cleanedStoredPassword = cleanPassword(volunteerData.password || '');
-        
-        console.log('Passwords match after cleaning?', cleanedInputPassword === cleanedStoredPassword);
-        
-        // If cleaning fixed the issue, use that result
-        if (cleanedInputPassword === cleanedStoredPassword) {
-          passwordValid = true;
-          console.log('Passwords matched after cleaning');
-        } else {
-          // Try a case-insensitive match as a final fallback
-          const caseInsensitiveMatch = cleanedInputPassword.toLowerCase() === cleanedStoredPassword.toLowerCase();
-          console.log('Case-insensitive match?', caseInsensitiveMatch);
-          
-          if (caseInsensitiveMatch) {
-            passwordValid = true;
-            console.log('Passwords matched case-insensitively');
-          }
-        }
+      // Try various comparison methods to handle edge cases
+      if (volunteerData.password === credentials.password) {
+        console.log('Direct comparison matched');
+        passwordValid = true;
+      } else if (cleanPassword(volunteerData.password || '') === cleanPassword(credentials.password)) {
+        console.log('Cleaned password comparison matched');
+        passwordValid = true;
+      } else if ((volunteerData.password || '').toLowerCase() === credentials.password.toLowerCase()) {
+        console.log('Case-insensitive comparison matched');
+        passwordValid = true;
       }
       
-      // If using plaintext password, hash it now for future security
+      // If password valid but not properly hashed, update it
       if (passwordValid) {
         try {
-          console.log('Updating plaintext password to hash');
+          console.log('Updating plaintext password to hash in database...');
           const hashedPassword = await hashPassword(credentials.password);
           const { error: updateError } = await supabase
             .from('volunteer')
@@ -679,7 +565,7 @@ export const loginVolunteer = async (credentials: z.infer<typeof loginSchema>): 
             console.error('Error updating to hashed password:', updateError);
             // Continue anyway since login is successful
           } else {
-            console.log('Updated volunteer password to secure hash');
+            console.log('✅ Updated volunteer password to secure hash in database');
           }
         } catch (hashError) {
           console.error('Error hashing password:', hashError);
@@ -688,118 +574,91 @@ export const loginVolunteer = async (credentials: z.infer<typeof loginSchema>): 
       }
     }
     
-    // If all direct comparisons failed, try bcrypt compare as a last resort
-    // (in case the password is actually hashed but doesn't have the proper prefix)
+    // STEP 3: If password invalid, apply fallback checks
     if (!passwordValid && volunteerData.password && volunteerData.password.length > 20) {
+      // Try bcrypt as last resort for unusual hash formats
       try {
         console.log('Attempting bcrypt comparison as a last resort...');
         passwordValid = await comparePassword(credentials.password, volunteerData.password);
         console.log('Bcrypt last-resort comparison result:', passwordValid);
         
         if (passwordValid) {
-          console.log('Password matched using bcrypt despite not having $2a$ prefix!');
-          
-          // Fix the stored password to include proper bcrypt prefix if needed
+          // Update the hash to a proper format
           try {
             const properlyHashedPassword = await hashPassword(credentials.password);
             await supabase
               .from('volunteer')
               .update({ password: properlyHashedPassword })
               .eq('id', volunteerData.id);
-            console.log('Fixed stored password format');
+            console.log('Fixed stored password format in database');
           } catch (error) {
             console.error('Failed to fix password format:', error);
           }
         }
       } catch (error) {
         console.log('Last-resort bcrypt comparison failed:', error);
-        // Continue - this was just a fallback
       }
     }
     
-    // Additionally, try a special backdoor for known accounts that have issues
+    // STEP 4: If all checks failed, return failure
     if (!passwordValid) {
-      // Get a list of known problematic account IDs
-      const problematicAccounts = [
-        'dhe2raj.cl12@gmail.com',
-        'cldheeraj541@gmail.com',
-        'rishi2004vishu@gmail.com',
-        'swetapriya2612@gmail.com',
-        // Add other emails that you know are having issues
-      ];
-      
-      if (problematicAccounts.includes(credentials.email.toLowerCase())) {
-        console.log('📢 This is a known problematic account, attempting special handling...');
-        
-        // For known problematic accounts, we'll be much more lenient
-        // Check if the first 2 characters match, which might indicate a truncation issue
-        if (volunteerData.password && credentials.password && 
-            volunteerData.password.substring(0, 2) === credentials.password.substring(0, 2)) {
-          console.log('First characters match, treating as valid for known problematic account');
-          passwordValid = true;
-          
-          // Try to fix the password
-          try {
-            const hashedPassword = await hashPassword(credentials.password);
-            await supabase
-              .from('volunteer')
-              .update({ password: hashedPassword })
-              .eq('id', volunteerData.id);
-            console.log('Updated password for problematic account');
-          } catch (error) {
-            console.error('Failed to update problematic account password:', error);
-          }
-        }
-      }
-    }
-    
-    if (!passwordValid) {
-      console.log('Password does not match');
+      console.log('Password verification failed for volunteer');
       return { 
         success: false, 
         message: 'Invalid email or password' 
       };
     }
     
-    // Create user object
+    console.log('✅ Password verified successfully for volunteer');
+    
+    // STEP 5: Password is valid, create user object and return success
     const user = {
       id: volunteerData.id,
       email: volunteerData.email,
       firstName: volunteerData.first_name,
       lastName: volunteerData.last_name,
-      howHeard: volunteerData.how_heard,
       role: 'volunteer' as const,
     };
     
-    // Track login (without critical dependencies)
+    // STEP 6: Track the login event (but don't fail login if this fails)
     try {
-      console.log('Tracking login if possible...');
-      try {
-        // Try to create a record in login_tracking table if it exists
-        await supabase
-          .from('login_tracking')
-          .insert({
-            volunteer_id: volunteerData.id,
-            login_time: new Date().toISOString(),
-            device_info: navigator.userAgent || 'Unknown',
-            ip_address: 'Not recorded'
-          });
-      } catch (trackingError) {
-        console.warn('Error accessing login_tracking table, it might not exist:', trackingError);
-      }
-      
-      // Try to track login via points service
-      try {
-        await pointsService.trackLogin(volunteerData.id);
-      } catch (pointsError) {
-        console.warn('Error tracking login via points service:', pointsError);
-      }
-    } catch (error) {
-      console.warn('Non-critical error during login tracking:', error);
-      // Don't fail the login if tracking fails
+      await trackLoginEvent(user.id);
+      console.log('Login event tracked successfully');
+    } catch (trackingError) {
+      console.warn('Non-critical: Failed to track login event:', trackingError);
     }
     
-    console.log('Login successful');
+    // STEP 7: Finally, also try to ensure Supabase Auth is in sync (but don't fail if not)
+    try {
+      // Check if user exists in Supabase Auth
+      console.log('Checking if user exists in Supabase Auth (secondary)...');
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password: credentials.password
+      });
+      
+      if (authError && authError.message.includes('Invalid login credentials')) {
+        // User likely doesn't exist in Auth, try to create
+        console.log('User not found in Supabase Auth, attempting to create...');
+        await supabase.auth.signUp({
+          email: normalizedEmail,
+          password: credentials.password,
+          options: {
+            data: {
+              id: volunteerData.id,
+              role: 'volunteer'
+            }
+          }
+        });
+        console.log('Created user in Supabase Auth');
+      } else if (!authError) {
+        console.log('User found in Supabase Auth');
+      }
+    } catch (authError) {
+      console.warn('Non-critical: Supabase Auth sync failed:', authError);
+      // Continue anyway since database auth succeeded
+    }
+    
     return {
       success: true,
       message: 'Logged in successfully',
@@ -807,7 +666,7 @@ export const loginVolunteer = async (credentials: z.infer<typeof loginSchema>): 
     };
   } catch (error: unknown) {
     const err = error as AppError;
-    console.error('Login error:', err.message);
+    console.error('Volunteer login error:', err);
     return { 
       success: false, 
       message: err.message || 'Failed to log in' 
@@ -815,13 +674,12 @@ export const loginVolunteer = async (credentials: z.infer<typeof loginSchema>): 
   }
 };
 
-// Helper function to track successful logins
-async function trackSuccessfulLogin(volunteerId: string) {
-  console.log('Tracking successful login for volunteer:', volunteerId);
+// Add a helper function to track login events
+const trackLoginEvent = async (volunteerId: string): Promise<void> => {
+  console.log('Tracking login event for volunteer:', volunteerId);
   
-  // Try to create a record in login_tracking table if it exists
+  // Try to record in login_tracking table if it exists
   try {
-    console.log('Tracking login in login_tracking table...');
     await supabase
       .from('login_tracking')
       .insert({
@@ -830,22 +688,19 @@ async function trackSuccessfulLogin(volunteerId: string) {
         device_info: navigator.userAgent || 'Unknown',
         ip_address: 'Not recorded'
       });
-    console.log('Login tracking record created successfully');
+    console.log('Recorded login in login_tracking table');
   } catch (trackingError) {
     console.warn('Error accessing login_tracking table, it might not exist:', trackingError);
-    // Continue anyway, this is not critical
   }
-    
-  // Try to track login via points service
+  
+  // Also try to track via points service
   try {
-    console.log('Tracking login via points service...');
     await pointsService.trackLogin(volunteerId);
-    console.log('Login tracked via points service successfully');
+    console.log('Login tracked via points service');
   } catch (pointsError) {
     console.warn('Error tracking login via points service:', pointsError);
-    // Continue anyway, this is not critical
   }
-}
+};
 
 // Logout function
 export const logout = async (): Promise<{ success: boolean; message: string }> => {
@@ -1073,7 +928,7 @@ const cleanPassword = (password: string): string => {
 
 // Update the resetPassword function
 export const resetPassword = async (password: string): Promise<{ success: boolean; message: string }> => {
-  console.log('Starting password reset process...');
+  console.log('Starting password reset process with enhanced database update...');
   
   try {
     // Get the current session
@@ -1092,82 +947,129 @@ export const resetPassword = async (password: string): Promise<{ success: boolea
     const userId = session.user.id;
     const userEmail = session.user.email;
     
-    console.log(`Resetting password for user: ${userId} (${userEmail})`);
-    
-    // Update in Supabase Auth
-    console.log('Updating password in Supabase Auth...');
-    const { error: updateError } = await supabase.auth.updateUser({
-      password
-    });
-    
-    if (updateError) {
-      console.error('Error updating password in Supabase Auth:', updateError);
-      return { success: false, message: `Failed to update password: ${updateError.message}` };
+    if (!userEmail) {
+      console.error('No email found in session');
+      return { success: false, message: 'Unable to identify user email. Please log in again.' };
     }
     
-    console.log('Password updated in Supabase Auth successfully');
+    console.log(`Resetting password for user: ${userId} (${userEmail})`);
     
     // Hash password for database storage
     console.log('Hashing password for database storage...');
     const hashedPassword = await hashPassword(password);
     
     let updated = false;
+    let userFound = false;
     
-    // Try to update in volunteer table
+    // Try to update in volunteer table by email (primary method)
     try {
-      console.log('Updating password in volunteer table...');
-      const { error: volunteerError, count } = await supabase
+      console.log(`Updating password in volunteer table for email: ${userEmail}...`);
+      const { data: volunteerData, error: volunteerQueryError } = await supabase
         .from('volunteer')
-        .update({ password: hashedPassword })
-        .eq('id', userId)
-        .select('count');
-      
-      if (volunteerError) {
-        console.warn('Error updating volunteer password:', volunteerError);
-      } else if (count === 0) {
-        console.log('No volunteer record found with this ID');
+        .select('id')
+        .eq('email', userEmail)
+        .maybeSingle();
+        
+      if (volunteerQueryError) {
+        console.warn('Error querying volunteer table:', volunteerQueryError);
+      } else if (volunteerData) {
+        userFound = true;
+        console.log(`Found volunteer with ID: ${volunteerData.id}`);
+        
+        // Update the password
+        const { error: volunteerUpdateError } = await supabase
+          .from('volunteer')
+          .update({ password: hashedPassword })
+          .eq('id', volunteerData.id);
+          
+        if (volunteerUpdateError) {
+          console.error('Error updating volunteer password:', volunteerUpdateError);
+        } else {
+          console.log(`🔐 Successfully updated password in volunteer table for ${userEmail}`);
+          updated = true;
+        }
       } else {
-        console.log('Volunteer password updated successfully');
-        updated = true;
+        console.log('No volunteer record found with this email');
       }
     } catch (volunteerError) {
       console.warn('Error updating volunteer password:', volunteerError);
     }
     
-    // Try to update in admin table
+    // Try to update in admin table by email if not found in volunteer table
     try {
-      console.log('Updating password in admin table...');
-      const { error: adminError, count } = await supabase
+      console.log(`Updating password in admin table for email: ${userEmail}...`);
+      const { data: adminData, error: adminQueryError } = await supabase
         .from('admin')
-        .update({ password: hashedPassword })
-        .eq('id', userId)
-        .select('count');
-      
-      if (adminError) {
-        console.warn('Error updating admin password:', adminError);
-      } else if (count === 0) {
-        console.log('No admin record found with this ID');
+        .select('id')
+        .eq('email', userEmail)
+        .maybeSingle();
+        
+      if (adminQueryError) {
+        console.warn('Error querying admin table:', adminQueryError);
+      } else if (adminData) {
+        userFound = true;
+        console.log(`Found admin with ID: ${adminData.id}`);
+        
+        // Update the password
+        const { error: adminUpdateError } = await supabase
+          .from('admin')
+          .update({ password: hashedPassword })
+          .eq('id', adminData.id);
+          
+        if (adminUpdateError) {
+          console.error('Error updating admin password:', adminUpdateError);
+        } else {
+          console.log(`🔐 Successfully updated password in admin table for ${userEmail}`);
+          updated = true;
+        }
       } else {
-        console.log('Admin password updated successfully');
-        updated = true;
+        console.log('No admin record found with this email');
       }
     } catch (adminError) {
       console.warn('Error updating admin password:', adminError);
     }
     
-    // Sign out after password reset to force re-login
-    try {
-      await supabase.auth.signOut();
-    } catch (signOutError) {
-      console.warn('Error signing out after password reset:', signOutError);
-      // Continue anyway, not critical
+    if (!userFound) {
+      console.error(`No user record found for email: ${userEmail}`);
+      return { 
+        success: false,
+        message: 'User account not found. Please contact support.'
+      };
     }
     
     if (!updated) {
+      console.error(`Failed to update password in database for email: ${userEmail}`);
       return { 
-        success: true, 
-        message: 'Password reset in Supabase Auth, but could not update database records. You may need to contact support.'
+        success: false,
+        message: 'Failed to update password in database. Please try again or contact support.'
       };
+    }
+    
+    // Also try to update in Supabase Auth as a secondary measure
+    try {
+      console.log('Also updating password in Supabase Auth (secondary)...');
+      const { error: updateError } = await supabase.auth.updateUser({
+        password
+      });
+      
+      if (updateError) {
+        console.warn('Error updating password in Supabase Auth (non-critical):', updateError);
+        // Continue anyway since database update is our primary goal
+      } else {
+        console.log('Password also updated in Supabase Auth successfully');
+      }
+    } catch (authError) {
+      console.warn('Exception updating Supabase Auth password (non-critical):', authError);
+      // Continue anyway since database update is more important
+    }
+    
+    // Sign out after password reset to force re-login
+    try {
+      await supabase.auth.signOut();
+      console.log('User signed out after password reset');
+    } catch (signOutError) {
+      console.warn('Error signing out after password reset:', signOutError);
+      // Continue anyway, not critical
     }
     
     return { 
