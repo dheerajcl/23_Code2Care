@@ -28,6 +28,19 @@ def fetch_events():
     print(f"✅ Events fetched: {len(response.data)}") if response.data else print("⚠️ No events found.")
     return response.data if response.data else []
 
+def fetch_tasks():
+    """Fetch all tasks from the database."""
+    response = supabase.table("task").select("*").execute()
+    print(f"✅ Tasks fetched: {len(response.data)}") if response.data else print("⚠️ No tasks found.")
+    return response.data if response.data else []
+
+def fetch_task_assignments():
+    """Fetch all task assignments from the database."""
+    response = supabase.table("task_assignment").select("*").execute()
+    print(f"✅ Task Assignments fetched: {len(response.data)}") if response.data else print("⚠️ No task assignments found.")
+    return response.data if response.data else []
+
+
 ##############################################
 # Event Adding Function (FAISS import moved inside)
 ##############################################

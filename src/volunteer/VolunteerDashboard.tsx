@@ -345,7 +345,7 @@ export const VolunteerDashboard = () => {
       
           <Chatbot />  {/* ✅ Add Chatbot here */}
         
-      <AccessibilityMenu />
+      
     </div>
             </div>
           </div>
