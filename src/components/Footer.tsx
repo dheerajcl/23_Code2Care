@@ -49,16 +49,16 @@ const Footer: React.FC = () => {
               Empowering visually impaired, disabled, and underprivileged individuals through technology and community support.
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Facebook">
+              <a href="https://www.facebook.com/samarthanaminfo/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Facebook">
                 <Facebook className="h-5 w-5" />
               </a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Twitter">
+              <a href="https://twitter.com/SamarthanamTFTD" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Twitter">
                 <Twitter className="h-5 w-5" />
               </a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Instagram">
+              <a href="https://www.instagram.com/samarthanamtrustforthedisabled" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Instagram">
                 <Instagram className="h-5 w-5" />
               </a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="YouTube">
+              <a href="https://www.youtube.com/c/samarthanamtrustforthedisabled"  target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="YouTube">
                 <Youtube className="h-5 w-5" />
               </a>
             </div>
@@ -124,10 +124,9 @@ const Footer: React.FC = () => {
         <div className="mt-12 pt-6 border-t border-border">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} Samarthanam Trust for the Disabled. All rights reserved.</p>
-            <div className="flex space-x-6">
+            <div className="flex space-x-6 mr-44">
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</a>
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Terms of Service</a>
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Accessibility</a>
             </div>
           </div>
         </div>

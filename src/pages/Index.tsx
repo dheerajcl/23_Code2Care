@@ -10,6 +10,7 @@ import AccessibilityMenu from '@/components/AccessibilityMenu';
 import { useAuth } from '@/lib/authContext';
 import { supabase } from '@/lib/supabase';
 import LandingHeader from '@/components/LandingHeader';
+import { clearAllAuthData, checkAuthStorage } from '@/lib/utils';
 
 const Events: React.FC = () => {
   const [events, setEvents] = useState<any[]>([]);
@@ -77,6 +78,18 @@ const impactStats = [
 ];
 
 const Index: React.FC = () => {
+  useEffect(() => {
+    // Check if we have any auth data stored that shouldn't be there
+    const auth = checkAuthStorage();
+    
+    // On the landing page, we shouldn't have any auth data unless we're
+    // explicitly trying to stay logged in
+    if (auth.hasAdminUser || auth.hasVolunteerUser || auth.hasUser) {
+      console.log('Found auth data on landing page - clearing for security');
+      clearAllAuthData();
+    }
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col">
       <LandingHeader />
