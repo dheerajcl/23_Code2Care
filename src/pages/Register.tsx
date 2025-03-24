@@ -524,7 +524,7 @@ const Register: React.FC = () => {
                           Please review your information and agree to our terms and conditions.
                         </p>
                       </div>
-                      
+
                       <div className="bg-muted p-4 rounded-lg space-y-4">
                         <div>
                           <h3 className="font-semibold">Personal Information</h3>
@@ -543,30 +543,41 @@ const Register: React.FC = () => {
                             </div>
                             <div>
                               <span className="text-muted-foreground text-sm">Location:</span>
-                              <p>{[formData.city, formData.state].filter(Boolean).join(', ') || 'Not provided'}</p>
+                              <p>
+                                {[formData.city, formData.state]
+                                  .filter(Boolean)
+                                  .map(str => str.split('_')
+                                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                    .join(' '))
+                                  .join(', ') || 'Not Provided'}
+                              </p>
                             </div>
                           </div>
                         </div>
-                        
+
                         <div>
                           <h3 className="font-semibold">Skills & Interests</h3>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
                             <div>
                               <span className="text-muted-foreground text-sm">Skills:</span>
-                              <p>{formData.skills.join(', ') || 'None selected'}</p>
+                              <p>{formData.skills.join(', ') || 'None Selected'}</p>
                             </div>
                             <div>
                               <span className="text-muted-foreground text-sm">Interests:</span>
-                              <p>{formData.interests.join(', ') || 'None selected'}</p>
+                              <p>{formData.interests.join(', ') || 'None Selected'}</p>
                             </div>
                             <div>
                               <span className="text-muted-foreground text-sm">Availability:</span>
-                              <p>{formData.availability || 'Not specified'}</p>
+                              <p>
+                                {formData.availability 
+                                  ? formData.availability.charAt(0).toUpperCase() + formData.availability.slice(1)
+                                  : 'Not Specified'}
+                              </p>
                             </div>
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="space-y-4">
                         <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
                           <h3 className="font-semibold mb-2">Terms & Conditions</h3>
@@ -581,17 +592,17 @@ const Register: React.FC = () => {
                             <li>Complete any required training or orientation programs.</li>
                           </ul>
                         </div>
-                        
+
                         <div className="flex items-start space-x-2">
-                          <Checkbox 
-                            id="agreeTerms" 
+                          <Checkbox
+                            id="agreeTerms"
                             checked={formData.agreeTerms}
                             onCheckedChange={(checked) => updateFormData('agreeTerms', checked)}
                             required
                           />
                           <div className="grid gap-1.5 leading-none">
-                            <Label 
-                              htmlFor="agreeTerms" 
+                            <Label
+                              htmlFor="agreeTerms"
                               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 required"
                             >
                               I agree to the terms and conditions
