@@ -395,7 +395,7 @@ const AdminReports = () => {
                     </CardHeader>
                     <CardContent>
                       <div className="text-3xl font-bold">
-                        ${donationData?.totalDonationAmount.toLocaleString()}
+                          ₹{donationData?.totalDonationAmount.toLocaleString()}
                       </div>
                       <p className="text-sm text-gray-500">
                         From {donationData?.totalDonationCount} donations
@@ -409,7 +409,7 @@ const AdminReports = () => {
                     </CardHeader>
                     <CardContent>
                       <div className="text-3xl font-bold">
-                        ${donationData?.averageDonationAmount.toLocaleString()}
+                          ₹{donationData?.averageDonationAmount.toLocaleString()}
                       </div>
                       <p className="text-sm text-gray-500">
                         {donationData?.donationGrowthRate > 0 ? '↑' : '↓'} 
@@ -499,7 +499,7 @@ const AdminReports = () => {
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                           </Pie>
-                          <Tooltip formatter={(value) => `$${Number(value).toLocaleString()}`} />
+                          <Tooltip formatter={(value) => `₹${Number(value).toLocaleString()}`} />
                         </PieChart>
                       </ResponsiveContainer>
                     ) : (
@@ -523,7 +523,7 @@ const AdminReports = () => {
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="payment_method" />
                           <YAxis />
-                          <Tooltip formatter={(value) => `$${Number(value).toLocaleString()}`} />
+                          <Tooltip formatter={(value) => `₹${Number(value).toLocaleString()}`} />
                           <Legend />
                           <Bar dataKey="amount" name="Amount" fill="#8884d8" />
                           <Bar dataKey="count" name="Count" fill="#82ca9d" />
@@ -554,7 +554,7 @@ const AdminReports = () => {
                               </div>
                             </div>
                             <div className="text-xl font-bold">
-                              ${donor.total_amount.toLocaleString()}
+                              ₹{donor.total_amount.toLocaleString()}
                             </div>
                           </div>
                         </div>
@@ -589,7 +589,7 @@ const AdminReports = () => {
                               </div>
                             </div>
                             <div className="flex flex-col items-end">
-                              <div className="font-bold">${donation.amount.toLocaleString()}</div>
+                              <div className="font-bold">₹{donation.amount.toLocaleString()}</div>
                               <div className="text-xs text-gray-500">
                                 {new Date(donation.created_at).toLocaleDateString()}
                               </div>
@@ -634,9 +634,9 @@ const AdminReports = () => {
                       ["Volunteer Retention Rate", `${reportData.retentionRate}%`]
                     ] : [
                       ["Donation Summary"],
-                      ["Total Donations", `$${donationData.totalDonationAmount.toLocaleString()}`],
+                      ["Total Donations", `₹${donationData.totalDonationAmount.toLocaleString()}`],
                       ["Number of Donations", donationData.totalDonationCount],
-                      ["Average Donation", `$${donationData.averageDonationAmount.toLocaleString()}`],
+                      ["Average Donation", `₹${donationData.averageDonationAmount.toLocaleString()}`],
                       ["Successful Payment Rate", `${donationData.successfulPaymentRate}%`],
                       [],
                       ["Top Donors"],
