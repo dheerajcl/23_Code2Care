@@ -6,8 +6,12 @@ import os
 from sentence_transformers import SentenceTransformer
 from pydantic import BaseModel
 import google.generativeai as genai
-
+from dateutil import parser
+import calendar
+from datetime import datetime
+from database import get_assigned_tasks
 from database import fetch_volunteers, fetch_events, fetch_tasks, fetch_task_assignments
+from database import get_tasks_for_volunteer
 
 # Initialize FastAPI
 app = FastAPI()
@@ -86,16 +90,15 @@ def retrieve_info(matched_ids):
             if e["id"] == id:
                 event_link = f"https://samarthanam.vercel.app/volunteer/events/{e['id']}"
                 results.append(
-                    f"📅 **Event:** [{e['title']}]({event_link})\n"
-                    f"   - **Category:** {e['category']}\n"
-                    f"   - **Description:** {e['description']}\n"
-                    f"   - **Location:** {e['location']}\n"
-                    f"   - **Start Date:** {e['start_date']}\n"
-                    f"   - **End Date:** {e['end_date']}\n"
-                    f"   - **Status:** {e['status']}\n"
-                    f"   - **Max Volunteers:** {e['max_volunteers']}\n"
-                    f"   - **Organizer ID:** {e['organizer_id']}\n"
-                )
+                f"### 📅 **Event: {e['title']}**\n"
+                f"- **Category:** {e['category']}\n"
+                f"- **Location:** {e['location']}\n"
+                f"- **Description:** {e['description']}\n"
+                f"- **Dates:** 🗓️ {e['start_date']} → {e['end_date']}\n"
+                f"- **Status:** ✅ {e['status'].capitalize()}\n"
+                f"- **Max Volunteers Needed:** {e['max_volunteers'] or '∞ Unlimited'}\n"
+            )
+
 
 
         # Tasks
@@ -127,6 +130,35 @@ def retrieve_info(matched_ids):
 
     return "\n".join(results) if results else "No relevant info found."
 
+
+def handle_user_query(user_input, volunteer_id):
+    if "assigned task" in user_input.lower():
+        tasks = get_assigned_tasks(volunteer_id)
+        if tasks:
+            response = "Here are your assigned tasks:\n"
+            for title, description, status in tasks:
+                response += f"\nTitle: {title}\nDescription: {description}\nStatus: {status}\n---"
+        else:
+            response = "You currently have no assigned tasks."
+        return response
+    
+
+
+
+def process_user_query(user_input, volunteer_id):
+    if "status of my tasks" in user_input.lower() or "my tasks" in user_input.lower():
+        tasks = get_tasks_for_volunteer(volunteer_id)
+        if tasks:
+            response = "Here are your assigned tasks:\n"
+            for task in tasks:
+                response += f"- {task.title}: {task.description} (Status: {task.status})\n"
+        else:
+            response = "You currently have no tasks assigned."
+        return response
+    else:
+        # Pass to default retrieval process
+        return default_retriever_logic(user_input)
+
 def get_gemini_response(query, context):
     print(f"🔍 Query: {query}")
     print(f"📌 Retrieved Context: {context}")
@@ -135,14 +167,18 @@ def get_gemini_response(query, context):
         return "I'm sorry, but I couldn't find any relevant information. Can you provide more details?"
 
     prompt = (
-    f"You are an assistant for volunteers and events. "
-    f"Use ONLY the following data.\n\n"
-    f"For volunteers, show detailed info including name, location, skills, interests, availability, experience, badges, rating, and last active time.\n"
-    f"For events, show title, category, location, description, dates, status, and max volunteers.\n\n"
-    f"User Query: {query}\n"
-    f"Relevant Volunteer, Event, Task Information:\n{context}\n\n"
-    f"Reply in a friendly, structured, and clear format."
+    f"You are a friendly assistant that helps volunteers find information about events, tasks, and assignments.\n"
+    f"Based ONLY on the following data, answer the user's query clearly, conversationally, and in simple human language.\n"
+    f"DO NOT include raw JSON or code formatting.\n"
+    f"DO NOT repeat irrelevant information.\n"
+    f"If no matching data is found, say politely: 'Sorry, no matching events/tasks were found.'\n\n"
+    f"---\n"
+    f"User Query:\n{query}\n\n"
+    f"Available Data:\n{context}\n"
+    f"---\n\n"
+    f"Give your answer like you're talking to a person."
 )
+
 
     model = genai.GenerativeModel("gemini-1.5-pro-latest")
     response = model.generate_content(prompt)
@@ -156,17 +192,92 @@ def home():
 @app.get("/search/")
 def search(query: str = Query(..., description="Search query to find tasks, events, or assignments")):
     query_embedding = model.encode([query], convert_to_numpy=True)
-    D, I = index.search(query_embedding, 3)
-    matched_ids = [ids[i] for i in I[0] if i >= 0]
+    matched_ids = []
 
-    print(f"🔑 Matched FAISS IDs: {matched_ids}")
+    # MONTH DETECTION
+    months = list(calendar.month_name)
+    month_in_query = None
+    for month in months:
+        if month.lower() in query.lower():
+            month_in_query = month
+            break
 
-    # 👇 If broad query, inject all events
-    if "open" in query.lower() or "more volunteers" in query.lower():
-        print("⚠️ Broad query detected, injecting all events")
-        all_event_ids = [e["id"] for e in events]
-        matched_ids.extend(all_event_ids)
+    # LOCATION DETECTION
+    location_keywords = ["bangalore", "bengaluru", "delhi", "chennai", "mumbai"]  # Expand as needed
+    location_in_query = None
+    for loc in location_keywords:
+        if loc.lower() in query.lower():
+            location_in_query = loc.lower()
+            break
 
+    # STATUS DETECTION
+    status_keywords = ["pending", "completed", "in progress", "review", "done"]
+    status_in_query = None
+    for status in status_keywords:
+        if status.lower() in query.lower():
+            status_in_query = status.lower()
+            break
+
+    # 🔥 TASK-SPECIFIC FILTER
+    if "task" in query.lower() or "tasks" in query.lower():
+        print("🟢 Detected Task Query... Applying filters")
+        for t in tasks:
+            include = True
+
+            # Filter by MONTH
+            if month_in_query:
+                if t['start_time']:
+                    task_month = parser.parse(t['start_time']).strftime("%B")
+                    if task_month.lower() != month_in_query.lower():
+                        include = False
+
+            # Filter by LOCATION
+            if location_in_query:
+                for e in events:
+                    if e['id'] == t['event_id']:  # Match event
+                        if location_in_query not in e['location'].lower():
+                            include = False
+
+            # Filter by STATUS
+            if status_in_query:
+                if status_in_query not in t['status'].lower():
+                    include = False
+
+            if include:
+                matched_ids.append(f"task_{t['id']}")
+
+        print(f"✅ Filtered Task IDs: {matched_ids}")
+
+    # 🔽 EVENT FILTER (if query is about events)
+    elif "event" in query.lower() or month_in_query or location_in_query:
+        print("📅 Detected Event Query... Applying filters")
+
+        for e in events:
+            include = True
+
+            # Month filter
+            if month_in_query:
+                event_month = parser.parse(e['start_date']).strftime("%B")
+                if event_month.lower() != month_in_query.lower():
+                    include = False
+
+            # Location filter
+            if location_in_query:
+                if location_in_query not in e['location'].lower():
+                    include = False
+
+            if include:
+                matched_ids.append(e['id'])
+
+        print(f"✅ Filtered Event IDs: {matched_ids}")
+
+    else:
+        # FAISS fallback for general queries
+        D, I = index.search(query_embedding, 3)
+        matched_ids = [ids[i] for i in I[0] if i >= 0]
+        print(f"🔑 FAISS Matched IDs: {matched_ids}")
+
+    # Retrieve context
     context = retrieve_info(matched_ids)
     chatbot_response = get_gemini_response(query, context)
 
@@ -175,8 +286,6 @@ def search(query: str = Query(..., description="Search query to find tasks, even
         "retrieved_context": context,
         "chatbot_response": chatbot_response
     }
-
-
 class ChatRequest(BaseModel):
     messages: list[dict]  # Expecting list of {"user": "text", "bot": "text"}
 

@@ -44,6 +44,7 @@ import LandingHeader from '@/components/LandingHeader';
 import { getEvents, getTasksForVolunteer } from '@/services/database.service';
 import { notificationService } from '@/services/notification.service';
 import { toast } from 'sonner';
+import Chatbot from "@/components/chatbot";
 
 export const assignedTasks = [
   {
@@ -337,6 +338,11 @@ export const VolunteerDashboard = () => {
                     </CardContent>
                   </Card>
                 )}
+              </div>
+              <div className="h-screen bg-gray-100 flex flex-col vol-dashboard">
+      
+                <Chatbot />        
+      
               </div>
 
             </div>

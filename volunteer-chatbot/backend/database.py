@@ -40,6 +40,48 @@ def fetch_task_assignments():
     print(f"✅ Task Assignments fetched: {len(response.data)}") if response.data else print("⚠️ No task assignments found.")
     return response.data if response.data else []
 
+def get_assigned_tasks(volunteer_id):
+    query = """
+        SELECT 
+            task.title, 
+            task.description, 
+            task_assignment.status 
+        FROM 
+            task_assignment
+        JOIN 
+            task 
+        ON 
+            task_assignment.task_id = task.id
+        WHERE 
+            task_assignment.volunteer_id = %s
+    """
+    cursor = connection.cursor()
+    cursor.execute(query, (volunteer_id,))
+    rows = cursor.fetchall()
+    cursor.close()
+    return rows
+
+
+def get_tasks_for_volunteer(volunteer_id):
+    response = supabase.table("task_assignment") \
+        .select("status, task(title, description)") \
+        .eq("volunteer_id", volunteer_id) \
+        .execute()
+
+    if response.data:
+        tasks = []
+        for row in response.data:
+            task_info = {
+                "title": row["task"]["title"],
+                "description": row["task"]["description"],
+                "status": row["status"]
+            }
+            tasks.append(task_info)
+        return tasks
+    else:
+        return []
+
+
 
 ##############################################
 # Event Adding Function (FAISS import moved inside)
