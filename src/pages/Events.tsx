@@ -31,10 +31,10 @@ const Events: React.FC = () => {
 
       
       const { data, error } = await supabase
-  .from('event')
-  .select('*')
-  .eq('status', 'scheduled');
-
+      .from('event')
+      .select('*')
+      .gt('close_date', new Date().toISOString());
+    
       if (error) {
         console.error('Error fetching events:', error.message);
         setError('Failed to load events. Please try again later.');

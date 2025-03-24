@@ -24,7 +24,7 @@ const Events: React.FC = () => {
       const { data, error } = await supabase
   .from('event')
   .select('*')
-  .eq('status', 'scheduled')
+  .gt('close_date', new Date().toISOString())
   .limit(3);
 
       if (error) {
@@ -56,6 +56,14 @@ const Events: React.FC = () => {
             ))}
           </div>
         )}
+        <div className="mt-6 flex justify-center">
+              <Button asChild>
+                <Link to="/events">
+                  Show More
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
       </div>
     </div>
   );
