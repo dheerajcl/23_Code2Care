@@ -42,6 +42,7 @@ import { CalendarIcon, FilterIcon, CheckIcon, PlusIcon, XIcon, UserPlusIcon, Tra
 import { Checkbox } from '@/components/ui/checkbox';
 import { createTaskAssignment, Task } from '@/services/database.service';
 import { emailService } from '@/services/email.service';
+import { notificationService } from '@/services/notification.service';
 
 const CreateTask = () => {
   const navigate = useNavigate();
@@ -411,7 +412,7 @@ const formatDate = (dateString) => {
                 volunteer_id: volunteerId,
                 event_id: eventId,
                 created_at: now,
-                notification_status: 'sent',
+                notification_status: 'pending',
                 status: 'pending',
                 response_deadline: tomorrow.toISOString(),
                 todo: 1,
@@ -448,45 +449,58 @@ const formatDate = (dateString) => {
                 throw notifError;
               }
               
-              // Add email sending logic here
+              // Add email notification using the dedicated notification service
               try {
-                const responseToken = window.btoa(encodeURIComponent(`${assignmentData.id}:${volunteerId}`));
-                const responseLink = `${window.location.origin}/task-response/${assignmentData.id}?action=respond&token=${responseToken}`;
-
-                // Ensure we're passing a valid email address and other required fields
-                const emailParams = {
-                  to_email: volunteerData.email.trim(),  
-                  to_name: `${volunteerData.first_name || ''} ${volunteerData.last_name || ''}`.trim(),
-                  task_name: title || 'New Task',
-                  event_name: event?.title || 'Event',
-                  response_deadline: tomorrow.toISOString(),
-                  response_link: responseLink,
-                  // Add any other required fields for your email template
-                  subject: `New Task Assignment: ${title}`,
-                  message: `You have been assigned to task "${title}" for event "${event?.title}".`
-                };
+                // Use the notification service to handle all aspects of the notification
+                // including email, in-app notification, and status tracking
+                const { success, error } = await notificationService.notifyTaskAssignment(
+                  assignmentData.id,
+                  volunteerId,
+                  taskId,
+                  eventId
+                );
                 
-                console.log('Sending email with params:', emailParams);
-                await emailService.sendTaskAssignmentEmail(emailParams);
-                
-                // After successful email sending, update notification_status to 'sent'
-                await supabase
-                  .from('task_assignment')
-                  .update({
-                    notification_status: 'sent',
-                    notification_sent_at: now,
-                    email_sent: true  // Update the email_sent flag
-                  })
-                  .eq('id', assignmentData.id);
+                if (!success) {
+                  console.error(`Failed to send notification to volunteer ${volunteerId}:`, error);
+                  
+                  // Email debug helper - run only if there's an error with sending
+                  console.log("🔍 DEBUGGING EMAIL ISSUE:");
+                  console.log("Service ID:", import.meta.env.VITE_EMAILJS_SERVICE_ID);
+                  console.log("Template ID:", import.meta.env.VITE_EMAILJS_TASK_TEMPLATE_ID);
+                  
+                  // Check volunteer data
+                  const { data: volunteerCheck } = await supabase
+                    .from('volunteer')
+                    .select('email, first_name, last_name')
+                    .eq('id', volunteerId)
+                    .single();
+                    
+                  if (volunteerCheck) {
+                    console.log("Volunteer email check:", {
+                      email: volunteerCheck.email,
+                      name: `${volunteerCheck.first_name} ${volunteerCheck.last_name}`
+                    });
+                  }
+                  
+                  // Try debugging the template
+                  await emailService.debugTemplate(import.meta.env.VITE_EMAILJS_TASK_TEMPLATE_ID);
+                  
+                  toast.error(`Volunteer assigned but notification failed: ${error.message || 'Unknown error'}`);
+                } else {
+                  console.log(`Notification sent successfully to volunteer ${volunteerId}`);
+                }
                 
                 // Increment success count ONLY after all operations succeed
                 successCount++;
                 
                 // Refresh dashboard data
                 window.dispatchEvent(new CustomEvent('task-assignment-update'));
-              } catch (emailError) {
-                console.error('Error sending assignment email:', emailError);
-                errorCount++;  // Count email errors as assignment failures
+              } catch (notifyError) {
+                console.error(`Error in notification service for volunteer ${volunteerId}:`, notifyError);
+                // Don't fail the entire process due to notification error
+                // The volunteer is still assigned, but may not get a notification
+                toast.warning(`Volunteer assigned but may not receive notification`);
+                successCount++;
               }
             }
           } catch (err) {
