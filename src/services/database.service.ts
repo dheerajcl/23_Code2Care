@@ -2579,3 +2579,302 @@ export const getAdminEventTasks = async (eventId: string) => {
     return { data: [], error };
   }
 };
+
+export interface DonationReportData {
+  totalDonationAmount: number;
+  totalDonationCount: number;
+  averageDonationAmount: number;
+  donationGrowthRate: number;
+  recurringDonorCount: number;
+  totalDonorCount: number;
+  successfulPaymentRate: number;
+  pendingPaymentCount: number;
+  topDonors: {
+    donor_name: string;
+    total_amount: number;
+    donation_count: number;
+    first_donation_date: string;
+  }[];
+  recentDonations: {
+    donor_name: string;
+    amount: number;
+    donation_purpose: string;
+    payment_method: string;
+    payment_status: string;
+    created_at: string;
+  }[];
+  donationTrends: {
+    period: string;
+    total_amount: number;
+    donation_count: number;
+  }[];
+  donationByPurpose: {
+    purpose: string;
+    amount: number;
+    count: number;
+  }[];
+  donationByPaymentMethod: {
+    payment_method: string;
+    amount: number;
+    count: number;
+  }[];
+}
+
+export async function getDonationReportData(): Promise<{ data: DonationReportData | null; error: any }> {
+  try {
+    // 1. Get total donation amount and count
+    const { data: totalData, error: totalError } = await supabase
+      .from('donation')
+      .select('amount, payment_status')
+      .filter('payment_status', 'eq', 'completed');
+    
+    if (totalError) throw totalError;
+    
+    const totalDonationAmount = totalData.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+    const totalDonationCount = totalData.length;
+    
+    // 2. Get average donation amount
+    const averageDonationAmount = totalDonationCount > 0 
+      ? totalDonationAmount / totalDonationCount 
+      : 0;
+    
+    // 3. Calculate donation growth rate (compare current month to previous month)
+    const currentDate = new Date();
+    const firstDayCurrentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const firstDayPreviousMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+    const lastDayPreviousMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 0);
+    
+    const { data: currentMonthData, error: currentMonthError } = await supabase
+      .from('donation')
+      .select('amount')
+      .filter('payment_status', 'eq', 'completed')
+      .gte('created_at', firstDayCurrentMonth.toISOString())
+      .lt('created_at', new Date().toISOString());
+    
+    if (currentMonthError) throw currentMonthError;
+    
+    const { data: previousMonthData, error: previousMonthError } = await supabase
+      .from('donation')
+      .select('amount')
+      .filter('payment_status', 'eq', 'completed')
+      .gte('created_at', firstDayPreviousMonth.toISOString())
+      .lt('created_at', firstDayCurrentMonth.toISOString());
+    
+    if (previousMonthError) throw previousMonthError;
+    
+    const currentMonthAmount = currentMonthData.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+    const previousMonthAmount = previousMonthData.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+    
+    const donationGrowthRate = previousMonthAmount > 0 
+      ? ((currentMonthAmount - previousMonthAmount) / previousMonthAmount) * 100 
+      : 0;
+    
+    // 4. Get count of unique donors and recurring donors
+    const { data: allDonors, error: allDonorsError } = await supabase
+      .from('donation')
+      .select('donor_email, created_at')
+      .order('created_at', { ascending: true });
+    
+    if (allDonorsError) throw allDonorsError;
+    
+    // Count unique donors
+    const uniqueDonors = new Set(allDonors.map(donor => donor.donor_email));
+    const totalDonorCount = uniqueDonors.size;
+    
+    // Count recurring donors (donors with more than one donation)
+    const donorCounts = allDonors.reduce((acc, donor) => {
+      acc[donor.donor_email] = (acc[donor.donor_email] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const recurringDonorCount = Object.values(donorCounts).filter(count => count > 1).length;
+    
+    // 5. Calculate payment success rate
+    const { data: allPayments, error: allPaymentsError } = await supabase
+      .from('donation')
+      .select('payment_status');
+    
+    if (allPaymentsError) throw allPaymentsError;
+    
+    const totalPayments = allPayments.length;
+    const successfulPayments = allPayments.filter(p => p.payment_status === 'completed').length;
+    const pendingPaymentCount = allPayments.filter(p => p.payment_status === 'pending').length;
+    
+    const successfulPaymentRate = totalPayments > 0 
+      ? (successfulPayments / totalPayments * 100).toFixed(1) 
+      : '0';
+    
+    // 6. Get top donors
+    const { data: donorData, error: donorError } = await supabase
+      .from('donation')
+      .select('donor_name, donor_email, amount, created_at')
+      .filter('payment_status', 'eq', 'completed');
+    
+    if (donorError) throw donorError;
+    
+    // Group donations by donor
+    const donorMap: Record<string, { 
+      name: string, 
+      total: number, 
+      count: number, 
+      firstDate: string 
+    }> = {};
+    
+    donorData.forEach(donation => {
+      const { donor_email, donor_name, amount, created_at } = donation;
+      
+      if (!donorMap[donor_email]) {
+        donorMap[donor_email] = {
+          name: donor_name,
+          total: 0,
+          count: 0,
+          firstDate: created_at
+        };
+      }
+      
+      donorMap[donor_email].total += parseFloat(amount);
+      donorMap[donor_email].count += 1;
+      
+      // Track first donation date
+      if (new Date(created_at) < new Date(donorMap[donor_email].firstDate)) {
+        donorMap[donor_email].firstDate = created_at;
+      }
+    });
+    
+    const topDonors = Object.values(donorMap)
+      .map(donor => ({
+        donor_name: donor.name,
+        total_amount: donor.total,
+        donation_count: donor.count,
+        first_donation_date: donor.firstDate
+      }))
+      .sort((a, b) => b.total_amount - a.total_amount)
+      .slice(0, 10);
+    
+    // 7. Get recent donations
+    const { data: recentDonationsData, error: recentError } = await supabase
+      .from('donation')
+      .select('donor_name, amount, donation_purpose, payment_method, payment_status, created_at')
+      .order('created_at', { ascending: false })
+      .limit(10);
+    
+    if (recentError) throw recentError;
+    
+    const recentDonations = recentDonationsData.map(d => ({
+      donor_name: d.donor_name,
+      amount: parseFloat(d.amount),
+      donation_purpose: d.donation_purpose,
+      payment_method: d.payment_method,
+      payment_status: d.payment_status,
+      created_at: d.created_at
+    }));
+    
+    // 8. Get donation trends by month for the past 6 months
+    const trends: { period: string; total_amount: number; donation_count: number }[] = [];
+    
+    for (let i = 5; i >= 0; i--) {
+      const month = new Date();
+      month.setMonth(month.getMonth() - i);
+      
+      const startDate = new Date(month.getFullYear(), month.getMonth(), 1);
+      const endDate = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+      
+      const { data: monthDonations, error: monthError } = await supabase
+        .from('donation')
+        .select('amount')
+        .filter('payment_status', 'eq', 'completed')
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString());
+      
+      if (monthError) throw monthError;
+      
+      const monthName = startDate.toLocaleString('default', { month: 'short' });
+      const monthAmount = monthDonations.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+      
+      trends.push({
+        period: monthName,
+        total_amount: monthAmount,
+        donation_count: monthDonations.length
+      });
+    }
+    
+    // 9. Get donations by purpose
+    const { data: purposeData, error: purposeError } = await supabase
+      .from('donation')
+      .select('donation_purpose, amount')
+      .filter('payment_status', 'eq', 'completed');
+    
+    if (purposeError) throw purposeError;
+    
+    const purposeMap: Record<string, { amount: number; count: number }> = {};
+    
+    purposeData.forEach(donation => {
+      const { donation_purpose, amount } = donation;
+      
+      if (!purposeMap[donation_purpose]) {
+        purposeMap[donation_purpose] = { amount: 0, count: 0 };
+      }
+      
+      purposeMap[donation_purpose].amount += parseFloat(amount);
+      purposeMap[donation_purpose].count += 1;
+    });
+    
+    const donationByPurpose = Object.entries(purposeMap).map(([purpose, data]) => ({
+      purpose,
+      amount: data.amount,
+      count: data.count
+    })).sort((a, b) => b.amount - a.amount);
+    
+    // 10. Get donations by payment method
+    const { data: methodData, error: methodError } = await supabase
+      .from('donation')
+      .select('payment_method, amount')
+      .filter('payment_status', 'eq', 'completed');
+    
+    if (methodError) throw methodError;
+    
+    const methodMap: Record<string, { amount: number; count: number }> = {};
+    
+    methodData.forEach(donation => {
+      const { payment_method, amount } = donation;
+      
+      if (!methodMap[payment_method]) {
+        methodMap[payment_method] = { amount: 0, count: 0 };
+      }
+      
+      methodMap[payment_method].amount += parseFloat(amount);
+      methodMap[payment_method].count += 1;
+    });
+    
+    const donationByPaymentMethod = Object.entries(methodMap).map(([payment_method, data]) => ({
+      payment_method,
+      amount: data.amount,
+      count: data.count
+    })).sort((a, b) => b.amount - a.amount);
+    
+    // Assemble the final report data
+    const reportData: DonationReportData = {
+      totalDonationAmount,
+      totalDonationCount,
+      averageDonationAmount,
+      donationGrowthRate,
+      recurringDonorCount,
+      totalDonorCount,
+      successfulPaymentRate: parseFloat(successfulPaymentRate),
+      pendingPaymentCount,
+      topDonors,
+      recentDonations,
+      donationTrends: trends,
+      donationByPurpose,
+      donationByPaymentMethod
+    };
+    
+    return { data: reportData, error: null };
+  } catch (error) {
+    console.error("Error fetching donation report data:", error);
+    return { 
+      data: null, 
+      error: error instanceof Error ? error.message : "An unknown error occurred" 
+    };
+  }
+}
