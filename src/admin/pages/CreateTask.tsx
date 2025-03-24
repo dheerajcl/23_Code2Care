@@ -2,8 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/lib/authContext';
 import AdminSidebar from '../components/AdminSidebar';
+<<<<<<< HEAD
 import AdminHeader from '../components/AdminHeader';
 import AdminLayout from '../components/AdminLayout';
+=======
+import AdminLayout from '../components/AdminLayout'
+>>>>>>> main
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -130,6 +134,7 @@ const handleLogout = async () => {
   await auth.logout();
   navigate('/admin/login');
 };
+
 
 // Helper function to format dates
 const formatDate = (dateString) => {
@@ -668,6 +673,7 @@ const formatDate = (dateString) => {
     }
   };
 
+<<<<<<< HEAD
 return (
       <AdminLayout
           user={auth.user}
@@ -675,6 +681,15 @@ return (
           title={`Create Task for Event: ${eventLoading ? 'Loading...' : event?.title || 'Unknown Event'}`}
           className="sticky"
         >
+=======
+  return (
+<AdminLayout
+    user={auth.user}
+    handleLogout={handleLogout}
+    title={`Create Task for Event: ${eventLoading ? 'Loading...' : event?.title || 'Unknown Event'}`}
+  >
+        
+>>>>>>> main
         <main className="flex-1 overflow-y-auto p-6">
         <div className="max-w-6xl mx-auto">
           {eventLoading ? (
@@ -1020,10 +1035,102 @@ return (
             <XIcon className="h-5 w-5" />
           </Button>
         </div>
+<<<<<<< HEAD
       </main>
 </AdminLayout>
 );
 
+=======
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Left column - Personal info */}
+          <div className="md:col-span-1">
+            <div className="flex flex-col items-center mb-4">
+              <div className="h-24 w-24 rounded-full bg-gray-200 flex items-center justify-center mb-2">
+                <UserPlusIcon className="h-12 w-12 text-gray-500" />
+              </div>
+              <h3 className="text-xl font-semibold">{selectedVolunteer.name}</h3>
+              <p className="text-sm text-gray-500">{selectedVolunteer.email}</p>
+            </div>
+            
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm text-gray-500">Location</p>
+                <p>{selectedVolunteer.location}{selectedVolunteer.state ? `, ${selectedVolunteer.state}` : ''}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Availability</p>
+                <Badge className={`
+                  ${selectedVolunteer.availability === 'weekends' || selectedVolunteer.availability === 'Weekends' ? 'bg-blue-100 text-blue-800' : ''}
+                  ${selectedVolunteer.availability === 'both' ? 'bg-green-100 text-green-800' : ''}
+                  ${selectedVolunteer.availability === 'weekdays' ? 'bg-yellow-100 text-yellow-800' : ''}
+                `}>
+                  {selectedVolunteer.availability}
+                </Badge>
+              </div>
+            </div>
+          </div>
+          
+          {/* Right column - Skills and interests */}
+          <div className="md:col-span-2">
+            <h3 className="text-lg font-semibold mb-3">Skills & Interests</h3>
+            
+            <div className="mb-4">
+              <p className="text-sm text-gray-500 mb-2">Skills</p>
+              <div className="flex flex-wrap gap-2">
+                {selectedVolunteer.skills && selectedVolunteer.skills.length > 0 ? (
+                  selectedVolunteer.skills.map((skill, index) => (
+                    <Badge key={index} variant="outline">
+                      {skill}
+                    </Badge>
+                  ))
+                ) : (
+                  <p className="text-gray-400">No skills specified</p>
+                )}
+              </div>
+            </div>
+            
+            <div className="mt-6 space-y-3">
+              <Button 
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => {
+                  // Select this volunteer if not already selected and if possible
+                  if (!selectedVolunteers.includes(selectedVolunteer.id) && selectedVolunteers.length < maxVolunteers) {
+                    toggleVolunteer(selectedVolunteer.id);
+                  }
+                  closeModal();
+                }}
+                disabled={!selectedVolunteers.includes(selectedVolunteer.id) && selectedVolunteers.length >= maxVolunteers}
+                type="button"
+              >
+                {selectedVolunteers.includes(selectedVolunteer.id) 
+                  ? 'Selected for Task' 
+                  : selectedVolunteers.length >= maxVolunteers 
+                    ? 'Maximum Volunteers Reached' 
+                    : 'Select for Task'}
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={closeModal}
+                type="button"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+              </form>
+            )}
+          </div>
+        </main>
+</AdminLayout>
+  );
+>>>>>>> main
 };
 
 export default CreateTask;
