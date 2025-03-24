@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema } from '@/services/auth.service';
 import { loginAdmin } from '@/services/auth.service';
-import { useAuth } from '@/lib/authContext';
+import { useAdminAuth } from '@/lib/authContext';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 
@@ -18,7 +18,7 @@ const AdminLogin: React.FC = () => {
   const fullText = "Hello\nAdmin!";
   const [showEmoji, setShowEmoji] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { user, setUser } = useAuth();
+  const { user, setUser } = useAdminAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -66,7 +66,7 @@ const AdminLogin: React.FC = () => {
       if (result.success && result.user) {
         console.log('Admin login successful');
         
-        // Set user in context
+        // Set user in admin context
         setUser(result.user);
         
         // Show success toast
