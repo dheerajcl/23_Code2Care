@@ -3,7 +3,8 @@ import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Menu as MenuIcon, Award, User, Settings, LogOut, ChevronDown } from "lucide-react";
+import { Menu as MenuIcon, Award, User, Settings, LogOut, ChevronDown, Bell } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import Logo from '../../assets/logo.png'
 
 interface User {
@@ -18,6 +19,11 @@ interface AdminHeaderProps {
 
 const AdminHeader: React.FC<AdminHeaderProps> = ({ user, handleLogout }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleNotificationClick = () => {
+    navigate('/admin/notifications');
+  };
 
   return (
     <header className="border-b">
@@ -54,6 +60,23 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ user, handleLogout }) => {
         </div>
         
         <div className="ml-auto flex items-center gap-2">
+          {/* Notification Button */}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="relative"
+            onClick={handleNotificationClick}
+          >
+            <Bell className="h-5 w-5" />
+            <span className="sr-only">Notifications</span>
+            {/* You can add a badge here if you want to show notification count */}
+            {/* <span className="absolute top-0 right-0 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+            </span> */}
+          </Button>
+
+          {/* User Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="gap-1 font-normal">

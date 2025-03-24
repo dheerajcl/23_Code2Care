@@ -672,11 +672,10 @@ const AdminVolunteers = () => {
   };
 
   return (
-    <div className="h-screen bg-gray-100 flex flex-col">
+    <div className="h-screen bg-gray-100 flex flex-col overflow-hidden">
       <AdminHeader  user={auth.user} handleLogout={handleLogout} title="Volunteer Management" />
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex flex-1 overflow-hidden">
       <AdminSidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
         
         <main className="flex-1 overflow-y-auto p-4">
           <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -845,7 +844,6 @@ const AdminVolunteers = () => {
           {showModal && renderVolunteerModal()}
         </main>
       </div>
-    </div>
     </div>
   );
 };
