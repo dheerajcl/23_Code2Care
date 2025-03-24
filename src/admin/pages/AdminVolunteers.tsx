@@ -674,7 +674,7 @@ const AdminVolunteers = () => {
   return (
     <div className="h-screen bg-gray-100 flex flex-col">
       <AdminHeader  user={auth.user} handleLogout={handleLogout} title="Volunteer Management" />
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-100 overflow-hidden">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         

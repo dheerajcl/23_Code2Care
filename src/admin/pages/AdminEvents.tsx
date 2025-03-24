@@ -245,7 +245,7 @@ const AdminEventsPage = () => {
   return (
     <div className="h-screen bg-gray-100 flex flex-col">
       <AdminHeader title="Events Management" user={auth.user} onLogout={handleLogout} />
-      <div className="flex h-screen bg-gray-100">
+      <div className="flex h-screen bg-gray-100 overflow-hidden">
       <AdminSidebar />
         <main className="flex-1 overflow-y-auto p-4">
           <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">

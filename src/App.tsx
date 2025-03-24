@@ -124,7 +124,7 @@ const queryClient = new QueryClient();
                   path="/admin/events/:id/createtask"
                   element={
                     <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
-                      <CreateTask />
+                      <CreateTask/>
                     </ProtectedRoute>
                   }
                 />
