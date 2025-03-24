@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/lib/authContext';
 import AdminSidebar from '../components/AdminSidebar';
+import AdminLayout from '../components/AdminLayout'
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -123,6 +124,12 @@ const handleViewVolunteer = (volunteer) => {
 const closeModal = () => {
   setSelectedVolunteer(null);
 };
+
+  const handleLogout = async () => {
+    await auth.logout();
+    navigate('/admin/login');
+  };
+
 
 // Helper function to format dates
 const formatDate = (dateString) => {
@@ -662,27 +669,11 @@ const formatDate = (dateString) => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <AdminSidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="bg-white shadow">
-          <div className="max-w-6xl mx-auto py-4 px-6">
-            <div className="flex items-center">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => navigate(`/admin/events/${eventId}`)}
-                className="mr-2"
-              >
-                ← Back to Event
-              </Button>
-              <h1 className="text-lg font-semibold">
-                Create Task for Event: {eventLoading ? 'Loading...' : event?.title || 'Unknown Event'}
-              </h1>
-            </div>
-          </div>
-        </header>
+<AdminLayout
+    user={auth.user}
+    handleLogout={handleLogout}
+    title={`Create Task for Event: ${eventLoading ? 'Loading...' : event?.title || 'Unknown Event'}`}
+  >
         
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-6xl mx-auto p-6">
@@ -1093,8 +1084,7 @@ const formatDate = (dateString) => {
             )}
           </div>
         </main>
-      </div>
-    </div>
+</AdminLayout>
   );
 };
 
