@@ -154,22 +154,16 @@ const AdminTaskTable = ({ tasks, onStatusChange, onDelete }: AdminTaskTableProps
                 <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
               </td>
               <td className="px-4 py-4">
-                <Select 
-                  defaultValue={task.status} 
-                  onValueChange={(value) => handleStatusChange(task.id, value)}
-                >
-                  <SelectTrigger className="w-32">
-                    <SelectValue placeholder="Status">
-                      <Badge className={getStatusColor(task.status)}>{task.status}</Badge>
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Todo">Todo</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Review">Review</SelectItem>
-                    <SelectItem value="Done">Done</SelectItem>
-                  </SelectContent>
-                </Select>
+              <td className="px-6 py-4 whitespace-nowrap">
+  <Badge className={`
+    ${task.status === 'Todo' ? 'bg-gray-100 text-gray-800' : ''}
+    ${task.status === 'In Progress' ? 'bg-blue-100 text-blue-800' : ''}
+    ${task.status === 'Review' ? 'bg-yellow-100 text-yellow-800' : ''}
+    ${task.status === 'Done' ? 'bg-green-100 text-green-800' : ''}
+  `}>
+    {task.status}
+  </Badge>
+</td>
               </td>
               <td className="px-4 py-4">
                 <div className="flex flex-col gap-1">
