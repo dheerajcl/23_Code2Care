@@ -55,7 +55,7 @@ def get_assigned_tasks(volunteer_id):
         WHERE 
             task_assignment.volunteer_id = %s
     """
-    cursor = connection.cursor()
+    cursor = connection.cursor() # type: ignore
     cursor.execute(query, (volunteer_id,))
     rows = cursor.fetchall()
     cursor.close()
