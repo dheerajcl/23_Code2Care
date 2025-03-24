@@ -305,7 +305,8 @@ class NotificationService {
           to_email: adminEmail,
           to_name: adminName,
           subject: `Task Response: ${assignmentData.task.title}`,
-          message: `A volunteer has responded to the task assignment.`,
+          message: '', // Add empty message by default
+          has_message: false, // Add has_message flag for conditional in template
           task_name: assignmentData.task.title,
           event_name: assignmentData.event.title,
           volunteer_name: `${assignmentData.volunteer.first_name} ${assignmentData.volunteer.last_name}`,
