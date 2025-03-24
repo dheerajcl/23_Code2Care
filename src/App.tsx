@@ -58,7 +58,7 @@ const queryClient = new QueryClient();
                 <Route path="/events" element={<Events />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/donate" element={<DonationPage />} />
-                <Route path="/events/participant" element={<ParticipantRegistration />} />
+                <Route path="/events/:id/participant" element={<ParticipantRegistration />} />
                 <Route path="/events/participant/success" element={<ParticipantRegistrationSuccess />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/login" element={<Login />} />

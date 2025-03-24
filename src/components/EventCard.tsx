@@ -215,7 +215,7 @@ const EventCard: React.FC<EventCardProps> = ({
                 >
                   {localIsRegistered ? "Already Signed Up" : localLoading ? "Signing Up..." : "Volunteer for Event"}
                 </Button>
-                <Link to="/events/participant" className="w-full">
+                <Link to={`/events/${id}/participant`} className="w-full">
                   <Button className="w-full" variant="secondary">
                     Register as Participant
                   </Button>
