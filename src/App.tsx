@@ -9,6 +9,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { VolunteerTasks } from './volunteer/tasks';
 import { VolunteerBadges } from './volunteer/badges';
 import { VolunteerProgress } from './volunteer/progress';
+import { TaskResponse } from './volunteer/TaskResponse';
 import EventFeedback from './volunteer/events/feedback';
 import AdminEventFeedback from './admin/pages/AdminEventFeedback';
 import AdminNotificationDashboard from './admin/components/AdminNotificationDashboard';
@@ -62,6 +63,9 @@ const queryClient = new QueryClient();
                 <Route path="/join-us" element={<JoinUs />} />
                 <Route path="/participant-form" element={<ParticipantForm />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
+                
+                {/* Task response route - publicly accessible from email links */}
+                <Route path="/volunteer/task-response" element={<TaskResponse />} />
                 
                 {/* Admin routes */}
                 <Route path="/admin/login" element={<AdminLogin />} />

@@ -8,6 +8,7 @@ import { notificationService } from '@/services/notification.service';
 import { Bell, CheckCircle, XCircle, AlertCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
 
 const AdminNotificationDashboard = () => {
   const [stats, setStats] = useState({
@@ -25,6 +26,32 @@ const AdminNotificationDashboard = () => {
   useEffect(() => {
     fetchData();
   }, [activeTab]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('task_assignments')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'task_assignment'
+      }, () => {
+        fetchAssignments();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleRefresh = () => fetchAssignments();
+    
+    window.addEventListener('task-assignment-update', handleRefresh);
+    return () => {
+      window.removeEventListener('task-assignment-update', handleRefresh);
+    };
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);

@@ -1,16 +1,16 @@
 import { supabase } from '@/lib/supabase';
-import { emailService, EmailParams } from './email.service';
+import { emailService } from './email.service';
 import { getCurrentUser } from './user.service';
 import { toast } from '@/components/ui/use-toast';
 
 class NotificationService {
   /**
-   * Creates a notification and sends an email for a new task assignment
+   * Send notification to volunteer about task assignment
    * 
-   * @param taskAssignmentId ID of the task assignment
-   * @param volunteerId ID of the volunteer
-   * @param taskId ID of the task
-   * @param eventId ID of the event
+   * @param taskAssignmentId ID of task assignment
+   * @param volunteerId ID of volunteer
+   * @param taskId ID of task 
+   * @param eventId ID of event
    */
   async notifyTaskAssignment(
     taskAssignmentId: string,
@@ -19,80 +19,105 @@ class NotificationService {
     eventId: string
   ) {
     try {
-      // 1. Get volunteer details
+      console.log(`Sending task assignment notification: taskAssignment=${taskAssignmentId}, volunteer=${volunteerId}, task=${taskId}, event=${eventId}`);
+      
+      // Get task details
+      const { data: taskData, error: taskError } = await supabase
+        .from('task')
+        .select(`
+          *,
+          event:event_id (*)
+        `)
+        .eq('id', taskId)
+        .single();
+      
+      if (taskError) {
+        console.error('Error fetching task details:', taskError);
+        throw taskError;
+      }
+      
+      console.log('Task data retrieved:', taskData);
+      
+      // Get volunteer details
       const { data: volunteerData, error: volunteerError } = await supabase
         .from('volunteer')
         .select('*')
         .eq('id', volunteerId)
         .single();
+        
+      if (volunteerError) {
+        console.error('Error fetching volunteer details:', volunteerError);
+        throw volunteerError;
+      }
       
-      if (volunteerError) throw volunteerError;
+      console.log('Volunteer data retrieved:', volunteerData.email);
       
-      // 2. Get task details
-      const { data: taskData, error: taskError } = await supabase
-        .from('task')
-        .select('*')
-        .eq('id', taskId)
-        .single();
-      
-      if (taskError) throw taskError;
-      
-      // 3. Get event details
-      const { data: eventData, error: eventError } = await supabase
-        .from('event')
-        .select('*')
-        .eq('id', eventId)
-        .single();
-      
-      if (eventError) throw eventError;
-      
-      // 4. Create a notification in the database
+      // Create notification
+      const now = new Date().toISOString();
       const { data: notificationData, error: notificationError } = await supabase
         .from('notification')
         .insert({
           recipient_id: volunteerId,
           task_assignment_id: taskAssignmentId,
           title: `New Task Assignment: ${taskData.title}`,
-          message: `You have been assigned a new task "${taskData.title}" for the event "${eventData.title}".`,
-          type: 'task_assignment'
+          message: `You have been assigned to task "${taskData.title}" for event "${taskData.event?.title || 'Unknown event'}"`,
+          type: 'task_assignment',
+          is_read: false,
+          created_at: now
         })
         .select()
         .single();
+        
+      if (notificationError) {
+        console.error('Error creating notification:', notificationError);
+        throw notificationError;
+      }
       
-      if (notificationError) throw notificationError;
+      console.log('Notification created:', notificationData);
       
-      // 5. Update the task_assignment with notification details
-      const now = new Date().toISOString();
+      // Update task assignment to record notification sent
       const { error: updateError } = await supabase
         .from('task_assignment')
         .update({
-          notification_status: 'sent',
           notification_sent_at: now,
+          notification_status: 'sent'
         })
         .eq('id', taskAssignmentId);
+        
+      if (updateError) {
+        console.warn("Could not update task assignment with notification status:", updateError);
+      }
       
-      if (updateError) throw updateError;
-
-      // 6. Generate accept/reject URLs
+      // Generate accept/reject URLs
       const { acceptUrl, rejectUrl } = emailService.generateTaskResponseUrls(taskAssignmentId, volunteerId);
       
-      // 7. Send email notification
-      const responseDeadline = new Date();
-      responseDeadline.setHours(responseDeadline.getHours() + 24);
+      // Initialize EmailJS
+      emailService.initEmailJS();
       
-      const emailParams: EmailParams = {
+      // Prepare email parameters
+      const emailParams = {
         to_email: volunteerData.email,
         to_name: `${volunteerData.first_name} ${volunteerData.last_name}`,
         subject: `New Task Assignment: ${taskData.title}`,
-        message: `You have been assigned a new task "${taskData.title}" for the event "${eventData.title}". Please respond within 24 hours.`,
+        message: `You have been assigned to task "${taskData.title}" for event "${taskData.event?.title || 'Unknown event'}". Please review the details below.`,
         task_name: taskData.title,
-        event_name: eventData.title,
-        deadline: responseDeadline.toLocaleString(),
+        event_name: taskData.event?.title || 'Event',
+        task_description: taskData.description || 'No description provided',
+        deadline: taskData.deadline ? new Date(taskData.deadline).toLocaleDateString() : 'Not specified',
         accept_url: acceptUrl,
-        reject_url: rejectUrl
+        reject_url: rejectUrl,
+        response_deadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString() // 24 hours from now
       };
       
-      await emailService.sendTaskAssignmentEmail(emailParams);
+      console.log("Sending task assignment email to:", volunteerData.email);
+      
+      const emailResult = await emailService.sendTaskAssignmentEmail(emailParams);
+      if (!emailResult.success) {
+        console.error("Failed to send email:", emailResult.error);
+        // Still return success for now, but log the error
+      } else {
+        console.log("Email sent successfully");
+      }
       
       return { success: true, notification: notificationData };
     } catch (error) {
@@ -109,26 +134,71 @@ class NotificationService {
    */
   async getVolunteerNotifications(volunteerId: string) {
     try {
-      const { data, error } = await supabase
+      // Use a simpler query without complex joins to avoid relationship errors
+      const { data: notificationData, error: notificationError } = await supabase
         .from('notification')
-        .select(`
-          *,
-          task_assignment:task_assignment_id (
-            *,
-            task:task_id (
-              *
-            ),
-            event:event_id (
-              *
-            )
-          )
-        `)
+        .select('*')
         .eq('recipient_id', volunteerId)
         .order('created_at', { ascending: false });
+          
+      if (notificationError) throw notificationError;
       
-      if (error) throw error;
+      // Manually fetch related task assignments if task_assignment_id exists
+      const result = [];
       
-      return { data, error: null };
+      for (const notification of notificationData) {
+        if (notification.task_assignment_id) {
+          try {
+            // Get the task assignment details
+            const { data: assignmentData } = await supabase
+              .from('task_assignment')
+              .select(`
+                task_id,
+                volunteer_id,
+                event_id,
+                notification_status,
+                status
+              `)
+              .eq('id', notification.task_assignment_id)
+              .single();
+              
+            if (assignmentData) {
+              // Get task details
+              const { data: taskData } = await supabase
+                .from('task')
+                .select('id, title, description, deadline, status')
+                .eq('id', assignmentData.task_id)
+                .single();
+                
+              // Get event details
+              const { data: eventData } = await supabase
+                .from('event')
+                .select('id, title')
+                .eq('id', assignmentData.event_id)
+                .single();
+                
+              // Add all data to the notification object
+              result.push({
+                ...notification,
+                task_assignment: {
+                  ...assignmentData,
+                  task: taskData,
+                  event: eventData
+                }
+              });
+            } else {
+              result.push(notification);
+            }
+          } catch (err) {
+            console.error('Error fetching related data for notification:', err);
+            result.push(notification);
+          }
+        } else {
+          result.push(notification);
+        }
+      }
+      
+      return { data: result, error: null };
     } catch (error) {
       console.error('Error fetching volunteer notifications:', error);
       return { data: [], error };
@@ -151,7 +221,12 @@ class NotificationService {
       // Verify that the task assignment belongs to this volunteer
       const { data: assignmentData, error: assignmentError } = await supabase
         .from('task_assignment')
-        .select('*')
+        .select(`
+          *,
+          task:task_id(*),
+          event:event_id(*),
+          volunteer:volunteer_id(*)
+        `)
         .eq('id', taskAssignmentId)
         .eq('volunteer_id', volunteerId)
         .single();
@@ -186,6 +261,45 @@ class NotificationService {
         .from('notification')
         .update({ is_read: true })
         .eq('task_assignment_id', taskAssignmentId);
+      
+      // Send a notification email to the admin
+      try {
+        // Initialize EmailJS
+        emailService.initEmailJS();
+        
+        // Get admin email(s) - In a real app, you'd get this from your admin table
+        // For now, we'll use the system email defined in your .env
+        const { data: adminData, error: adminError } = await supabase
+          .from('admin')
+          .select('email, first_name, last_name')
+          .order('created_at', { ascending: true })
+          .limit(1);
+
+        const adminEmail = adminData?.[0]?.email || process.env.ADMIN_FALLBACK_EMAIL;
+        const adminName = adminData?.[0] 
+          ? `${adminData[0].first_name} ${adminData[0].last_name}`
+          : 'Administrator';
+        
+        // Prepare email params
+        const statusClass = response === 'accept' ? 'accepted' : 'rejected';
+        const emailParams = {
+          to_email: adminEmail,
+          to_name: adminName,
+          subject: `Task Response: ${assignmentData.task.title}`,
+          message: `A volunteer has responded to the task assignment.`,
+          task_name: assignmentData.task.title,
+          event_name: assignmentData.event.title,
+          volunteer_name: `${assignmentData.volunteer.first_name} ${assignmentData.volunteer.last_name}`,
+          status: response === 'accept' ? 'Accepted' : 'Rejected',
+          status_class: statusClass,
+          dashboard_url: `${window.location.origin}/admin/notifications`
+        };
+        
+        await emailService.sendTaskResponseEmail(emailParams);
+      } catch (emailError) {
+        console.error('Email sending failed:', emailError);
+        // Implement retry logic or dead letter queue here
+      }
       
       return { success: true, data };
     } catch (error) {
@@ -241,7 +355,8 @@ class NotificationService {
       
       data.forEach((assignment) => {
         const status = assignment.notification_status;
-        if (counts.hasOwnProperty(status)) {
+        // Using Object.prototype.hasOwnProperty.call to avoid the linter warning
+        if (Object.prototype.hasOwnProperty.call(counts, status)) {
           counts[status]++;
         }
       });

@@ -9,21 +9,27 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { format } from 'date-fns';
-import { AlertTriangle, Clock, Trash2, User } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Clock, Loader2, Trash2, User, UserCheck, UserX, Users } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Progress } from '@/components/ui/progress';
 
 type Task = {
   id: string;
   title: string;
   description?: string;
   status: string;
+  originalStatus?: string;
   priority: string;
   due_date?: string;
   assignee_id?: string;
-  assignee?: {
+  assignees?: Array<{
     id: string;
-    first_name: string;
-    last_name: string;
-  };
+    name: string;
+    email: string;
+    status: string;
+    assignment_id: string;
+    notification_status: string;
+  }>;
 };
 
 type AdminTaskTableProps = {
@@ -96,106 +102,147 @@ const AdminTaskTable = ({ tasks, onStatusChange, onDelete }: AdminTaskTableProps
     }
   };
 
+  // Get assignment status color and info
+  const getAssignmentStatusDetails = (status?: string) => {
+    switch (status) {
+      case 'pending':
+        return { color: 'bg-gray-100 text-gray-800', label: 'Pending', icon: <Clock className="h-3 w-3 mr-1" /> };
+      case 'accepted':
+        return { color: 'bg-blue-100 text-blue-800', label: 'In Progress', icon: <Loader2 className="h-3 w-3 mr-1 animate-spin" /> };
+      case 'completed':
+        return { color: 'bg-green-100 text-green-800', label: 'Completed', icon: <CheckCircle className="h-3 w-3 mr-1" /> };
+      case 'rejected':
+        return { color: 'bg-red-100 text-red-800', label: 'Rejected', icon: <UserX className="h-3 w-3 mr-1" /> };
+      default:
+        return { color: 'bg-gray-100 text-gray-800', label: 'Unknown', icon: <AlertTriangle className="h-3 w-3 mr-1" /> };
+    }
+  };
+
+  // Calculate task completion progress
+  const calculateTaskProgress = (task: Task) => {
+    if (!task.assignees || task.assignees.length === 0) return 0;
+    
+    const completedCount = task.assignees.filter(a => a.status === 'completed').length;
+    return Math.round((completedCount / task.assignees.length) * 100);
+  };
+
   return (
-    <div className="overflow-hidden rounded-lg border">
-      <table className="min-w-full divide-y divide-gray-200">
+    <div className="overflow-x-auto">
+      <table className="w-full">
         <thead className="bg-gray-50">
           <tr>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Task
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Status
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Priority
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Due Date
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Assignee
-            </th>
-            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Actions
-            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Volunteers</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
+            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
+        <tbody className="divide-y divide-gray-200">
           {tasks.map((task) => (
             <tr key={task.id} className="hover:bg-gray-50">
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="px-4 py-4">
                 <div className="text-sm font-medium text-gray-900">{task.title}</div>
                 {task.description && (
-                  <div className="text-sm text-gray-500 truncate max-w-xs">{task.description}</div>
+                  <div className="text-sm text-gray-500 truncate max-w-md">{task.description}</div>
                 )}
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <Select value={task.status} onValueChange={(value) => handleStatusChange(task.id, value)}>
-                  <SelectTrigger className="w-[130px]">
-                    <SelectValue>
-                      <Badge className={getStatusColor(task.status)}>
-                        {task.status}
-                      </Badge>
+              <td className="px-4 py-4 text-sm text-gray-500">{formatDate(task.due_date)}</td>
+              <td className="px-4 py-4">
+                <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
+              </td>
+              <td className="px-4 py-4">
+                <Select 
+                  defaultValue={task.status} 
+                  onValueChange={(value) => handleStatusChange(task.id, value)}
+                >
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="Status">
+                      <Badge className={getStatusColor(task.status)}>{task.status}</Badge>
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Todo">
-                      <Badge className={getStatusColor('Todo')}>Todo</Badge>
-                    </SelectItem>
-                    <SelectItem value="In Progress">
-                      <Badge className={getStatusColor('In Progress')}>In Progress</Badge>
-                    </SelectItem>
-                    <SelectItem value="Review">
-                      <Badge className={getStatusColor('Review')}>Review</Badge>
-                    </SelectItem>
-                    <SelectItem value="Done">
-                      <Badge className={getStatusColor('Done')}>Done</Badge>
-                    </SelectItem>
+                    <SelectItem value="Todo">Todo</SelectItem>
+                    <SelectItem value="In Progress">In Progress</SelectItem>
+                    <SelectItem value="Review">Review</SelectItem>
+                    <SelectItem value="Done">Done</SelectItem>
                   </SelectContent>
                 </Select>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <Badge className={getPriorityColor(task.priority)}>
-                  {task.priority}
-                </Badge>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex items-center text-sm text-gray-500">
-                  <Clock className="h-4 w-4 mr-1 flex-shrink-0" />
-                  {formatDate(task.due_date)}
+              <td className="px-4 py-4">
+                <div className="flex flex-col gap-1">
+                  {task.assignees && task.assignees.length > 0 ? (
+                    task.assignees.map((assignee) => (
+                      <TooltipProvider key={assignee.assignment_id}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center text-sm">
+                              <User className="h-3 w-3 mr-1 text-gray-400" />
+                              <span className="truncate max-w-[120px]">{assignee.name}</span>
+                              <Badge 
+                                className={`ml-2 px-1.5 py-0.5 text-xs ${getAssignmentStatusDetails(assignee.status).color}`}
+                              >
+                                <div className="flex items-center">
+                                  {getAssignmentStatusDetails(assignee.status).icon}
+                                  <span>{getAssignmentStatusDetails(assignee.status).label}</span>
+                                </div>
+                              </Badge>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{assignee.email}</p>
+                            <p>Status: {getAssignmentStatusDetails(assignee.status).label}</p>
+                            <p>Notification: {assignee.notification_status || 'None'}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ))
+                  ) : (
+                    <div className="text-sm text-gray-500">No volunteers assigned</div>
+                  )}
                 </div>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                {task.assignee ? (
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 h-8 w-8 bg-gray-200 rounded-full flex items-center justify-center">
-                      <User className="h-4 w-4 text-gray-500" />
-                    </div>
-                    <div className="ml-3">
-                      <div className="text-sm font-medium text-gray-900">
-                        {task.assignee.first_name} {task.assignee.last_name}
+              <td className="px-4 py-4">
+                <div className="w-full">
+                  {task.assignees && task.assignees.length > 0 ? (
+                    <div className="space-y-1">
+                      <Progress value={calculateTaskProgress(task)} className="h-2" />
+                      <div className="text-xs text-gray-500 text-right">
+                        {task.assignees.filter(a => a.status === 'completed').length} / {task.assignees.length} completed
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <span className="text-sm text-gray-500">Unassigned</span>
-                )}
+                  ) : (
+                    <div className="text-sm text-gray-500">N/A</div>
+                  )}
+                </div>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <td className="px-4 py-4 text-right">
                 {confirmDelete === task.id ? (
-                  <div className="flex items-center justify-end gap-2">
-                    <AlertTriangle className="h-4 w-4 text-red-500" />
-                    <Button size="sm" variant="ghost" onClick={() => confirmDeleteTask(task.id)}>
+                  <div className="flex justify-end items-center gap-2">
+                    <Button 
+                      variant="destructive" 
+                      size="sm" 
+                      onClick={() => confirmDeleteTask(task.id)}
+                    >
                       Confirm
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={cancelDelete}>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={cancelDelete}
+                    >
                       Cancel
                     </Button>
                   </div>
                 ) : (
-                  <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(task.id)}>
-                    <Trash2 className="h-4 w-4" />
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleDeleteClick(task.id)}
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
                   </Button>
                 )}
               </td>

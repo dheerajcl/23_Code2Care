@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import emailjs from 'emailjs-com';
 
 // Define types based on database schema
 export interface Event {
@@ -66,6 +67,39 @@ export interface Task {
   priority?: string;
   created_at?: string;
   updated_at?: string;
+  max_volunteers?: number;
+  start_time?: string;
+  end_time?: string;
+  deadline?: string;
+}
+
+// Add proper type definitions for task assignments
+interface TaskAssignment {
+  id: string;
+  task_id: string;
+  volunteer_id: string;
+  event_id: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'completed';
+  notification_status: 'pending' | 'sent' | 'responded';
+  created_at: string;
+  response_deadline: string;
+  notification_sent_at?: string;
+  notification_responded_at?: string;
+  task?: Task;
+  volunteer?: Volunteer;
+  event?: Event;
+  notification?: Notification;
+}
+
+interface Notification {
+  id: string;
+  recipient_id: string;
+  task_assignment_id?: string;
+  title: string;
+  message: string;
+  type: string;
+  is_read: boolean;
+  created_at: string;
 }
 
 // Helper function to ensure authentication
@@ -575,17 +609,16 @@ export const getDashboardStats = async () => {
 // Event registrations
 export const getEventRegistrations = async (eventId: string) => {
   try {
-    // First try to join with volunteer_id directly
+    // First try with proper field names
     const { data, error } = await supabase
       .from('event_signup')
       .select(`
         id,
         event_id,
         volunteer_id,
-        created_at as registration_date,
+        created_at,
         status,
         hours,
-        feedback,
         volunteer:volunteer_id(*)
       `)
       .eq('event_id', eventId);
@@ -593,42 +626,20 @@ export const getEventRegistrations = async (eventId: string) => {
     if (error) {
       console.error('Error with initial query, trying fallback:', error);
       
-      // Fallback: Fetch registrations and volunteers separately
-      const { data: registrations, error: regError } = await supabase
+      // Fallback to simpler query
+      const { data: fallbackData, error: fallbackError } = await supabase
         .from('event_signup')
-        .select('*')
+        .select('volunteer_id, event_id')
         .eq('event_id', eventId);
-      
-      if (regError) throw regError;
-      
-      // If we have registrations, fetch volunteers for each one
-      if (registrations && registrations.length > 0) {
-        const volunteerIds = registrations.map(reg => reg.volunteer_id);
-        const { data: volunteers, error: volError } = await supabase
-          .from('volunteer')
-          .select('*')
-          .in('id', volunteerIds);
-          
-        if (volError) throw volError;
         
-        // Manually join the data
-        const enrichedData = registrations.map(reg => {
-          const volunteer = volunteers.find(v => v.id === reg.volunteer_id);
-          return {
-            ...reg,
-            volunteer: volunteer || null
-          };
-        });
-        
-        return { data: enrichedData, error: null };
-      }
+      if (fallbackError) throw fallbackError;
       
-      return { data: registrations || [], error: null };
+      return { data: fallbackData, error: null };
     }
     
     return { data, error: null };
   } catch (error) {
-    console.error(`Error fetching registrations for event ${eventId}:`, error);
+    console.error('Error fetching event registrations:', error);
     return { data: [], error };
   }
 };
@@ -916,45 +927,86 @@ export const getTaskById = async (taskId: string) => {
 // Get tasks assigned to a volunteer
 export const getTasksForVolunteer = async (volunteerId: string) => {
   try {
-    // First try to get task assignments
+    console.log(`Fetching tasks for volunteer ${volunteerId}`);
+    
+    // Get all task assignments for this volunteer with their related data in a single query
     const { data: assignments, error: assignmentError } = await supabase
       .from('task_assignment')
-      .select('task_id, status')
+      .select(`
+        id,
+        task_id,
+        volunteer_id,
+        event_id,
+        status,
+        notification_status,
+        created_at,
+        response_deadline,
+        email_sent,
+        task:task_id (
+          id, 
+          title, 
+          description, 
+          deadline, 
+          status
+        ),
+        event:event_id (
+          id,
+          title
+        )
+      `)
       .eq('volunteer_id', volunteerId);
+      
+    if (assignmentError) {
+      console.error('Error fetching task assignments:', assignmentError);
+      throw assignmentError;
+    }
     
-    if (assignmentError) throw assignmentError;
+    console.log(`Found ${assignments?.length || 0} task assignments for volunteer ${volunteerId}`);
     
+    // Early return if no assignments
     if (!assignments || assignments.length === 0) {
       return { data: [], error: null };
     }
     
-    // Get task details for each assignment
-    const taskIds = assignments.map(a => a.task_id);
-    const { data: tasks, error: taskError } = await supabase
-      .from('task')
-      .select('*, event:event_id(title, start_date, end_date, image_url)')
-      .in('id', taskIds);
-    
-    if (taskError) throw taskError;
-    
-    // Merge task data with assignment status
-    const enrichedTasks = tasks.map(task => {
-      const assignment = assignments.find(a => a.task_id === task.id);
+    // Transform the data to the format expected by the UI
+    const transformedTasks = assignments.map(assignment => {
       return {
-        ...task,
-        assignment_status: assignment ? assignment.status : 'assigned'
+        id: assignment.id, // This is the task assignment ID
+        task_id: assignment.task_id,
+        title: assignment.task?.title || 'Unknown Task',
+        description: assignment.task?.description || '',
+        status: assignment.status || 'pending',
+        notification_status: assignment.notification_status || 'pending',
+        deadline: assignment.task?.deadline,
+        created_at: assignment.created_at,
+        response_deadline: assignment.response_deadline,
+        event_id: assignment.event_id,
+        event: {
+          id: assignment.event?.id,
+          title: assignment.event?.title || 'Unknown Event'
+        },
+        volunteer_id: assignment.volunteer_id
       };
     });
     
-    return { data: enrichedTasks, error: null };
+    console.log(`Processed ${transformedTasks.length} tasks for volunteer ${volunteerId}`);
+    return { data: transformedTasks, error: null };
   } catch (error) {
-    console.error(`Error fetching tasks for volunteer ${volunteerId}:`, error);
+    console.error('Error fetching tasks for volunteer:', error);
     return { data: [], error };
   }
 };
 
 // Submit task feedback from volunteer
-export const submitTaskFeedback = async (taskId: string, volunteerId: string, feedbackData: any) => {
+export const submitTaskFeedback = async (
+  taskId: string,
+  volunteerId: string,
+  feedbackData: {
+    rating: number;
+    comments: string;
+    completion_time: string;
+  }
+) => {
   try {
     // First verify the task exists and is assigned to this volunteer
     const { data: assignment, error: assignmentError } = await supabase
@@ -974,7 +1026,7 @@ export const submitTaskFeedback = async (taskId: string, volunteerId: string, fe
       .insert({
         task_id: taskId,
         volunteer_id: volunteerId,
-        feedback: feedbackData.feedback,
+        feedback: feedbackData.comments,
         rating: feedbackData.rating,
         created_at: new Date().toISOString()
       })
@@ -1663,10 +1715,14 @@ export interface ReportData {
   volunteerEngagement: VolunteerEngagement[];
   locationData: LocationAnalytics[];
   skillData: SkillAnalysis[];
+  error?: string;
 }
 
 // Get all report data in a single function
-export const getReportData = async (): Promise<{ data: ReportData | null, error: any }> => {
+export const getReportData = async (): Promise<{ 
+  data: ReportData | null, 
+  error: Error | null 
+}> => {
   try {
     const [
       topEventsResult,
@@ -1705,13 +1761,13 @@ export const getReportData = async (): Promise<{ data: ReportData | null, error:
       retentionRate: retentionRateResult.data || 0,
       volunteerEngagement: volunteerEngagementResult.data || [],
       locationData: locationDataResult.data || [],
-      skillData: skillDataResult.data || []
+      skillData: skillDataResult.data || [],
     };
 
     return { data: reportData, error: null };
   } catch (error) {
     console.error('Error fetching report data:', error);
-    return { data: null, error };
+    return { data: null, error: error };
   }
 };
 
@@ -2122,45 +2178,210 @@ export const getVolunteerRank = async (volunteerId: string) => {
 // Create a task assignment with notification
 export const createTaskAssignment = async (taskId: string, volunteerId: string, eventId: string) => {
   try {
-    const now = new Date().toISOString();
+    console.log(`Creating task assignment: task=${taskId}, volunteer=${volunteerId}, event=${eventId}`);
     
-    // Create the task assignment
-    const { data, error } = await supabase
+    // First check if the task exists
+    const { data: taskData, error: taskError } = await supabase
+      .from('task')
+      .select('title, deadline')
+      .eq('id', taskId)
+      .single();
+      
+    if (taskError) {
+      console.error('Task does not exist:', taskError);
+      return { data: null, error: `Task ${taskId} not found` };
+    }
+
+    // Check if volunteer exists
+    const { data: volunteerData, error: volunteerError } = await supabase
+      .from('volunteer')
+      .select('id, email, first_name, last_name')
+      .eq('id', volunteerId)
+      .single();
+      
+    if (volunteerError) {
+      console.error('Volunteer does not exist:', volunteerError);
+      return { data: null, error: `Volunteer ${volunteerId} not found` };
+    }
+
+    // Check if volunteer is registered for the event
+    const { data: registration, error: regError } = await supabase
+      .from('event_signup')
+      .select('id')
+      .eq('event_id', eventId)
+      .eq('volunteer_id', volunteerId)
+      .single();
+
+    if (!registration) {
+      console.warn('Volunteer is not registered for this event');
+      // Uncomment the next line if you want to enforce this rule
+      // return { data: null, error: 'Volunteer is not registered for this event' };
+    }
+
+    // Get event details
+    const { data: eventData, error: eventError } = await supabase
+      .from('event')
+      .select('title')
+      .eq('id', eventId)
+      .single();
+      
+    if (eventError) {
+      console.error('Event does not exist:', eventError);
+      return { data: null, error: `Event ${eventId} not found` };
+    }
+
+    const now = new Date().toISOString();
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // Check if assignment already exists
+    const { data: existingAssignment, error: checkError } = await supabase
+      .from('task_assignment')
+      .select('id')
+      .eq('task_id', taskId)
+      .eq('volunteer_id', volunteerId)
+      .eq('event_id', eventId)
+      .maybeSingle();
+      
+    if (existingAssignment) {
+      console.log('Task assignment already exists, updating instead');
+      
+      // Update the existing assignment
+      const { data: updatedAssignment, error: updateError } = await supabase
+        .from('task_assignment')
+        .update({
+          notification_status: 'pending',
+          status: 'pending',
+          response_deadline: tomorrow.toISOString(),
+          email_sent: false,
+          updated_at: now
+        })
+        .eq('id', existingAssignment.id)
+        .select()
+        .single();
+        
+      if (updateError) {
+        console.error('Error updating task assignment:', updateError);
+        return { data: null, error: updateError.message };
+      }
+      
+      // Create a notification about the updated assignment
+      await supabase
+        .from('notification')
+        .insert({
+          recipient_id: volunteerId,
+          task_assignment_id: existingAssignment.id,
+          title: `Updated Task Assignment: ${taskData.title}`,
+          message: `Your task assignment for "${taskData.title}" in event "${eventData.title}" has been updated.`,
+          type: 'task_assignment',
+          is_read: false,
+          created_at: now
+        });
+        
+      return { data: updatedAssignment, error: null };
+    }
+    
+    // Create new task assignment
+    const { data: assignment, error: assignError } = await supabase
       .from('task_assignment')
       .insert({
         task_id: taskId,
         volunteer_id: volunteerId,
         event_id: eventId,
         created_at: now,
-        backlog: 0,
-        todo: 1, // Mark as todo initially
-        in_progress: 0,
-        in_review: 0,
-        done: 0,
-        assigned: 1, // Mark as assigned
-        notification_status: 'pending'
+        notification_status: 'pending',
+        status: 'pending',
+        response_deadline: tomorrow.toISOString(),
+        todo: 1,
+        assigned: 1,
+        email_sent: false
       })
       .select()
       .single();
-    
-    if (error) throw error;
-    
-    // Import and use the notification service
-    // Note: Using import here to avoid circular dependencies
-    const { notificationService } = await import('./notification.service');
-    
-    // Send notification to the volunteer
-    await notificationService.notifyTaskAssignment(
-      data.id,
-      volunteerId,
-      taskId,
-      eventId
-    );
-    
-    return { data, error: null };
+
+    if (assignError) {
+      console.error('Error creating task assignment:', assignError);
+      return { data: null, error: assignError.message };
+    }
+
+    console.log('Task assignment created successfully:', assignment);
+
+    // Create a notification
+    const { data: notificationData, error: notifError } = await supabase
+      .from('notification')
+      .insert({
+        recipient_id: volunteerId,
+        task_assignment_id: assignment.id,
+        title: `New Task Assignment: ${taskData.title}`,
+        message: `You have been assigned a new task: "${taskData.title}" for event "${eventData.title}"`,
+        type: 'task_assignment',
+        is_read: false,
+        created_at: now
+      })
+      .select()
+      .single();
+
+    if (notifError) {
+      console.error('Error creating notification:', notifError);
+      // Continue even if notification creation fails
+    } else {
+      console.log('Notification created successfully:', notificationData);
+    }
+
+    // Try to send an email notification
+    try {
+      const emailData = {
+        to_email: volunteerData.email,
+        to_name: `${volunteerData.first_name} ${volunteerData.last_name}`,
+        task_name: taskData.title,
+        event_name: eventData.title,
+        task_description: `You've been assigned to task "${taskData.title}" for event "${eventData.title}"`,
+        deadline: taskData.deadline ? new Date(taskData.deadline).toLocaleDateString() : 'Not specified',
+        response_deadline: tomorrow.toLocaleDateString()
+      };
+      
+      await sendTaskAssignmentEmail(emailData);
+      
+      // Mark email as sent
+      await supabase
+        .from('task_assignment')
+        .update({ email_sent: true })
+        .eq('id', assignment.id);
+    } catch (emailError) {
+      console.error('Failed to send email:', emailError);
+      // Continue even if email fails
+    }
+
+    return { data: assignment, error: null };
   } catch (error) {
-    console.error('Error creating task assignment with notification:', error);
-    return { data: null, error };
+    console.error('Error in createTaskAssignment:', error);
+    return { data: null, error: error.message };
+  }
+};
+
+// Helper function to send task assignment email
+const sendTaskAssignmentEmail = async (emailData) => {
+  const templateParams = {
+    to_email: emailData.to_email,
+    to_name: emailData.to_name,
+    task_name: emailData.task_name,
+    event_name: emailData.event_name,
+    task_description: emailData.task_description,
+    deadline: emailData.deadline,
+    response_deadline: emailData.response_deadline
+  };
+
+  try {
+    const response = await emailjs.send(
+      import.meta.env.VITE_EMAILJS_SERVICE_ID,
+      import.meta.env.VITE_EMAILJS_TASK_TEMPLATE_ID,
+      templateParams,
+      import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+    );
+    return response;
+  } catch (error) {
+    console.error('Error sending email:', error);
+    throw error;
   }
 };
 
@@ -2171,9 +2392,7 @@ export const getTaskAssignmentsWithDetails = async (filters = {}) => {
       .from('task_assignment')
       .select(`
         *,
-        task:task_id (
-          *
-        ),
+        task:task_id (*),
         volunteer:volunteer_id (
           id,
           first_name,
@@ -2185,36 +2404,178 @@ export const getTaskAssignmentsWithDetails = async (filters = {}) => {
           id,
           title
         )
-      `);
-    
-    // Apply filters if provided
-    if (filters.taskId) {
-      query = query.eq('task_id', filters.taskId);
+      `)
+      .order('created_at', { ascending: false });
+
+    // Add explicit type for filters
+    const filterParams: {
+      taskId?: string;
+      volunteerId?: string;
+      eventId?: string;
+      status?: string;
+      notificationStatus?: string;
+    } = filters;
+
+    if (filterParams.taskId) {
+      query = query.eq('task_id', filterParams.taskId);
     }
-    
-    if (filters.volunteerId) {
-      query = query.eq('volunteer_id', filters.volunteerId);
+    if (filterParams.volunteerId) {
+      query = query.eq('volunteer_id', filterParams.volunteerId);
     }
-    
-    if (filters.eventId) {
-      query = query.eq('event_id', filters.eventId);
+    if (filterParams.eventId) {
+      query = query.eq('event_id', filterParams.eventId);
     }
-    
-    if (filters.status) {
-      query = query.eq('status', filters.status);
+    if (filterParams.status) {
+      query = query.eq('status', filterParams.status);
     }
-    
-    if (filters.notificationStatus) {
-      query = query.eq('notification_status', filters.notificationStatus);
+    if (filterParams.notificationStatus) {
+      query = query.eq('notification_status', filterParams.notificationStatus);
     }
-    
+
     const { data, error } = await query;
-    
     if (error) throw error;
     
     return { data, error: null };
   } catch (error) {
-    console.error('Error fetching task assignments with details:', error);
+    return { data: null, error };
+  }
+};
+
+// Add new function for admin task view
+export const getAdminTasks = async () => {
+  try {
+    // First, ensure we have the latest data by doing a direct query
+    const { data, error } = await supabase
+      .from('task_assignment')
+      .select(`
+        id,
+        task_id,
+        volunteer_id,
+        event_id,
+        status,
+        notification_status,
+        created_at,
+        notification_sent_at,
+        notification_responded_at,
+        response_deadline,
+        email_sent,
+        todo,
+        assigned,
+        task:task_id(id, title, description, status, event_id),
+        volunteer:volunteer_id(id, first_name, last_name, email, profile_image),
+        event:event_id(id, title, status)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    
+    console.log("Task assignments loaded:", data?.length || 0);
+    
+    return {
+      data: data?.map(task => ({
+        ...task,
+        status: task.notification_status === 'sent' ? 'assigned' : task.status
+      })) || [],
+      error: null
+    };
+  } catch (error) {
+    console.error(`Error fetching admin tasks: ${error.message}`);
     return { data: [], error };
   }
-}; 
+};
+
+// Replace or add this function to properly fetch tasks for Admin Dashboard
+export const getAdminEventTasks = async (eventId: string) => {
+  try {
+    console.log(`Fetching admin tasks for event ${eventId}`);
+    
+    // Get all tasks for this event
+    const { data: tasks, error: tasksError } = await supabase
+      .from('task')
+      .select(`
+        id,
+        title,
+        description,
+        status,
+        deadline,
+        event_id,
+        assignee_id,
+        assignee_type,
+        created_at,
+        updated_at,
+        start_time,
+        end_time,
+        max_volunteers
+      `)
+      .eq('event_id', eventId);
+      
+    if (tasksError) {
+      console.error('Error fetching event tasks:', tasksError);
+      throw tasksError;
+    }
+    
+    console.log(`Found ${tasks?.length || 0} tasks for event ${eventId}`);
+    
+    // Early return if no tasks
+    if (!tasks || tasks.length === 0) {
+      return { data: [], error: null };
+    }
+    
+    // Get all task assignments for these tasks
+    const taskIds = tasks.map(task => task.id);
+    const { data: assignments, error: assignmentsError } = await supabase
+      .from('task_assignment')
+      .select(`
+        id,
+        task_id,
+        volunteer_id,
+        status,
+        notification_status,
+        volunteer:volunteer_id (
+          id,
+          first_name,
+          last_name,
+          email
+        )
+      `)
+      .in('task_id', taskIds);
+      
+    if (assignmentsError) {
+      console.error('Error fetching task assignments:', assignmentsError);
+      // Continue without assignments if there's an error
+    }
+    
+    console.log(`Found ${assignments?.length || 0} task assignments for event ${eventId} tasks`);
+    
+    // Create a map of task ID to assignments
+    const taskAssignments = {};
+    if (assignments) {
+      assignments.forEach(assignment => {
+        if (!taskAssignments[assignment.task_id]) {
+          taskAssignments[assignment.task_id] = [];
+        }
+        taskAssignments[assignment.task_id].push({
+          id: assignment.id,
+          volunteer_id: assignment.volunteer_id,
+          status: assignment.status,
+          notification_status: assignment.notification_status,
+          volunteer: assignment.volunteer
+        });
+      });
+    }
+    
+    // Combine tasks with their assignments
+    const tasksWithAssignments = tasks.map(task => {
+      return {
+        ...task,
+        assignments: taskAssignments[task.id] || []
+      };
+    });
+    
+    console.log(`Processed ${tasksWithAssignments.length} tasks with assignments`);
+    return { data: tasksWithAssignments, error: null };
+  } catch (error) {
+    console.error('Error fetching admin event tasks:', error);
+    return { data: [], error };
+  }
+};

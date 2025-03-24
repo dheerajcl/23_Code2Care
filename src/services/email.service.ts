@@ -1,10 +1,19 @@
 import emailjs from '@emailjs/browser';
 
 // EmailJS configuration
-// Sign up at https://www.emailjs.com/ and get your own service ID, template ID, and user ID
-const SERVICE_ID = 'service_samarthanam';
-const TEMPLATE_ID_TASK_ASSIGNMENT = 'template_task_assignment';
-const USER_ID = 'your_emailjs_user_id'; // Replace with actual User ID
+// Using environment variables for EmailJS credentials
+const SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+const TEMPLATE_ID_TASK_ASSIGNMENT = import.meta.env.VITE_EMAILJS_TASK_TEMPLATE_ID;
+const TEMPLATE_ID_TASK_RESPONSE = import.meta.env.VITE_EMAILJS_RESPONSE_TEMPLATE_ID;
+const USER_ID = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+
+// Log EmailJS configuration at module initialization
+console.log('EmailJS Configuration:', {
+  SERVICE_ID: SERVICE_ID || 'Not set',
+  TEMPLATE_ID_TASK_ASSIGNMENT: TEMPLATE_ID_TASK_ASSIGNMENT || 'Not set',
+  TEMPLATE_ID_TASK_RESPONSE: TEMPLATE_ID_TASK_RESPONSE || 'Not set',
+  USER_ID: USER_ID ? 'Set' : 'Not set'
+});
 
 export interface EmailParams {
   to_email: string;
@@ -16,13 +25,39 @@ export interface EmailParams {
   deadline?: string;
   accept_url?: string;
   reject_url?: string;
+  volunteer_name?: string;
+  status?: string;
+  status_class?: string;
+  dashboard_url?: string;
+  // Add any additional fields you need here
+  [key: string]: string | undefined; // Index signature to allow any string keys
 }
+
+// Track initialization state
+let isInitialized = false;
 
 /**
  * Initializes EmailJS with the user ID
  */
 export const initEmailJS = () => {
-  emailjs.init(USER_ID);
+  if (!USER_ID) {
+    console.error('EmailJS initialization failed: USER_ID (public key) is not set in environment variables');
+    return false;
+  }
+  
+  if (!isInitialized) {
+    try {
+      emailjs.init(USER_ID);
+      isInitialized = true;
+      console.log('EmailJS initialized successfully');
+      return true;
+    } catch (error) {
+      console.error('EmailJS initialization failed:', error);
+      return false;
+    }
+  }
+  
+  return true; // Already initialized
 };
 
 /**
@@ -31,31 +66,81 @@ export const initEmailJS = () => {
  * @param params Email parameters
  * @returns Promise with the email send result
  */
-export const sendTaskAssignmentEmail = async (params: EmailParams): Promise<{ success: boolean; error?: any }> => {
+export const sendTaskAssignmentEmail = async (params: EmailParams): Promise<{ success: boolean; error?: unknown }> => {
   try {
-    const result = await emailjs.send(SERVICE_ID, TEMPLATE_ID_TASK_ASSIGNMENT, params);
-    console.log('Email sent successfully:', result.text);
-    return { success: true };
+    // Validate required parameters
+    const requiredFields = ['to_email', 'to_name', 'task_name', 'event_name'];
+    for (const field of requiredFields) {
+      if (!params[field]) {
+        console.error(`Missing required email parameter: ${field}`);
+        return { success: false, error: `Missing required field: ${field}` };
+      }
+    }
+    
+    // Validate email format
+    if (!params.to_email.includes('@')) {
+      console.error('Invalid email format:', params.to_email);
+      return { success: false, error: 'Invalid email format' };
+    }
+    
+    // Initialize EmailJS if not already
+    initEmailJS();
+    
+    // Send the email
+    console.log('Sending task assignment email to:', params.to_email);
+    const response = await emailjs.send(
+      SERVICE_ID,
+      TEMPLATE_ID_TASK_ASSIGNMENT,
+      params,
+      USER_ID
+    );
+    
+    if (response.status === 200) {
+      console.log('Email sent successfully:', response);
+      return { success: true };
+    } else {
+      console.error('Email sending failed with status:', response.status);
+      return { success: false, error: response.text };
+    }
   } catch (error) {
     console.error('Failed to send email:', error);
-    return { success: false, error };
+    return { success: false, error: error.message };
   }
 };
 
 /**
- * Sends a general notification email
+ * Sends a task response notification email to admin
  * 
  * @param params Email parameters
  * @returns Promise with the email send result
  */
-export const sendNotificationEmail = async (params: EmailParams): Promise<{ success: boolean; error?: any }> => {
+export const sendTaskResponseEmail = async (params: EmailParams): Promise<{ success: boolean; error?: unknown }> => {
   try {
-    // You can create additional templates in EmailJS for different types of notifications
-    const result = await emailjs.send(SERVICE_ID, TEMPLATE_ID_TASK_ASSIGNMENT, params);
-    console.log('Notification email sent successfully:', result.text);
+    if (!initEmailJS()) {
+      return { 
+        success: false, 
+        error: new Error('EmailJS not properly initialized. Check environment variables.') 
+      };
+    }
+    
+    if (!SERVICE_ID || !TEMPLATE_ID_TASK_RESPONSE) {
+      console.error('Missing EmailJS configuration:', { 
+        SERVICE_ID: SERVICE_ID || 'Missing', 
+        TEMPLATE_ID_TASK_RESPONSE: TEMPLATE_ID_TASK_RESPONSE || 'Missing' 
+      });
+      return { 
+        success: false, 
+        error: new Error('Missing EmailJS service ID or template ID') 
+      };
+    }
+    
+    console.log('Sending task response email to:', params.to_email);
+    
+    const result = await emailjs.send(SERVICE_ID, TEMPLATE_ID_TASK_RESPONSE, params);
+    console.log('Task response email sent successfully:', result.text);
     return { success: true };
   } catch (error) {
-    console.error('Failed to send notification email:', error);
+    console.error('Failed to send task response email:', error);
     return { success: false, error };
   }
 };
@@ -76,12 +161,14 @@ export const generateTaskResponseUrls = (taskAssignmentId: string, volunteerId: 
   const acceptUrl = `${baseUrl}/volunteer/task-response?action=accept&id=${taskAssignmentId}&token=${token}`;
   const rejectUrl = `${baseUrl}/volunteer/task-response?action=reject&id=${taskAssignmentId}&token=${token}`;
   
+  console.log('Generated response URLs:', { acceptUrl, rejectUrl });
+  
   return { acceptUrl, rejectUrl };
 };
 
 export const emailService = {
   initEmailJS,
   sendTaskAssignmentEmail,
-  sendNotificationEmail,
+  sendTaskResponseEmail,
   generateTaskResponseUrls
 }; 

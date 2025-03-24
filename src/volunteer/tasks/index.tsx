@@ -1,107 +1,261 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/authContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { VolunteerLayout } from '@/components/layouts/VolunteerLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-// Mock data (you can replace this with real data from your API)
-const initialTasks = [
-  {
-    id: '1',
-    eventId: '1',
-    eventTitle: 'Digital Literacy Workshop',
-    title: 'Setup equipment',
-    description: 'Setup computers and assistive technology devices',
-    date: 'Aug 15, 2023',
-    time: '9:00 AM - 10:00 AM',
-    status: 'todo'
-  },
-  {
-    id: '2',
-    eventId: '1',
-    eventTitle: 'Digital Literacy Workshop',
-    title: 'Teaching assistance',
-    description: 'Help participants with hands-on exercises',
-    date: 'Aug 15, 2023',
-    time: '10:00 AM - 1:00 PM',
-    status: 'todo'
-  },
-  {
-    id: '3',
-    eventId: '4',
-    eventTitle: 'Blind Cricket Workshop',
-    title: 'Equipment management',
-    description: 'Manage and distribute cricket equipment to participants',
-    date: 'Jul 25, 2023',
-    time: '9:00 AM - 12:00 PM',
-    status: 'completed'
-  },
-  {
-    id: '4',
-    eventId: '5',
-    eventTitle: 'Coding for Accessibility Workshop',
-    title: 'Frontend development assistance',
-    description: 'Help teach HTML/CSS accessibility best practices',
-    date: 'Aug 22, 2023',
-    time: '10:00 AM - 2:00 PM',
-    status: 'invitation'
-  },
-  {
-    id: '5',
-    eventId: '6',
-    eventTitle: 'Community Garden Day',
-    title: 'Garden setup assistance',
-    description: 'Help setup accessible garden beds and tools',
-    date: 'Sep 5, 2023',
-    time: '8:00 AM - 12:00 PM',
-    status: 'invitation'
-  }
-];
+import { getTasksForVolunteer } from '@/services/database.service';
+import { notificationService } from '@/services/notification.service';
+import { pointsService } from '@/services/points.service';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export const VolunteerTasks = () => {
   const { user } = useAuth();
-  const [tasks, setTasks] = useState(initialTasks);
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const invitationTasks = tasks.filter(task => task.status === 'invitation');
-  const upcomingTasks = tasks.filter(task => task.status === 'todo');
+  useEffect(() => {
+    if (user?.id) {
+      fetchTasks();
+    }
+  }, [user]);
+
+  const fetchTasks = async () => {
+    setLoading(true);
+    try {
+      // Get tasks assigned to the volunteer
+      const { data, error } = await getTasksForVolunteer(user.id);
+      
+      if (error) throw error;
+      
+      console.log("Fetched volunteer tasks:", data);
+      
+      // Get notifications for additional details
+      const { data: notifications } = await notificationService.getVolunteerNotifications(user.id);
+      
+      console.log("Volunteer notifications:", notifications);
+      
+      // Merge task data with notification status if available
+      const mergedTasks = data.map(task => {
+        const notification = notifications?.find(n => 
+          n.task_assignment_id && n.task_assignment_id === task.id
+        );
+        
+        return {
+          ...task,
+          notification_status: notification?.task_assignment?.notification_status || task.notification_status || 'pending',
+          notification_id: notification?.id,
+          task_assignment_id: task.id // The task ID from getTasksForVolunteer is actually the task_assignment ID
+        };
+      });
+      
+      console.log("Merged tasks with notifications:", mergedTasks);
+      
+      setTasks(mergedTasks || []);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      toast.error('Failed to load tasks');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const invitationTasks = tasks.filter(task => task.notification_status === 'sent');
+  const upcomingTasks = tasks.filter(task => 
+    (task.notification_status === 'accept' || task.status === 'accepted') && 
+    task.status !== 'completed'
+  );
   const completedTasks = tasks.filter(task => task.status === 'completed');
 
-  const handleAccept = (taskId) => {
-    setTasks(prevTasks => 
-      prevTasks.map(task => 
-        task.id === taskId ? { ...task, status: 'todo' } : task
-      )
-    );
+  const handleAccept = async (taskId, assignmentId) => {
+    try {
+      console.log(`Accepting task: task=${taskId}, assignment=${assignmentId}`);
+      
+      if (!assignmentId) {
+        console.error("No assignment ID found for task", taskId);
+        toast.error('Could not accept task: missing assignment information');
+        return;
+      }
+      
+      const { success, error } = await notificationService.handleTaskResponse(
+        assignmentId,
+        user.id,
+        'accept'
+      );
+      
+      if (success) {
+        toast.success('Task accepted successfully');
+        await fetchTasks(); // Refresh tasks
+      } else {
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error accepting task:', error);
+      toast.error('Failed to accept task');
+    }
   };
 
-  const handleReject = (taskId) => {
-    setTasks(prevTasks => 
-      prevTasks.filter(task => task.id !== taskId)
-    );
+  const handleReject = async (taskId, assignmentId) => {
+    try {
+      console.log(`Rejecting task: task=${taskId}, assignment=${assignmentId}`);
+      
+      if (!assignmentId) {
+        console.error("No assignment ID found for task", taskId);
+        toast.error('Could not reject task: missing assignment information');
+        return;
+      }
+      
+      const { success, error } = await notificationService.handleTaskResponse(
+        assignmentId,
+        user.id,
+        'reject'
+      );
+      
+      if (success) {
+        toast.success('Task rejected');
+        await fetchTasks(); // Refresh tasks
+      } else {
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error rejecting task:', error);
+      toast.error('Failed to reject task');
+    }
   };
 
-  const handleComplete = (taskId) => {
-    setTasks(prevTasks => 
-      prevTasks.map(task => 
-        task.id === taskId ? { ...task, status: 'completed' } : task
-      )
-    );
+  const handleComplete = async (taskId, assignmentId) => {
+    try {
+      console.log(`Completing task: task=${taskId}, assignment=${assignmentId}`);
+      
+      if (!assignmentId) {
+        console.error("No assignment ID found for task", taskId);
+        toast.error('Could not complete task: missing assignment information');
+        return;
+      }
+      
+      // Get the task's original ID (not the assignment ID)
+      let taskOriginalId = null;
+      
+      try {
+        // Query to get the task_id for this assignment
+        const { data, error } = await supabase
+          .from('task_assignment')
+          .select('task_id')
+          .eq('id', assignmentId)
+          .single();
+          
+        if (!error && data) {
+          taskOriginalId = data.task_id;
+          console.log(`Found original task ID: ${taskOriginalId} for assignment ${assignmentId}`);
+        }
+      } catch (err) {
+        console.error('Error getting original task ID:', err);
+      }
+      
+      // Update task assignment status to completed
+      const { data: taskAssignmentUpdate, error: taskAssignmentError } = await supabase
+        .from('task_assignment')
+        .update({ status: 'completed' })
+        .eq('id', assignmentId)
+        .single();
+      
+      if (taskAssignmentError) throw taskAssignmentError;
+      
+      if (taskOriginalId) {
+        // Check if all assignments for this task are completed
+        const { data: allAssignments, error: assignmentsError } = await supabase
+          .from('task_assignment')
+          .select('status')
+          .eq('task_id', taskOriginalId);
+          
+        if (!assignmentsError && allAssignments) {
+          // If all assignments are completed, update the main task status to 'Done'
+          const allCompleted = allAssignments.every(a => a.status === 'completed');
+          
+          if (allCompleted) {
+            await supabase
+              .from('task')
+              .update({ status: 'Done' })
+              .eq('id', taskOriginalId);
+              
+            console.log(`All assignments completed, updated task ${taskOriginalId} status to Done`);
+          }
+        }
+      }
+      
+      // Award points for task completion (10 points per task)
+      try {
+        // Find task information for points metadata
+        const taskInfo = tasks.find(t => t.task_assignment_id === assignmentId);
+        
+        await pointsService.addPoints({
+          volunteerId: user.id,
+          points: 10,
+          reason: `Completed task: ${taskInfo?.title || 'Task'}`,
+          metadata: {
+            taskId: taskOriginalId,
+            assignmentId: assignmentId,
+            eventId: taskInfo?.event_id
+          }
+        });
+        toast.success('Task marked as completed and points awarded!');
+      } catch (pointsError) {
+        console.error('Error awarding points:', pointsError);
+        // Don't fail the entire operation if points couldn't be awarded
+        toast.success('Task marked as completed, but there was an issue awarding points');
+      }
+      
+      await fetchTasks(); // Refresh tasks
+    } catch (error) {
+      console.error('Error completing task:', error);
+      toast.error('Failed to mark task as completed');
+    }
   };
 
   const getStatusBadge = (status) => {
     switch(status) {
-      case 'invitation':
+      case 'sent':
         return <Badge variant="outline" className="bg-yellow-100 text-yellow-800">Invitation</Badge>;
-      case 'todo':
-        return <Badge className="bg-blue-100 text-blue-800">Upcoming</Badge>;
+      case 'accept':
+        return <Badge className="bg-blue-100 text-blue-800">Accepted</Badge>;
+      case 'accepted':
+        return <Badge className="bg-blue-100 text-blue-800">Accepted</Badge>;
+      case 'reject':
+        return <Badge variant="destructive">Rejected</Badge>;
+      case 'expired':
+        return <Badge variant="outline" className="bg-gray-100 text-gray-800">Expired</Badge>;
       case 'completed':
         return <Badge variant="secondary" className="bg-green-100 text-green-800">Completed</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
   };
+
+  // Render loading state
+  if (loading) {
+    return (
+      <VolunteerLayout>
+        <div className="space-y-6">
+          <div className="flex flex-col space-y-2">
+            <h1 className="text-3xl font-bold tracking-tight">My Tasks</h1>
+            <p className="text-muted-foreground">
+              Track and manage your assigned tasks for upcoming and past events.
+            </p>
+          </div>
+          
+          <div className="space-y-4">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+        </div>
+      </VolunteerLayout>
+    );
+  }
 
   return (
     <VolunteerLayout>
@@ -143,16 +297,16 @@ export const VolunteerTasks = () => {
                           <h3 className="font-semibold">{task.title}</h3>
                           <div className="text-sm mt-1">{task.description}</div>
                           <div className="text-sm text-muted-foreground mt-1">
-                            <Badge variant="outline" className="mr-2">{task.eventTitle}</Badge>
-                            {task.date} | {task.time}
+                            <Badge variant="outline" className="mr-2">{task.event?.title}</Badge>
+                            {task.deadline ? new Date(task.deadline).toLocaleDateString() : 'No deadline'}
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-2">
-                          {getStatusBadge(task.status)}
+                          {getStatusBadge(task.notification_status || task.status)}
                           <Button 
                             size="sm" 
                             variant="outline" 
-                            onClick={() => handleComplete(task.id)}
+                            onClick={() => handleComplete(task.id, task.task_assignment_id)}
                           >
                             Mark Complete
                           </Button>
@@ -187,18 +341,18 @@ export const VolunteerTasks = () => {
                           <h3 className="font-semibold">{task.title}</h3>
                           <div className="text-sm mt-1">{task.description}</div>
                           <div className="text-sm text-muted-foreground mt-1">
-                            <Badge variant="outline" className="mr-2">{task.eventTitle}</Badge>
-                            {task.date} | {task.time}
+                            <Badge variant="outline" className="mr-2">{task.event?.title}</Badge>
+                            {task.deadline ? new Date(task.deadline).toLocaleDateString() : 'No deadline'}
                           </div>
                         </div>
-                        <div className="flex flex-col items-end gap-2">
-                          {getStatusBadge(task.status)}
+                        <div>
+                          {getStatusBadge(task.notification_status)}
                           <div className="flex gap-2 mt-2">
                             <Button 
                               size="sm" 
                               variant="default" 
                               className="bg-green-600 hover:bg-green-700"
-                              onClick={() => handleAccept(task.id)}
+                              onClick={() => handleAccept(task.id, task.task_assignment_id)}
                             >
                               Accept
                             </Button>
@@ -206,7 +360,7 @@ export const VolunteerTasks = () => {
                               size="sm" 
                               variant="outline" 
                               className="text-red-600 border-red-600 hover:bg-red-50"
-                              onClick={() => handleReject(task.id)}
+                              onClick={() => handleReject(task.id, task.task_assignment_id)}
                             >
                               Decline
                             </Button>
@@ -230,7 +384,7 @@ export const VolunteerTasks = () => {
               <CardHeader>
                 <CardTitle>Completed Tasks</CardTitle>
                 <CardDescription>
-                  Tasks you have completed
+                  Tasks you have successfully completed
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -242,11 +396,13 @@ export const VolunteerTasks = () => {
                           <h3 className="font-semibold">{task.title}</h3>
                           <div className="text-sm mt-1">{task.description}</div>
                           <div className="text-sm text-muted-foreground mt-1">
-                            <Badge variant="outline" className="mr-2">{task.eventTitle}</Badge>
-                            {task.date} | {task.time}
+                            <Badge variant="outline" className="mr-2">{task.event?.title}</Badge>
+                            {task.completion_date ? new Date(task.completion_date).toLocaleDateString() : 'Recently completed'}
                           </div>
                         </div>
-                        {getStatusBadge(task.status)}
+                        <div>
+                          {getStatusBadge('completed')}
+                        </div>
                       </div>
                     </div>
                   ))}

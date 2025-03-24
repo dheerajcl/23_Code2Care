@@ -41,9 +41,9 @@ import { Leaderboard } from '@/components/Leaderboard';
 import { Link, useLocation } from 'react-router-dom';
 import Sidebar from '@/components/Sidebar';
 import LandingHeader from '@/components/LandingHeader';
-import { getEvents } from '@/services/database.service';
+import { getEvents, getTasksForVolunteer } from '@/services/database.service';
+import { notificationService } from '@/services/notification.service';
 import { toast } from 'sonner';
-import Chatbot from "@/components/chatbot";
 
 export const assignedTasks = [
   {
@@ -101,7 +101,7 @@ const badges = [
     description: 'Arrived early and helped with setup',
     icon: '🐦',
     date: 'Jul 25, 2023',
-    color: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'
+    color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'
   },
 ];
 
@@ -157,50 +157,47 @@ const feedbackData = [
 
 export const VolunteerDashboard = () => {
   const { user, logout } = useAuth();
-  const location = useLocation();
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState([]);
+  const location = useLocation();
   
   useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        setLoading(true);
-        // Fetch events from the database
-        const { data, error } = await getEvents();
-        
-        if (error) throw error;
-        
-        // Filter for upcoming events (where end_date is in the future)
-        const now = new Date();
-        const filtered = data.filter(event => {
-          const endDate = new Date(event.end_date);
-          return endDate >= now;
-        });
-        
-        // Sort by start date ascending (soonest first)
-        filtered.sort((a, b) => {
-          return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
-        });
-        
-        // Take only the first 3 for display
-        setUpcomingEvents(filtered.slice(0, 3));
-      } catch (error) {
-        console.error('Error fetching upcoming events:', error);
-        toast.error('Failed to load upcoming events');
-        setUpcomingEvents([]);
-      } finally {
-        setLoading(false);
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
+  
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // Fetch upcoming events
+      const { data: events } = await getEvents();
+      if (events) {
+        // Filter to get only upcoming events
+        const upcoming = events.filter(event => 
+          new Date(event.start_date) > new Date()
+        ).slice(0, 3); // Get only 3 upcoming events
+        setUpcomingEvents(upcoming);
       }
-    };
-    
-    fetchEvents();
-  }, []);
+      
+      // Fetch notifications
+      if (user?.id) {
+        const { data: notificationData } = await notificationService.getVolunteerNotifications(user.id);
+        setNotifications(notificationData || []);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
   
     const handleLogout = async () => {
       await logout();
       // Redirect is handled by the auth context
     };
-  
   
   return (
     <div className="h-screen bg-gray-100 flex flex-col vol-dashboard">
@@ -341,12 +338,7 @@ export const VolunteerDashboard = () => {
                   </Card>
                 )}
               </div>
-              <div className="h-screen bg-gray-100 flex flex-col vol-dashboard">
-      
-          <Chatbot />  {/* ✅ Add Chatbot here */}
-        
-      
-    </div>
+
             </div>
           </div>
         </main>

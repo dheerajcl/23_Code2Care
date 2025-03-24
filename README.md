@@ -141,3 +141,57 @@ const { data: newAdmin, error } = await supabase
   .select()
   .single();
 ```
+
+## Database Setup
+
+To properly set up the database schema for the Samarthanam Volunteer Management System, follow these steps:
+
+1. **Connect to Supabase SQL Editor**:
+   - Log in to your Supabase dashboard
+   - Navigate to the SQL Editor section
+
+2. **Run the required scripts in this order**:
+
+   ```bash
+   # First, run the base schema script to establish the tables
+   src/db/fix-database-schema.sql
+   
+   # Then set up the notification system
+   src/db/create-notification-system.sql
+   
+   # If you need to assign volunteers to tasks programmatically, run
+   src/db/assign-volunteer-function.sql
+   ```
+
+3. **Verify the database structure**:
+   - Each table should have the required columns as defined in the schema
+   - Foreign key relationships should be properly established
+   - The notification system triggers and functions should be set up
+
+4. **Troubleshooting Database Issues**:
+   
+   If you encounter database-related errors when using the application, they typically fall into one of these categories:
+   
+   - **Missing Tables**: Run the appropriate SQL scripts to create missing tables
+   - **Missing Columns**: Use ALTER TABLE statements to add missing columns
+   - **Foreign Key Constraints**: Ensure that references between tables are properly set up
+   - **Notification System**: Verify that the notification triggers and functions are working
+
+### Database Schema Overview
+
+The system uses the following key tables:
+
+- **volunteer**: Stores volunteer information and profiles
+- **event**: Stores event details and schedules
+- **event_signup**: Tracks volunteer registration for events
+- **task**: Stores task information linked to events
+- **task_assignment**: Tracks task assignments to volunteers
+- **notification**: Stores notifications sent to volunteers and admins
+
+### Notification System
+
+The notification system uses several functions:
+
+1. `auto_expire_task_assignments()`: Automatically expires task assignments past their response deadline
+2. `send_deadline_reminders()`: Sends reminder notifications for tasks with approaching deadlines
+3. `assign_volunteer_to_task()`: Function to assign volunteers to tasks with proper notification

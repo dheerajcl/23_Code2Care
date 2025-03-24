@@ -2,49 +2,32 @@
 import { supabase } from '@/lib/supabase';
 
 /**
- * Get the currently authenticated user with their profile details
- * Used by both volunteer and admin modules
+ * Get the current logged in user
+ * @returns The current user or null if not logged in
  */
 export const getCurrentUser = async () => {
   try {
-    // Get the basic auth user first
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: { user }, error } = await supabase.auth.getUser();
     
-    if (authError || !user) {
-      console.error('Error getting authenticated user:', authError);
-      return null;
-    }
+    if (error) throw error;
+    if (!user) return null;
     
-    // Try to get volunteer profile first
+    // Get additional user info from volunteer table
     const { data: volunteerData, error: volunteerError } = await supabase
       .from('volunteer')
       .select('*')
       .eq('id', user.id)
       .single();
     
-    if (!volunteerError && volunteerData) {
-      return volunteerData;
+    if (volunteerError && volunteerError.code !== 'PGSQL_ERROR') {
+      console.error('Error fetching volunteer data:', volunteerError);
+      return null;
     }
     
-    // If not found in volunteers, try admin users
-    const { data: adminData, error: adminError } = await supabase
-      .from('admin')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-    
-    if (!adminError && adminData) {
-      return adminData;
-    }
-    
-    // Return base user if no profile found
-    return {
-      id: user.id,
-      email: user.email,
-      role: 'unknown'
-    };
+    // Return volunteer data if found, otherwise just the auth user
+    return volunteerData || user;
   } catch (error) {
-    console.error('Error in getCurrentUser:', error);
+    console.error('Error getting current user:', error);
     return null;
   }
 };

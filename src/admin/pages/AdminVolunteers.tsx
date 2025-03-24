@@ -13,6 +13,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
+import { pointsService } from '@/services/points.service';
+import { getVolunteerLeaderboard } from '@/services/database.service';
+import { useQuery } from '@tanstack/react-query';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 const AdminVolunteers = () => {
   // State for volunteers data
@@ -250,37 +254,72 @@ const AdminVolunteers = () => {
     }
   };
 
-  // LEADERBOARD VIEW COMPONENTS - Sorted by hours contributed
+  // LEADERBOARD VIEW COMPONENTS - Using points system
   const renderLeaderboard = () => {
-    const sortedVolunteers = [...filteredVolunteers]
-      .sort((a, b) => b.hours - a.hours)
-      .slice(0, 10); // Top 10
+    // Use React Query to fetch leaderboard data
+    const { data: leaderboardData, isLoading, error } = useQuery({
+      queryKey: ['admin-leaderboard'],
+      queryFn: () => pointsService.getLeaderboard(20), // Get top 20 volunteers
+      retryDelay: 1000,
+      retry: 3
+    });
+    
+    if (isLoading) {
+      return (
+        <div className="bg-white p-6 rounded-lg shadow-md flex justify-center">
+          <LoadingSpinner size="medium" text="Loading leaderboard..." />
+        </div>
+      );
+    }
+    
+    if (error) {
+      return (
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="text-center text-red-500 py-4">
+            Failed to load leaderboard. Please try again later.
+          </div>
+        </div>
+      );
+    }
     
     return (
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h2 className="text-xl font-bold mb-6 text-center">Volunteer Leaderboard</h2>
         <div className="overflow-hidden">
-          {sortedVolunteers.map((volunteer, index) => (
-            <div 
-              key={volunteer.id}
-              className="flex items-center py-3 border-b last:border-0 hover:bg-gray-50 transition-colors"
-            >
-              <div className="w-10 font-bold text-center">{index + 1}</div>
-              <div className="flex-1 flex items-center">
-                <div className="w-10 h-10 bg-gray-200 rounded-full mr-3 flex items-center justify-center">
-                  <User className="h-5 w-5 text-gray-500" />
+          {leaderboardData && leaderboardData.length > 0 ? (
+            leaderboardData.map((volunteer, index) => (
+              <div 
+                key={volunteer.volunteer_id}
+                className="flex items-center py-3 border-b last:border-0 hover:bg-gray-50 transition-colors"
+              >
+                <div className="w-10 font-bold text-center">{volunteer.rank}</div>
+                <div className="flex-1 flex items-center">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full mr-3 flex items-center justify-center">
+                    {volunteer.profile_image ? (
+                      <img 
+                        src={volunteer.profile_image} 
+                        alt={`${volunteer.first_name} ${volunteer.last_name}`}
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <User className="h-5 w-5 text-gray-500" />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-medium">{volunteer.first_name} {volunteer.last_name}</h3>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-medium">{volunteer.firstname} {volunteer.lastname}</h3>
-                  <p className="text-sm text-gray-500">{volunteer.email}</p>
+                <div className="flex flex-col items-end">
+                  <div className="text-lg font-bold">{volunteer.total_points} points</div>
+                  <div className="text-xs text-gray-500">{volunteer.badge_count} badges</div>
                 </div>
               </div>
-              <div className="flex flex-col items-end">
-                <div className="text-lg font-bold">{volunteer.hours} hrs</div>
-                <div className="text-xs text-gray-500">{volunteer.events} events</div>
-              </div>
+            ))
+          ) : (
+            <div className="text-center py-4 text-gray-500">
+              No volunteers data available
             </div>
-          ))}
+          )}
         </div>
       </div>
     );

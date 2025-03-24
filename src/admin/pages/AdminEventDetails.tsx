@@ -20,7 +20,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getEventById, getTasksByEventId, createTask, updateTask, deleteTask, getEventRegistrations, registerVolunteerForEvent, updateEventRegistration, deleteEventRegistration } from '@/services/database.service';
+import { getEventById, getTasksByEventId, createTask, updateTask, deleteTask, getEventRegistrations, registerVolunteerForEvent, updateEventRegistration, deleteEventRegistration, getAdminEventTasks } from '@/services/database.service';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 // Task View Components
 import TaskTable from '../components/AdminTaskTable';
@@ -90,6 +91,9 @@ const AdminEventDetails = () => {
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [selectedVolunteer, setSelectedVolunteer] = useState('');
 
+  // Task counts state
+  const [taskCounts, setTaskCounts] = useState({ todo: 0, inProgress: 0, inReview: 0, done: 0 });
+
   // Fetch event details and related data
   useEffect(() => {
     const fetchEventDetails = async () => {
@@ -104,89 +108,142 @@ const AdminEventDetails = () => {
         if (eventData) {
           setEvent(eventData);
 
-          // Get tasks for this event - Updated to fetch from task table
-          const { data: tasksData, error: tasksError } = await supabase
-            .from('task')
-            .select(`
-              id,
-              title,
-              description,
-              status,
-              start_time,
-              end_time,
-              skills,
-              max_volunteers,
-              created_at,
-              updated_at,
-              event_id,
-              assignee_type,
-              assignee_id,
-              deadline
-            `)
-            .eq('event_id', id);
+          // Use the updated getAdminEventTasks function
+          const { data: taskData, error: taskError } = await getAdminEventTasks(id);
+          if (taskError) throw taskError;
 
-          if (tasksError) throw tasksError;
+          console.log('Fetched tasks with assignments:', taskData);
 
-          // For each task, fetch task assignments to calculate progress
-          const tasksWithProgress = await Promise.all(tasksData.map(async (task) => {
-            // Get task assignments for this task
-            const { data: assignments, error: assignmentsError } = await supabase
-              .from('task_assignment')
-              .select('*')
-              .eq('task_id', task.id);
-
-            if (assignmentsError) throw assignmentsError;
-
-            // Calculate progress as done/assigned
-            const totalAssigned = assignments ? assignments.length : 0;
-            const totalDone = assignments ? assignments.filter(a => a.done > 0).length : 0;
-
-            // Calculate progress percentage
-            const progress = totalAssigned > 0 ? (totalDone / totalAssigned) * 100 : 0;
-
-            return {
-              ...task,
-              progress,
-              totalAssigned,
-              totalDone,
-              assignments: assignments || [],
-              tasksData
-            };
+          // Transform the tasks to the format expected by the UI components
+          const formattedTasks = taskData.map(task => ({
+            id: task.id,
+            title: task.title,
+            description: task.description || '',
+            status: task.status || 'Todo',
+            priority: task.priority || 'Medium',
+            due_date: task.deadline,
+            assignee_id: task.assignee_id,
+            event_id: task.event_id,
+            assignees: task.assignments?.map(assignment => ({
+              id: assignment.volunteer?.id,
+              name: `${assignment.volunteer?.first_name || ''} ${assignment.volunteer?.last_name || ''}`.trim(),
+              email: assignment.volunteer?.email,
+              status: assignment.status,
+              assignment_id: assignment.id,
+              notification_status: assignment.notification_status
+            })) || []
           }));
 
-          setAllTasks(tasksWithProgress || []);
-          setEventTasks(tasksWithProgress || []);
+          console.log('Formatted tasks for UI:', formattedTasks);
+          setAllTasks(formattedTasks);
+          setEventTasks(formattedTasks);
 
-          // Get volunteer registrations for this event
+          // Calculate task counts
+          const counts = {
+            todo: formattedTasks.filter(t => t.status === 'Todo').length,
+            inProgress: formattedTasks.filter(t => t.status === 'In Progress').length,
+            inReview: formattedTasks.filter(t => t.status === 'Review').length,
+            done: formattedTasks.filter(t => t.status === 'Done').length
+          };
+          setTaskCounts(counts);
+
+          // Get volunteer registrations
           const { data: registrationsData, error: registrationsError } = await getEventRegistrations(id);
           if (registrationsError) throw registrationsError;
           setRegistrations(registrationsData || []);
 
-          // Get all volunteers 
-          const { data: allVolunteers, error: volunteersError } = await supabase
+          // Fetch all volunteers
+          const { data: volunteersData, error: volunteersError } = await supabase
             .from('volunteer')
             .select('*')
             .order('first_name', { ascending: true });
-
           if (volunteersError) throw volunteersError;
+          setVolunteers(volunteersData || []);
 
           // Filter out volunteers already registered
-          const registeredIds = registrationsData ? registrationsData.map(reg => reg.volunteer.id) : [];
-          const available = allVolunteers.filter(vol => !registeredIds.includes(vol.id));
-
-          setVolunteers(allVolunteers || []);
-          setAvailableVolunteers(available || []);
+          const registeredVolunteerIds = (registrationsData || []).map(reg => reg.volunteer_id);
+          const availableVols = (volunteersData || []).filter(
+            vol => !registeredVolunteerIds.includes(vol.id)
+          );
+          setAvailableVolunteers(availableVols);
         }
-      } catch (err) {
-        console.error('Error fetching event details:', err);
-        setError(err.message);
+      } catch (error) {
+        console.error('Error fetching event details:', error);
+        setError(error.message);
       } finally {
         setIsLoading(false);
+        setLoading(false);
       }
     };
 
     fetchEventDetails();
   }, [id]);
+
+  // Function to refresh tasks
+  const refreshTasks = async () => {
+    if (!id) return;
+
+    try {
+      setLoading(true);
+      // Use the updated getAdminEventTasks function
+      const { data: taskData, error: taskError } = await getAdminEventTasks(id);
+      if (taskError) throw taskError;
+
+      // Transform tasks to format expected by UI
+      const formattedTasks = taskData.map(task => {
+        // Calculate the effective status based on assignments
+        let effectiveStatus = task.status || 'Todo';
+        
+        // Get all assignment statuses
+        const assignmentStatuses = task.assignments?.map(a => a.status) || [];
+        
+        // If all assignments are completed, mark task as Done
+        if (assignmentStatuses.length > 0 && assignmentStatuses.every(s => s === 'completed')) {
+          effectiveStatus = 'Done';
+        } 
+        // If any assignment is accepted/in progress, mark task as In Progress
+        else if (assignmentStatuses.includes('accepted')) {
+          effectiveStatus = 'In Progress';
+        }
+        
+        return {
+          id: task.id,
+          title: task.title,
+          description: task.description || '',
+          status: effectiveStatus, // Use the calculated status
+          originalStatus: task.status, // Keep the original for reference
+          priority: task.priority || 'Medium',
+          due_date: task.deadline,
+          assignee_id: task.assignee_id,
+          event_id: task.event_id,
+          assignees: task.assignments?.map(assignment => ({
+            id: assignment.volunteer?.id,
+            name: `${assignment.volunteer?.first_name || ''} ${assignment.volunteer?.last_name || ''}`.trim(),
+            email: assignment.volunteer?.email,
+            status: assignment.status,
+            assignment_id: assignment.id,
+            notification_status: assignment.notification_status
+          })) || []
+        };
+      });
+
+      setAllTasks(formattedTasks);
+      setEventTasks(formattedTasks);
+
+      // Update task counts
+      const counts = {
+        todo: formattedTasks.filter(t => t.status === 'Todo').length,
+        inProgress: formattedTasks.filter(t => t.status === 'In Progress').length,
+        inReview: formattedTasks.filter(t => t.status === 'Review').length,
+        done: formattedTasks.filter(t => t.status === 'Done').length
+      };
+      setTaskCounts(counts);
+    } catch (error) {
+      console.error('Error refreshing tasks:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Format date for display
   const formatDate = (dateString) => {
@@ -262,29 +319,70 @@ const AdminEventDetails = () => {
   // Handle task status update
   const handleTaskStatusChange = async (taskId, newStatus) => {
     try {
-      const { data, error } = await supabase
+      const task = allTasks.find(t => t.id === taskId);
+      if (!task) {
+        console.error('Task not found:', taskId);
+        return;
+      }
+      
+      // First update the main task status
+      const { error } = await supabase
         .from('task')
         .update({ status: newStatus })
-        .eq('id', taskId)
-        .select();
+        .eq('id', taskId);
 
       if (error) throw error;
 
-      // Update tasks state
-      if (data) {
-        const updatedTask = data[0];
-
-        setAllTasks(allTasks.map(task =>
-          task.id === taskId ? { ...task, status: newStatus } : task
-        ));
-
-        setEventTasks(eventTasks.map(task =>
-          task.id === taskId ? { ...task, status: newStatus } : task
-        ));
+      // Now, if task has assignments, update their statuses too
+      if (task.assignees && task.assignees.length > 0) {
+        // Map admin UI status to database status values
+        let assignmentStatus;
+        switch (newStatus) {
+          case 'Done':
+            assignmentStatus = 'completed';
+            break;
+          case 'In Progress':
+            assignmentStatus = 'accepted';
+            break;
+          case 'Todo':
+            assignmentStatus = 'pending';
+            break;
+          case 'Review':
+          default:
+            assignmentStatus = 'accepted'; // Map In Review to accepted in DB
+        }
+        
+        // Update all assignments for this task
+        for (const assignee of task.assignees) {
+          const { error: assignmentError } = await supabase
+            .from('task_assignment')
+            .update({ status: assignmentStatus })
+            .eq('id', assignee.assignment_id);
+            
+          if (assignmentError) {
+            console.error('Error updating assignment status:', assignmentError);
+          }
+        }
       }
+
+      // Update tasks state
+      setAllTasks(allTasks.map(task =>
+        task.id === taskId ? { ...task, status: newStatus } : task
+      ));
+
+      setEventTasks(eventTasks.map(task =>
+        task.id === taskId ? { ...task, status: newStatus } : task
+      ));
+      
+      toast.success(`Task status updated to ${newStatus}`);
+      
+      // Refresh tasks to ensure we have the latest data
+      await refreshTasks();
+      
     } catch (err) {
       console.error('Error updating task status:', err);
       setError(err.message);
+      toast.error('Failed to update task status');
     }
   };
 
