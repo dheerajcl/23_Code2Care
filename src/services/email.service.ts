@@ -38,8 +38,9 @@ export interface EmailParams {
   status?: string;
   status_class?: string;
   dashboard_url?: string;
+  has_message?: string | boolean;
   // Add any additional fields you need here
-  [key: string]: string | undefined; // Index signature to allow any string keys
+  [key: string]: string | undefined | boolean; // Index signature to allow any string keys
 }
 
 // Track initialization state
@@ -230,6 +231,9 @@ export const sendTaskResponseEmail = async (params: EmailParams): Promise<{ succ
       to_name: params.to_name,
       from_name: "Samarthanam Trust",
       subject: params.subject || "Task Response Notification",
+      // Handle message conditional
+      message: params.message || '',
+      has_message: params.message ? 'true' : 'false',
       // Include all other parameters
       ...params
     };
@@ -256,6 +260,13 @@ export const sendTaskResponseEmail = async (params: EmailParams): Promise<{ succ
           to: templateParams.to
         });
         console.error('Check your EmailJS template and make sure it matches one of these parameter names.');
+      }
+      
+      // Special handling for template variable errors
+      if (errorMsg.includes('template') || errorMsg.includes('variables')) {
+        console.error('TEMPLATE VARIABLE ERROR: Some of the dynamic variables in your template might be missing or corrupted.');
+        console.error('Sent parameters:', templateParams);
+        console.error('Suggested fix: Update your template to use simple {{ variable }} syntax and avoid complex conditionals.');
       }
       
       return { success: false, error: sendError };
