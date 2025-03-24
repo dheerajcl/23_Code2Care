@@ -30,7 +30,7 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
     // Keyboard shortcuts for desktop
     const handleKeyDown = (e: KeyboardEvent) => {
       const isOriginalShortcut = e.ctrlKey && e.altKey && e.key === 't';
-      const isNewShortcut = e.ctrlKey && e.altKey && e.key === 'a';
+      const isNewShortcut = e.ctrlKey && e.shiftKey && e.key === 's';
       if (isOriginalShortcut || isNewShortcut) {
         e.preventDefault();
         toggleTalkBack();
@@ -59,34 +59,43 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
       }
     };
 
-    // Mobile touch handling (single tap speaks, double tap activates)
+    // Mobile touch handling
     const handleTouchStart = (e: TouchEvent) => {
-      if (!isActive || e.touches.length > 1) { // Ignore multi-touch except for toggle
-        if (e.touches.length === 2) {
-          const now = Date.now();
-          if (now - lastTap < 300) {
-            e.preventDefault();
-            toggleTalkBack();
-          }
-          lastTap = now;
+      if (!isActive) return;
+
+      if (e.touches.length === 2) { // Two-finger toggle
+        const now = Date.now();
+        if (now - lastTap < 300) {
+          e.preventDefault();
+          toggleTalkBack();
         }
+        lastTap = now;
         return;
       }
 
-      const target = e.target as HTMLElement;
-      const now = Date.now();
+      if (e.touches.length === 1) {
+        const target = e.target as HTMLElement;
+        const now = Date.now();
 
-      if (now - lastTap < 300 && target === lastTarget) { // Double tap
-        e.preventDefault(); // Prevent default single-tap action
-        const clickEvent = new Event('click', { bubbles: true });
-        target.dispatchEvent(clickEvent); // Trigger the original action
-      } else { // Single tap
-        e.preventDefault(); // Stop immediate action
-        speakElement(target); // Speak the element
+        if (now - lastTap < 300 && target === lastTarget) { // Double tap
+          e.preventDefault();
+          console.log('Double tap detected on:', target); // Debug
+          // Dispatch a click event to trigger the action
+          const clickEvent = new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+          });
+          target.dispatchEvent(clickEvent);
+        } else { // Single tap
+          e.preventDefault();
+          console.log('Single tap detected on:', target); // Debug
+          speakElement(target);
+        }
+
+        lastTap = now;
+        lastTarget = target;
       }
-
-      lastTap = now;
-      lastTarget = target;
     };
 
     // Speak selected text
