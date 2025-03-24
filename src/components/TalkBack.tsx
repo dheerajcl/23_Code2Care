@@ -26,6 +26,9 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
   let lastTap = 0;
   let lastTarget: EventTarget | null = null;
 
+  // Detect if we're on a mobile device (basic heuristic)
+  const isMobile = () => 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
   useEffect(() => {
     // Keyboard shortcuts for desktop
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -75,12 +78,16 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
 
       if (e.touches.length === 1) {
         const target = e.target as HTMLElement;
+        const tagName = target.tagName.toLowerCase();
+
+        // Only handle buttons and links on mobile
+        if (tagName !== 'button' && tagName !== 'a') return;
+
         const now = Date.now();
 
         if (now - lastTap < 300 && target === lastTarget) { // Double tap
           e.preventDefault();
-          console.log('Double tap detected on:', target); // Debug
-          // Dispatch a click event to trigger the action
+          console.log('Double tap detected on:', target);
           const clickEvent = new MouseEvent('click', {
             bubbles: true,
             cancelable: true,
@@ -89,7 +96,7 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
           target.dispatchEvent(clickEvent);
         } else { // Single tap
           e.preventDefault();
-          console.log('Single tap detected on:', target); // Debug
+          console.log('Single tap detected on:', target);
           speakElement(target);
         }
 
@@ -98,7 +105,7 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
       }
     };
 
-    // Speak selected text
+    // Speak selected text (works on both desktop and mobile)
     const handleSelectionChange = () => {
       if (!isActive) return;
       const selection = window.getSelection();
@@ -160,7 +167,8 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
       return `Button: ${buttonText || 'unnamed'}`;
     }
     if (element.tagName === 'A') {
-      return `Link: ${element.textContent?.trim() || element.getAttribute('href') || 'unnamed'}`;
+      const linkText = element.textContent?.trim() || element.getAttribute('href') || 'unnamed';
+      return `Link: ${linkText}`;
     }
 
     const content = element.textContent?.trim();
