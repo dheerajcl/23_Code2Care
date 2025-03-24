@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, Moon, Sun, Settings, User, LogOut } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Menu, X, Moon, Sun, Settings, User, LogOut, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu,
@@ -11,14 +11,28 @@ import {
   DropdownMenuLabel
 } from '@/components/ui/dropdown-menu';
 import Logo from "../assets/logo.png";
-import { useAuth } from '@/lib/authContext';
+import { useVolunteerAuth } from '@/lib/authContext';
+import { cn } from '@/lib/utils';
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout } = useVolunteerAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Only show profile on volunteer routes
+  const isVolunteerRoute = location.pathname.startsWith('/volunteer');
+  const showProfile = user && isVolunteerRoute;
+  
+  // On public routes, ensure admin data is not used
+  useEffect(() => {
+    if (!isVolunteerRoute && localStorage.getItem('adminUser')) {
+      // Don't show admin profile on non-admin routes
+      console.log('On public route, admin data found in localStorage');
+    }
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     await logout();
@@ -115,27 +129,37 @@ const Header: React.FC = () => {
             >
               Donate
             </Link>
-            {user ? (
-              <Link 
-                to={getDashboardUrl()}
-                className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
-              >
-                Dashboard
-              </Link>
-            ) : (
-              <Link 
-                to="/join-us" 
-                className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
-              >
-                Volunteer
-              </Link>
+            {showProfile && (
+              <div className="relative group">
+                <Link 
+                  to={getDashboardUrl()}
+                  className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
+                >
+                  Dashboard
+                  <ChevronDown className="h-4 w-4" />
+                </Link>
+                <div className="absolute left-0 top-full z-50 hidden mt-2 w-48 rounded-md bg-white p-2 shadow-lg group-hover:block">
+                  <Link to="/volunteer/events" className="block rounded px-3 py-2 text-sm hover:bg-gray-100">
+                    My Events
+                  </Link>
+                  <Link to="/volunteer/tasks" className="block rounded px-3 py-2 text-sm hover:bg-gray-100">
+                    My Tasks
+                  </Link>
+                  <Link to="/volunteer/progress" className="block rounded px-3 py-2 text-sm hover:bg-gray-100">
+                    My Progress
+                  </Link>
+                  <Link to="/volunteer/badges" className="block rounded px-3 py-2 text-sm hover:bg-gray-100">
+                    My Badges
+                  </Link>
+                </div>
+              </div>
             )}
           </nav>
 
           {/* User Menu & Controls */}
           <div className="flex items-center space-x-4">
             {/* Login or User Menu */}
-            {user ? (
+            {showProfile ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative">
@@ -253,7 +277,7 @@ const Header: React.FC = () => {
             About
           </Link>
           
-          {user ? (
+          {showProfile ? (
             // Show dashboard link if user is logged in
             <Link 
               to={getDashboardUrl()}
@@ -283,7 +307,7 @@ const Header: React.FC = () => {
           )}
           
           {/* Show logout option if logged in (mobile) */}
-          {user && (
+          {showProfile && (
             <button
               onClick={() => {
                 handleLogout();

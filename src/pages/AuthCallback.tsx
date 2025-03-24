@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/lib/authContext';
+import { useAuth, useAdminAuth, useVolunteerAuth } from '@/lib/authContext';
 import { Loader2 } from 'lucide-react';
 
 const AuthCallback: React.FC = () => {
   const navigate = useNavigate();
-  const { checkAuth, user } = useAuth();
+  const { checkAuth } = useAuth();
+  const { checkAuth: checkAdminAuth } = useAdminAuth();
+  const { checkAuth: checkVolunteerAuth } = useVolunteerAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -22,30 +25,47 @@ const AuthCallback: React.FC = () => {
           return;
         }
 
-        // If we have a session, refresh auth context
+        // If we have a session, check user information
         if (data.session) {
-          await checkAuth();
+          // Get user information from Supabase session
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('id, role, email, first_name, last_name')
+            .eq('id', data.session.user.id)
+            .single();
+
+          if (userError) {
+            setError(userError.message);
+            setLoading(false);
+            return;
+          }
+
+          if (userData) {
+            setUserRole(userData.role);
+            
+            // Check auth in the appropriate context based on role
+            if (userData.role === 'admin') {
+              await checkAdminAuth();
+            } else if (userData.role === 'volunteer') {
+              await checkVolunteerAuth();
+            }
+            
+            // Also check the main auth context for backward compatibility
+            await checkAuth();
+          }
         }
 
         // Check user role and redirect accordingly
         setTimeout(() => {
-          if (user) {
-            console.log("User role in AuthCallback:", user.role); // Debug log
-            
-            if (user.role === 'volunteer') {
-              // Volunteers always go to volunteer dashboard
-              navigate('/volunteer/dashboard', { replace: true });
-            } else if (user.role === 'admin') {
-              // Admins always go to admin dashboard - no questions asked
-              navigate('/admin/dashboard', { replace: true });
-            } else {
-              // If role is not determined, go to home page
-              console.log("No role determined, redirecting to home");
-              navigate('/', { replace: true });
-            }
+          if (userRole === 'volunteer') {
+            // Volunteers always go to volunteer dashboard
+            navigate('/volunteer/dashboard', { replace: true });
+          } else if (userRole === 'admin') {
+            // Admins always go to admin dashboard - no questions asked
+            navigate('/admin/dashboard', { replace: true });
           } else {
-            // No user found, go to home page
-            console.log("No user found, redirecting to home");
+            // If role is not determined, go to home page
+            console.log("No role determined, redirecting to home");
             navigate('/', { replace: true });
           }
           setLoading(false);
@@ -59,7 +79,7 @@ const AuthCallback: React.FC = () => {
     };
 
     handleCallback();
-  }, [navigate, checkAuth, user]);
+  }, [navigate, checkAuth, checkAdminAuth, checkVolunteerAuth]);
 
   if (loading) {
     return (
