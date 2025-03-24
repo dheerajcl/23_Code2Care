@@ -13,6 +13,7 @@ import { TaskResponse } from './volunteer/TaskResponse';
 import EventFeedback from './volunteer/events/feedback';
 import AdminEventFeedback from './admin/pages/AdminEventFeedback';
 import AdminNotificationDashboard from './admin/components/AdminNotificationDashboard';
+import { TalkBackProvider } from './components/TalkBack';
 
 // Pages
 import Index from "./pages/Index";
@@ -48,6 +49,7 @@ const queryClient = new QueryClient();
   <QueryClientProvider client={queryClient}>
       <AuthProvider>
     <TooltipProvider>
+    <TalkBackProvider>
       <BrowserRouter>
         <AnimatePresence mode="wait">
           <Routes>
@@ -214,6 +216,7 @@ const queryClient = new QueryClient();
           </Routes>
         </AnimatePresence>
       </BrowserRouter>
+          </TalkBackProvider>
           <Toaster />
           <Sonner />
     </TooltipProvider>

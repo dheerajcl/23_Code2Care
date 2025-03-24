@@ -8,7 +8,9 @@ import {
   Sun, 
   Type, 
   ZoomIn, 
-  ZoomOut 
+  ZoomOut,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,11 +20,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useTalkBack } from './TalkBack';
 
 const AccessibilityMenu: React.FC = () => {
   const [fontSize, setFontSize] = useState(100);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isHighContrast, setIsHighContrast] = useState(false);
+  const { isActive: isTalkBackActive, toggleTalkBack } = useTalkBack();
 
   useEffect(() => {
     // Check saved preferences from localStorage
@@ -112,6 +116,20 @@ const AccessibilityMenu: React.FC = () => {
           <Maximize2 className="h-4 w-4 mr-2" />
           <span>{isHighContrast ? 'Disable' : 'Enable'} High Contrast</span>
         </DropdownMenuItem>
+
+        <DropdownMenuItem onClick={toggleTalkBack} className="flex cursor-pointer items-center">
+          {isTalkBackActive ? (
+            <>
+              <VolumeX className="h-4 w-4 mr-2" />
+              <span>Disable Talk Back</span>
+            </>
+          ) : (
+            <>
+              <Volume2 className="h-4 w-4 mr-2" />
+              <span>Enable Talk Back</span>
+            </>
+          )}
+        </DropdownMenuItem>
         
         <DropdownMenuSeparator />
         
@@ -142,7 +160,7 @@ const AccessibilityMenu: React.FC = () => {
           <span>Reset Text Size</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
-    </DropdownMenu>
+    </DropdownMenu>    
   );
 };
 

@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useTalkback } from '../src/components/Talkback'
 
 const AccessibilityMenu: React.FC = () => {
   const [fontSize, setFontSize] = useState(100);
@@ -145,6 +146,7 @@ const AccessibilityMenu: React.FC = () => {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+
   );
 };
 
