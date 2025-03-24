@@ -30,7 +30,7 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
     // Keyboard shortcuts for desktop
     const handleKeyDown = (e: KeyboardEvent) => {
       const isOriginalShortcut = e.ctrlKey && e.altKey && e.key === 't';
-      const isNewShortcut = e.ctrlKey && e.shiftKey && e.key === 's';
+      const isNewShortcut = e.ctrlKey && e.altKey && e.key === 'a';
       if (isOriginalShortcut || isNewShortcut) {
         e.preventDefault();
         toggleTalkBack();
