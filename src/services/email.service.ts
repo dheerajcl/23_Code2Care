@@ -38,8 +38,9 @@ export interface EmailParams {
   status?: string;
   status_class?: string;
   dashboard_url?: string;
+  has_message?: string | boolean;
   // Add any additional fields you need here
-  [key: string]: string | undefined; // Index signature to allow any string keys
+  [key: string]: string | undefined | boolean; // Index signature to allow any string keys
 }
 
 // Track initialization state
@@ -230,6 +231,9 @@ export const sendTaskResponseEmail = async (params: EmailParams): Promise<{ succ
       to_name: params.to_name,
       from_name: "Samarthanam Trust",
       subject: params.subject || "Task Response Notification",
+      // Handle message conditional
+      message: params.message || '',
+      has_message: params.message ? 'true' : 'false',
       // Include all other parameters
       ...params
     };
@@ -256,6 +260,13 @@ export const sendTaskResponseEmail = async (params: EmailParams): Promise<{ succ
           to: templateParams.to
         });
         console.error('Check your EmailJS template and make sure it matches one of these parameter names.');
+      }
+      
+      // Special handling for template variable errors
+      if (errorMsg.includes('template') || errorMsg.includes('variables')) {
+        console.error('TEMPLATE VARIABLE ERROR: Some of the dynamic variables in your template might be missing or corrupted.');
+        console.error('Sent parameters:', templateParams);
+        console.error('Suggested fix: Update your template to use simple {{ variable }} syntax and avoid complex conditionals.');
       }
       
       return { success: false, error: sendError };
@@ -390,6 +401,71 @@ export const verifyEmailJSConfiguration = (): boolean => {
   return isValid;
 };
 
+// Test email sending function for debug purposes
+export const testEmailSending = async (email: string): Promise<{ success: boolean; message: string; details?: any }> => {
+  try {
+    console.log('Testing email sending to:', email);
+    
+    // Check environment variables
+    const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+    const templateId = import.meta.env.VITE_EMAILJS_TASK_TEMPLATE_ID; 
+    const userId = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+    
+    if (!serviceId || !templateId || !userId) {
+      console.error('Missing EmailJS environment variables');
+      return {
+        success: false,
+        message: 'EmailJS configuration is incomplete',
+        details: {
+          serviceId: serviceId ? 'Configured' : 'Missing',
+          templateId: templateId ? 'Configured' : 'Missing',
+          userId: userId ? 'Configured' : 'Missing'
+        }
+      };
+    }
+    
+    // Create a simple test template params
+    const templateParams = {
+      to_name: 'Test User',
+      volunteer_name: 'Test Volunteer',
+      task_name: 'Test Task',
+      event_name: 'Test Event',
+      to_email: email,
+      email: email,
+      reply_to: email,
+      recipient: email,
+      to: email,
+      subject: 'Test Email from Samarthanam',
+      message: 'This is a test email to verify your email configuration is working correctly.'
+    };
+    
+    console.log('Sending test email with params:', JSON.stringify(templateParams));
+    
+    // Try to send the email
+    const response = await emailjs.send(
+      serviceId,
+      templateId,
+      templateParams,
+      userId
+    );
+    
+    console.log('Test email sent successfully:', response);
+    
+    return {
+      success: true,
+      message: 'Test email sent successfully',
+      details: response
+    };
+  } catch (error) {
+    console.error('Error sending test email:', error);
+    return {
+      success: false,
+      message: 'Failed to send test email',
+      details: error instanceof Error ? { errorMessage: error.message, stack: error.stack } : error
+    };
+  }
+};
+
 // Export the emailService object
 export const emailService = {
   initEmailJS,
@@ -397,5 +473,6 @@ export const emailService = {
   sendTaskResponseEmail,
   generateTaskResponseUrls,
   debugTemplate,
-  verifyEmailJSConfiguration
+  verifyEmailJSConfiguration,
+  testEmailSending
 }; 

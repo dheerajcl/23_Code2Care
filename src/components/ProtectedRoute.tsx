@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/lib/authContext';
+import { useAuth, useAdminAuth, useVolunteerAuth } from '@/lib/authContext';
 import LoadingSpinner from './LoadingSpinner';
 
 type ProtectedRouteProps = {
@@ -14,10 +14,22 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   roles = [], 
   redirectTo = '/login'
 }) => {
-  const { user, loading } = useAuth();
+  // Use the appropriate auth context based on roles
+  const { user: contextUser, loading: contextLoading } = useAuth();
+  const { user: adminUser, loading: adminLoading } = useAdminAuth();
+  const { user: volunteerUser, loading: volunteerLoading } = useVolunteerAuth();
+  
   const location = useLocation();
   const [localUser, setLocalUser] = useState<any>(null);
   const [initialized, setInitialized] = useState(false);
+
+  // Determine if this is an admin or volunteer route
+  const isAdminRoute = roles.includes('admin') && !roles.includes('volunteer');
+  const isVolunteerRoute = roles.includes('volunteer') && !roles.includes('admin');
+  
+  // Select the appropriate user and loading state
+  const user = isAdminRoute ? adminUser : (isVolunteerRoute ? volunteerUser : contextUser);
+  const loading = isAdminRoute ? adminLoading : (isVolunteerRoute ? volunteerLoading : contextLoading);
 
   // Check localStorage as fallback
   useEffect(() => {

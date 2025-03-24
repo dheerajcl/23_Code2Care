@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "db:setup": "node setup-db.js"
+    "db:setup": "node setup-db.js",
+    "migrate:passwords": "tsx src/scripts/migrate-passwords.ts"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
@@ -56,6 +57,9 @@
     "emailjs-com": "^3.2.0",
     "embla-carousel-react": "^8.3.0",
     "framer-motion": "^12.5.0",
+    "i18next": "^24.2.3",
+    "i18next-browser-languagedetector": "^8.0.4",
+    "i18next-http-backend": "^3.0.2",
     "input-otp": "^1.2.4",
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",
@@ -70,6 +74,7 @@
     "react-helmet-async": "^2.0.5",
     "react-hook-form": "^7.53.0",
     "react-hot-toast": "^2.5.2",
+    "react-i18next": "^15.4.1",
     "react-resizable-panels": "^2.1.3",
     "react-router-dom": "^6.30.0",
     "recharts": "^2.15.1",

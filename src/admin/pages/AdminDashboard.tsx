@@ -14,7 +14,7 @@ import {
   ChevronDown,
   Bell
 } from 'lucide-react';
-import { useAuth } from '@/lib/authContext';
+import { useAdminAuth } from '@/lib/authContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -38,7 +38,7 @@ import { getDashboardStats, getEvents, getVolunteers } from '@/services/database
 import { supabase } from '@/lib/supabase';
 
 const AdminDashboard: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout } = useAdminAuth();
   const navigate = useNavigate();
 
   // State for dashboard data
@@ -569,7 +569,6 @@ const AdminDashboard: React.FC = () => {
           </div>
         </main>
       </div>
-      <AccessibilityMenu/>
     </div>
   );
 };

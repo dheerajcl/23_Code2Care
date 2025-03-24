@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, MapPin, Clock, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,29 +18,19 @@ import LandingHeader from '@/components/LandingHeader';
 import Footer from '@/components/Footer';
 import { format } from 'date-fns';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
+import { useAuth } from '@/lib/authContext';
+import { supabase } from '@/lib/supabase';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 const ParticipantRegistration = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth(); // Changed from isLoading to loading
   
   const [submitting, setSubmitting] = useState(false);
-  
-  // Dummy event data with an image
-  const event = {
-    id: id || '1',
-    title: 'Beach Cleanup Drive',
-    description: "Join us for our monthly beach cleanup drive! We'll be collecting trash and plastic waste from the shoreline to protect marine life and keep our beaches beautiful.\n\nThis is a family-friendly event open to volunteers of all ages. We'll provide gloves, trash bags, and refreshments. Come make a difference with us!",
-    date: '2025-04-15',
-    start_time: '09:00:00',
-    end_time: '12:00:00',
-    location: 'Sunshine Beach, Main Entrance',
-    category: 'Environment',
-    capacity: 50,
-    requirements: "Please wear comfortable clothes and closed-toe shoes. Don't forget to bring sunscreen, a hat, and a water bottle. We recommend bringing a reusable water bottle to reduce plastic waste.",
-    status: 'scheduled',
-    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-1.2.1&auto=format&fit=crop&w=1353&q=80' // Example image URL
-  };
+  const [event, setEvent] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -50,6 +40,86 @@ const ParticipantRegistration = () => {
     specialRequirements: '',
     receiveNotifications: true
   });
+  
+  // Fetch event details
+  useEffect(() => {
+    const fetchEvent = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('event')
+          .select('*')
+          .eq('id', id)
+          .single();
+          
+        if (error) throw error;
+        
+        if (data) {
+          setEvent(data);
+        } else {
+          // Handle case where event is not found
+          toast({
+            title: "Event not found",
+            description: "The requested event could not be found.",
+            variant: "destructive",
+          });
+          navigate('/events');
+        }
+      } catch (error) {
+        console.error('Error fetching event:', error);
+        toast({
+          title: "Error loading event",
+          description: "There was a problem loading the event details.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchEvent();
+  }, [id, navigate, toast]);
+  
+  // Check if user is logged in and fetch their details
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!authLoading && user) { // Changed from isLoading to authLoading
+        try {
+          // Check if the user already exists in the volunteers table
+          const { data, error } = await supabase
+            .from('volunteer')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+            
+          if (error && error.code !== 'PGRST116') { // PGRST116 is the error code for "no rows returned"
+            throw error;
+          }
+          
+          if (data) {
+            // Populate form with volunteer data
+            setFormData({
+              fullName: data.first_name+' '+data.last_name || '',
+              email: data.email || '',
+              phone: data.phone || '',
+              address: data.address || '',
+              specialRequirements: '',
+              receiveNotifications: true
+            });
+          } else {
+            // User exists but not in volunteers table, just set email
+            setFormData(prev => ({
+              ...prev,
+              email: user.email || ''
+            }));
+          }
+        } catch (error) {
+          console.error('Error fetching volunteer data:', error);
+        }
+      }
+    };
+    
+    fetchUserData();
+  }, [user, authLoading]); // Changed from isLoading to authLoading
   
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -68,36 +138,114 @@ const ParticipantRegistration = () => {
     });
   };
   
-  // Handle form submission - simplified to just show success message
-  const handleSubmit = (e: React.FormEvent) => {
+  // Check if user is already registered for this event
+  const checkExistingRegistration = async () => {
+    if (!user) return false;
+    
+    try {
+      const { data, error } = await supabase
+        .from('participant')
+        .select('*')
+        .eq('participant_email', user.email)
+        .eq('event_id', id)
+        .single();
+        
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+      
+      return !!data;
+    } catch (error) {
+      console.error('Error checking registration:', error);
+      return false;
+    }
+  };
+  
+  // Send confirmation email
+  const sendConfirmationEmail = async (email: string) => {
+    try {
+      // Using Supabase Edge Functions to send email
+      const { error } = await supabase.functions.invoke('send-confirmation-email', {
+        body: {
+          to: email,
+          eventName: event?.title,
+          eventDate: event?.date,
+          eventTime: `${formatTime(event?.start_time)} - ${formatTime(event?.end_time)}`,
+          eventLocation: event?.location,
+          participantName: formData.fullName
+        }
+      });
+      
+      if (error) throw error;
+      
+    } catch (error) {
+      console.error('Error sending confirmation email:', error);
+      // Continue with registration even if email fails
+    }
+  };
+  
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     
-    // Simulate form submission
-    setTimeout(() => {
+    try {
+      // Check if already registered
+      const isRegistered = await checkExistingRegistration();
+      
+      if (isRegistered) {
+        toast({
+          title: "Already Registered",
+          description: "You're already registered for this event.",
+          duration: 5000,
+        });
+        setSubmitting(false);
+        return;
+      }
+      
+      // Create participant record
+      const participantData = {
+        participant_id: user?.id || null,
+        participant_name: formData.fullName,
+        participant_email: formData.email,
+        participant_phone: formData.phone,
+        participant_address: formData.address,
+        participant_special: formData.specialRequirements,
+        event_id: id,
+        notification: formData.receiveNotifications
+      };
+      
+      const { error } = await supabase
+        .from('participant')
+        .insert([participantData]);
+        
+      if (error) throw error;
+      
+      // Send confirmation email
+      await sendConfirmationEmail(formData.email);
+      
       toast({
         title: "Registration Successful!",
         description: "You've been registered for this event. Check your email for confirmation.",
         duration: 5000,
       });
       
-      // Reset form
-      setFormData({
-        fullName: '',
-        email: '',
-        phone: '',
-        address: '',
-        specialRequirements: '',
-        receiveNotifications: true
-      });
-      
-      setSubmitting(false);
-
       navigate('/events/participant/success');
-    }, 1000);
+      
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      toast({
+        title: "Registration Failed",
+        description: error.message || "There was a problem with your registration. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
   
   const formatDate = (dateString: string) => {
+    if (!dateString) return '';
     try {
       return format(new Date(dateString), 'PPP');
     } catch (e) {
@@ -106,12 +254,36 @@ const ParticipantRegistration = () => {
   };
   
   const formatTime = (timeString: string) => {
+    if (!timeString) return '';
     try {
       return format(new Date(`2000-01-01T${timeString}`), 'h:mm a');
     } catch (e) {
       return timeString;
     }
   };
+  
+  if (loading || authLoading) { // Use the LoadingSpinner component
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <LoadingSpinner />
+        <p className="mt-4">Loading event details...</p>
+      </div>
+    );
+  }
+  
+  if (!event) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <p>Event not found</p>
+        <Button 
+          onClick={() => navigate('/events')}
+          className="mt-4"
+        >
+          Back to Events
+        </Button>
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen flex flex-col mt-12">
@@ -136,19 +308,17 @@ const ParticipantRegistration = () => {
                   <CardDescription className="text-base">
                     <span className="inline-flex items-center mr-4">
                       <Calendar className="mr-1 h-4 w-4" /> 
-                      {formatDate(event.date)}
+                      {formatDate(event.start_date)} - {formatDate(event.end_date)}
                     </span>
+                    <br></br>
                     <span className="inline-flex items-center mr-4">
                       <Clock className="mr-1 h-4 w-4" /> 
-                      {formatTime(event.start_time)} - {formatTime(event.end_time)}
+                      {formatTime(event.start_date)} - {formatTime(event.end_date)}
                     </span>
+                    <br></br>
                     <span className="inline-flex items-center mr-4">
                       <MapPin className="mr-1 h-4 w-4" /> 
                       {event.location}
-                    </span>
-                    <span className="inline-flex items-center">
-                      <User className="mr-1 h-4 w-4" /> 
-                      {event.capacity} spots
                     </span>
                   </CardDescription>
                 </div>
@@ -159,13 +329,15 @@ const ParticipantRegistration = () => {
             </CardHeader>
             <CardContent>
               {/* Event Image */}
-              <div className="mb-6">
-                <img
-                  src={event.image}
-                  alt={event.title}
-                  className="w-full h-64 object-cover rounded-lg"
-                />
-              </div>
+              {event.image_url && (
+                <div className="mb-6">
+                  <img
+                    src={event.image_url}
+                    alt={event.title}
+                    className="w-full h-64 object-cover rounded-lg"
+                  />
+                </div>
+              )}
               
               <div className="space-y-4">
                 <div>
@@ -188,7 +360,9 @@ const ParticipantRegistration = () => {
             <CardHeader>
               <CardTitle>Register as Participant</CardTitle>
               <CardDescription>
-                Fill out the form below to register for this event. We'll send you a confirmation email.
+                {user ? 
+                  "Your profile information has been pre-filled. Please verify and complete the form below." :
+                  "Fill out the form below to register for this event. We'll send you a confirmation email."}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -277,14 +451,19 @@ const ParticipantRegistration = () => {
               </form>
             </CardContent>
             <CardFooter>
-              <Button 
-                type="submit" 
-                className="w-full md:w-auto" 
-                onClick={handleSubmit}
-                disabled={submitting}
-              >
-                {submitting ? 'Registering...' : 'Register for Event'}
-              </Button>
+              {submitting ? (
+                <Button disabled className="w-full md:w-auto">
+                  <LoadingSpinner/> Registering...
+                </Button>
+              ) : (
+                <Button 
+                  type="submit" 
+                  className="w-full md:w-auto" 
+                  onClick={handleSubmit}
+                >
+                  Register for Event
+                </Button>
+              )}
             </CardFooter>
           </Card>
         </div>

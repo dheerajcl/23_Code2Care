@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema } from '@/services/auth.service';
 import { loginVolunteer } from '@/services/auth.service';
-import { useAuth } from '@/lib/authContext';
+import { useVolunteerAuth } from '@/lib/authContext';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 import Header from '@/components/Header';
@@ -23,7 +23,7 @@ type LoginFormValues = {
 
 const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
-  const { user, setUser } = useAuth();
+  const { user, setUser } = useVolunteerAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -53,7 +53,7 @@ const Login: React.FC = () => {
       if (result.success && result.user) {
         console.log('Login successful');
         
-        // Set user in context
+        // Set user in volunteer context
         setUser(result.user);
         
         // Show success toast
@@ -126,6 +126,14 @@ const Login: React.FC = () => {
                 {errors.password && (
                   <p className="text-red-500 text-sm">{errors.password.message}</p>
                 )}
+                <div className="text-right">
+                  <Link 
+                    to="/forgot-password" 
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Forgot Password?
+                  </Link>
+                </div>
               </div>
               
               <Button 
