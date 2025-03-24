@@ -33,6 +33,7 @@ const AdminVolunteers = () => {
   const [selectedVolunteer, setSelectedVolunteer] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const { adminUser, logout } = useAuth();
+  const auth = useAuth();
   const navigate = useNavigate();
 
   // Handle opening the volunteer details modal
@@ -666,7 +667,7 @@ const AdminVolunteers = () => {
 
   return (
     <div className="h-screen bg-gray-100 flex flex-col">
-      <AdminHeader  user={User} handleLogout={handleLogout} title="Volunteer Management" />
+      <AdminHeader  user={auth.user} handleLogout={handleLogout} title="Volunteer Management" />
     <div className="flex h-screen bg-gray-100">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
