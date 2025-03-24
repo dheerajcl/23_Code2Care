@@ -7,35 +7,42 @@ const Chatbot: React.FC = () => {
 
   const handleSendMessage = async () => {
     if (!query.trim()) return;
-
-    // Add user message to the chat history
+  
+    // Add user message to chat history
     const newMessages = [...messages, { user: query, bot: "" }];
-    setMessages(newMessages); // Update UI
-    setQuery(""); // Clear input
-
+    setMessages(newMessages);
+    setQuery("");
+  
     try {
-      const res = await fetch(`http://localhost:8000/search/?query=${encodeURIComponent(query)}`);
+      // POST request with conversation history
+      const res = await fetch("http://localhost:8000/chat/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: newMessages,  // Pass entire chat history!
+        }),
+      });
+  
       const data = await res.json();
-      
-      // Extract bot response from API
-      const botResponse = data.chatbot_response || "I'm sorry, I couldn't find relevant events.";
-
-      // Update the last message with bot response
+      const botResponse = data.response || "I'm sorry, I couldn't find relevant events.";
+  
+      // Update chat with bot reply
       setMessages([...newMessages.slice(0, -1), { user: newMessages[newMessages.length - 1].user, bot: botResponse }]);
     } catch (error) {
       console.error("Chatbot error:", error);
       setMessages([...newMessages.slice(0, -1), { user: newMessages[newMessages.length - 1].user, bot: "Error connecting to chatbot." }]);
     }
   };
+  
 
   return (
     <div>
       {/* Floating Chatbot Button */}
       <button 
         onClick={() => setShowChat(!showChat)} 
-        className="fixed bottom-10 right-10 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition"
+        className="fixed bottom-20 right-10 bg-red-600 text-white p-3 rounded-full shadow-lg hover:bg-red-700 transition"
       >
-        💬
+        💬 chatbot
       </button>
 
       {/* Chatbot UI */}
@@ -48,7 +55,7 @@ const Chatbot: React.FC = () => {
           <div className="h-64 overflow-y-auto border p-2 mb-2">
             {messages.map((msg, index) => (
               <div key={index} className="mb-2">
-                <p className="font-bold text-blue-600">You: {msg.user}</p>
+                <p className="font-bold text-red-600">You: {msg.user}</p>
                 <p className="font-bold text-gray-800">Bot: {msg.bot}</p>
               </div>
             ))}
@@ -62,7 +69,7 @@ const Chatbot: React.FC = () => {
           />
           <button 
             onClick={handleSendMessage} 
-            className="mt-2 bg-blue-500 text-white w-full p-2 rounded hover:bg-blue-700 transition"
+            className="mt-2 bg-red-500 text-white w-full p-2 rounded hover:bg-red-700 transition"
           >
             Send
           </button>

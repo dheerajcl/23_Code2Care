@@ -79,7 +79,6 @@ def retrieve_info(matched_ids):
                     f"   - **Experience:** {v['experience']}\n"
                     f"   - **Badges:** {v['badges']}\n"
                     f"   - **Rating:** {v['rating']}\n"
-                    f"   - **Bio:** {v['bio']}\n"
                     f"   - **Status:** {v['status']}\n"
                     f"   - **Last Active:** {v['last_active']}\n"
                 )
@@ -159,7 +158,8 @@ def process_user_query(user_input, volunteer_id):
         # Pass to default retrieval process
         return default_retriever_logic(user_input)
 
-def get_gemini_response(query, context):
+def get_gemini_response(query, context, conversation_history=""):
+
     print(f"🔍 Query: {query}")
     print(f"📌 Retrieved Context: {context}")
 
@@ -177,6 +177,14 @@ def get_gemini_response(query, context):
     f"Available Data:\n{context}\n"
     f"---\n\n"
     f"Give your answer like you're talking to a person."
+    f"You are a helpful assistant for volunteers.\n"
+    f"Here is the chat history so far:\n{conversation_history}\n\n"
+    f"---\n"
+    f"User's latest question:\n{query}\n\n"
+    f"Relevant Data:\n{context}\n"
+    f"---\n\n"
+    f"Answer in a friendly, clear way using both history and available data."
+
 )
 
 
@@ -190,7 +198,12 @@ def home():
     return {"message": "Volunteer Chatbot API is running!"}
 
 @app.get("/search/")
-def search(query: str = Query(..., description="Search query to find tasks, events, or assignments")):
+def search(
+    query: str = Query(..., description="Search query to find tasks, events, or assignments"),
+    conversation_history: str = "",
+    volunteer_id: str = None  # <-- Add this line
+):
+
     query_embedding = model.encode([query], convert_to_numpy=True)
     matched_ids = []
 
@@ -203,7 +216,7 @@ def search(query: str = Query(..., description="Search query to find tasks, even
             break
 
     # LOCATION DETECTION
-    location_keywords = ["bangalore", "bengaluru", "delhi", "chennai", "mumbai"]  # Expand as needed
+    location_keywords = ["bangalojre", "bengaluru", "delhi", "chennai", "mumbai"]  # Expand as needed
     location_in_query = None
     for loc in location_keywords:
         if loc.lower() in query.lower():
@@ -279,7 +292,7 @@ def search(query: str = Query(..., description="Search query to find tasks, even
 
     # Retrieve context
     context = retrieve_info(matched_ids)
-    chatbot_response = get_gemini_response(query, context)
+    chatbot_response = get_gemini_response(query, context, conversation_history)
 
     return {
         "query": query,
@@ -290,14 +303,21 @@ class ChatRequest(BaseModel):
     messages: list[dict]  # Expecting list of {"user": "text", "bot": "text"}
 
 @app.post("/chat/")
-async def chat(request: ChatRequest):
-    user_query = request.messages[-1]["user"]
-    print(f"🔍 User Query: {user_query}")
+async def chat(request: ChatRequest, volunteer_id: str = Query(None)):
+    # 👇 Combine all previous messages to maintain context
+    conversation_history = ""
+    for msg in request.messages:
+        conversation_history += f"User: {msg['user']}\nBot: {msg['bot']}\n"
 
-    search_response = search(query=user_query)
+    latest_user_query = request.messages[-1]["user"]
+
+    # 👇 Send entire conversation to search function
+    search_response = search(query=latest_user_query, volunteer_id=volunteer_id, conversation_history=conversation_history)
+    
     chatbot_response = search_response.get("chatbot_response", "I couldn't find relevant information.")
 
     return {"response": chatbot_response}
+
 
 # Run server
 if __name__ == "__main__":

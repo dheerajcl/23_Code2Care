@@ -46,7 +46,7 @@ import { notificationService } from '@/services/notification.service';
 import { toast } from 'sonner';
 import Chatbot from "@/components/chatbot";
 import { ErrorBoundary } from 'react-error-boundary';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export const assignedTasks = [
   {

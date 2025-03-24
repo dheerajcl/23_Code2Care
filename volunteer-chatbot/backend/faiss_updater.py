@@ -26,7 +26,7 @@ def update_faiss_index():
             f"City: {v['city']}, State: {v['state']}\n"
             f"Skills: {v['skills']}, Interests: {v['interests']}\n"
             f"Availability: {v['availability']}, Experience: {v['experience']}\n"
-            f"Badges: {v['badges']}, Bio: {v['bio']}\n"
+            f"Badges: {v['badges']}\n"
             f"Status: {v['status']}, Last Active: {v['last_active']}\n"
         )
         all_data.append(text)
