@@ -27,43 +27,32 @@ const AdminAuthContext = createContext<AuthContextType | undefined>(undefined);
 const VolunteerAuthContext = createContext<AuthContextType | undefined>(undefined);
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Get user data from localStorage helper function
+const getStoredUser = (key: string) => {
+  try {
+    const userData = localStorage.getItem(key);
+    if (userData) {
+      return JSON.parse(userData);
+    }
+  } catch (error) {
+    console.error(`Error parsing ${key} from localStorage:`, error);
+    localStorage.removeItem(key);
+  }
+  return null;
+};
+
 // Admin Provider component
 export const AdminAuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Load admin user from localStorage on initial mount
-  useEffect(() => {
-    const loadUser = () => {
-      try {
-        const savedUser = localStorage.getItem('adminUser');
-        if (savedUser) {
-          const parsedUser = JSON.parse(savedUser);
-          
-          // Only set admin user if the role is correct
-          if (parsedUser && parsedUser.role === 'admin') {
-            setUser(parsedUser);
-          } else {
-            // Remove invalid admin user data
-            console.warn('Found invalid admin user data in localStorage', parsedUser);
-            localStorage.removeItem('adminUser');
-          }
-        }
-      } catch (error) {
-        console.error('Error loading admin user from localStorage:', error);
-        localStorage.removeItem('adminUser');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    loadUser();
-  }, []);
+  const [user, setUser] = useState<User | null>(() => getStoredUser('adminUser'));
+  const [loading, setLoading] = useState(false);
 
   // Update localStorage when admin user changes
   useEffect(() => {
     if (user) {
       localStorage.setItem('adminUser', JSON.stringify(user));
+      
+      // Also update shared user for backwards compatibility
+      localStorage.setItem('user', JSON.stringify(user));
     } else {
       localStorage.removeItem('adminUser');
     }
@@ -102,13 +91,9 @@ export const AdminAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
   const checkAuth = async () => {
     try {
       setLoading(true);
-      const savedUser = localStorage.getItem('adminUser');
-      if (savedUser) {
-        const parsedUser = JSON.parse(savedUser);
-        // Validate that this is an admin user
-        if (parsedUser?.role === 'admin') {
-          setUser(parsedUser);
-        }
+      const adminUser = getStoredUser('adminUser');
+      if (adminUser?.role === 'admin') {
+        setUser(adminUser);
       }
     } catch (error) {
       console.error('Error checking admin auth:', error);
@@ -126,41 +111,16 @@ export const AdminAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
 
 // Volunteer Provider component
 export const VolunteerAuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Load volunteer user from localStorage on initial mount
-  useEffect(() => {
-    const loadUser = () => {
-      try {
-        const savedUser = localStorage.getItem('volunteerUser');
-        if (savedUser) {
-          const parsedUser = JSON.parse(savedUser);
-          
-          // Only set volunteer user if the role is correct
-          if (parsedUser && parsedUser.role === 'volunteer') {
-            setUser(parsedUser);
-          } else {
-            // Remove invalid volunteer user data
-            console.warn('Found invalid volunteer user data in localStorage', parsedUser);
-            localStorage.removeItem('volunteerUser');
-          }
-        }
-      } catch (error) {
-        console.error('Error loading volunteer user from localStorage:', error);
-        localStorage.removeItem('volunteerUser');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    loadUser();
-  }, []);
+  const [user, setUser] = useState<User | null>(() => getStoredUser('volunteerUser'));
+  const [loading, setLoading] = useState(false);
 
   // Update localStorage when volunteer user changes
   useEffect(() => {
     if (user) {
       localStorage.setItem('volunteerUser', JSON.stringify(user));
+      
+      // Also update shared user for backwards compatibility
+      localStorage.setItem('user', JSON.stringify(user));
     } else {
       localStorage.removeItem('volunteerUser');
     }
@@ -199,13 +159,9 @@ export const VolunteerAuthProvider: React.FC<{ children: ReactNode }> = ({ child
   const checkAuth = async () => {
     try {
       setLoading(true);
-      const savedUser = localStorage.getItem('volunteerUser');
-      if (savedUser) {
-        const parsedUser = JSON.parse(savedUser);
-        // Validate that this is a volunteer user
-        if (parsedUser?.role === 'volunteer') {
-          setUser(parsedUser);
-        }
+      const volunteerUser = getStoredUser('volunteerUser');
+      if (volunteerUser?.role === 'volunteer') {
+        setUser(volunteerUser);
       }
     } catch (error) {
       console.error('Error checking volunteer auth:', error);
@@ -223,35 +179,30 @@ export const VolunteerAuthProvider: React.FC<{ children: ReactNode }> = ({ child
 
 // Legacy AuthProvider component
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Check both admin and volunteer localStorage data
-  useEffect(() => {
-    const loadUser = () => {
-      try {
-        // Check for admin user first
-        const adminUser = localStorage.getItem('adminUser');
-        if (adminUser) {
-          setUser(JSON.parse(adminUser));
-          setLoading(false);
-          return;
-        }
-        
-        // Check for volunteer user
-        const volunteerUser = localStorage.getItem('volunteerUser');
-        if (volunteerUser) {
-          setUser(JSON.parse(volunteerUser));
-        }
-      } catch (error) {
-        console.error('Error loading user from localStorage:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Initialize with user from localStorage
+  const [user, setUser] = useState<User | null>(() => {
+    const adminUser = getStoredUser('adminUser');
+    if (adminUser) return adminUser;
     
-    loadUser();
-  }, []);
+    const volunteerUser = getStoredUser('volunteerUser');
+    if (volunteerUser) return volunteerUser;
+    
+    return getStoredUser('user');
+  });
+  const [loading, setLoading] = useState(false);
+
+  // Update role-specific storage when user changes in legacy context
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user));
+      // Also update role-specific storage
+      if (user.role === 'admin') {
+        localStorage.setItem('adminUser', JSON.stringify(user));
+      } else if (user.role === 'volunteer') {
+        localStorage.setItem('volunteerUser', JSON.stringify(user));
+      }
+    }
+  }, [user]);
 
   // Logout function for legacy context
   const logout = async () => {
@@ -286,17 +237,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setLoading(true);
       // Check admin user first
-      const adminUser = localStorage.getItem('adminUser');
+      const adminUser = getStoredUser('adminUser');
       if (adminUser) {
-        setUser(JSON.parse(adminUser));
-        setLoading(false);
+        setUser(adminUser);
         return;
       }
       
       // Check volunteer user
-      const volunteerUser = localStorage.getItem('volunteerUser');
+      const volunteerUser = getStoredUser('volunteerUser');
       if (volunteerUser) {
-        setUser(JSON.parse(volunteerUser));
+        setUser(volunteerUser);
       }
     } catch (error) {
       console.error('Error checking auth:', error);

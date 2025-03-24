@@ -36,68 +36,66 @@ const VolunteerEvents = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    const fetchEvents = async () => {
-      if (!user) return;
-
-      try {
-        setLoading(true);
-        // Fetch registered events
-        // const { data: registeredEvents, error: eventsError } = await supabase
-        //   .from('event')
-        //   .select('*')
-        //   .eq('status', 'scheduled');
-        // First, get all event_ids the user is registered for
-        const { data: registrations, error: registrationsError } = await supabase
-          .from('event_signup')
-          .select('event_id')
-          .eq('volunteer_id', user.id);
-
-        if (registrationsError) {
-          console.error('Error fetching registrations:', registrationsError);
-          return;
-        }
-
-        // Extract just the event_ids from the result
-        const eventIds = registrations.map(reg => reg.event_id);
-
-        // Now fetch the events with those IDs
-        const { data: registeredEvents, error: eventsError } = await supabase
-          .from('event')
-          .select('*')
-          .in('id', eventIds);
-
-        if (eventsError) throw eventsError;
-
-        // Fetch feedback status for all events
-        const { data: feedbackData, error: feedbackError } = await supabase
-          .from('feedback')
-          .select('event_id')
-          .eq('volunteer_id', user.id);
-
-        if (feedbackError) throw feedbackError;
-
-        // Create a map of event_id to feedback status
-        const feedbackMap = {};
-        feedbackData?.forEach(feedback => {
-          feedbackMap[feedback.event_id] = true;
-        });
-
-        setFeedbackStatus(feedbackMap);
-        setEvents(registeredEvents || []);
-
-        // Extract unique event types
-        const types = [...new Set(events.map(event => event.category))];
-        setEventTypes(types);
-      } catch (error) {
-        console.error('Error:', error);
-        toast.error('Failed to load events');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchEvents();
+    // Fetch events when user is available
+    if (user) {
+      fetchEvents();
+    }
   }, [user]);
+
+  const fetchEvents = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      // First, get all event_ids the user is registered for
+      const { data: registrations, error: registrationsError } = await supabase
+        .from('event_signup')
+        .select('event_id')
+        .eq('volunteer_id', user.id);
+
+      if (registrationsError) {
+        console.error('Error fetching registrations:', registrationsError);
+        return;
+      }
+
+      // Extract just the event_ids from the result
+      const eventIds = registrations.map(reg => reg.event_id);
+
+      // Now fetch the events with those IDs
+      const { data: registeredEvents, error: eventsError } = await supabase
+        .from('event')
+        .select('*')
+        .in('id', eventIds);
+
+      if (eventsError) throw eventsError;
+
+      // Fetch feedback status for all events
+      const { data: feedbackData, error: feedbackError } = await supabase
+        .from('feedback')
+        .select('event_id')
+        .eq('volunteer_id', user.id);
+
+      if (feedbackError) throw feedbackError;
+
+      // Create a map of event_id to feedback status
+      const feedbackMap = {};
+      feedbackData?.forEach(feedback => {
+        feedbackMap[feedback.event_id] = true;
+      });
+
+      setFeedbackStatus(feedbackMap);
+      setEvents(registeredEvents || []);
+
+      // Extract unique event types
+      const types = [...new Set(events.map(event => event.category))];
+      setEventTypes(types);
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Failed to load events');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();

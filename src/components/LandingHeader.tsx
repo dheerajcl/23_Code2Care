@@ -11,18 +11,36 @@ import {
   DropdownMenuLabel
 } from '@/components/ui/dropdown-menu';
 import Logo from "../assets/logo.png";
-import { useAuth } from '@/lib/authContext';
+import { useAuth, useAdminAuth, useVolunteerAuth } from '@/lib/authContext';
 
 const LandingHeader: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const { user, logout } = useAuth();
+  
+  // Check all authentication contexts for logged in state
+  const { user: sharedUser, logout: sharedLogout } = useAuth();
+  const { user: adminUser, logout: adminLogout } = useAdminAuth();
+  const { user: volunteerUser, logout: volunteerLogout } = useVolunteerAuth();
+  
+  // Determine which user to display (if any)
+  const user = adminUser || volunteerUser || sharedUser;
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await logout();
-    navigate('/');
+    try {
+      // Use the appropriate logout function based on user type
+      if (adminUser) {
+        await adminLogout();
+      } else if (volunteerUser) {
+        await volunteerLogout();
+      } else {
+        await sharedLogout();
+      }
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   useEffect(() => {
@@ -70,7 +88,7 @@ const LandingHeader: React.FC = () => {
   // Function to get the dashboard URL based on user role
   const getDashboardUrl = () => {
     if (!user) return '/login';
-    return '/volunteer/dashboard';
+    return user.role === 'admin' ? '/admin/dashboard' : '/volunteer/dashboard';
   };
 
   return (
@@ -148,8 +166,11 @@ const LandingHeader: React.FC = () => {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{user.firstName} {user.lastName}</p>
+                      <p className="text-sm font-medium leading-none">
+                        {user.firstName || user.first_name} {user.lastName || user.last_name}
+                      </p>
                       <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                      <p className="text-xs leading-none text-muted-foreground mt-1 capitalize">{user.role}</p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -254,47 +275,49 @@ const LandingHeader: React.FC = () => {
           >
             About
           </Link>
-          
+          <Link 
+            to="/donate" 
+            className="block px-3 py-2 rounded-md hover:bg-secondary transition-colors"
+            onClick={() => setIsMenuOpen(false)}
+          >
+            Donate
+          </Link>
           {user ? (
-            // Show dashboard link if user is logged in
-            <Link 
-              to={getDashboardUrl()}
-              className="block px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Dashboard
-            </Link>
-          ) : (
-            // Show login and volunteer links if user is not logged in
             <>
               <Link 
-                to="/login"
+                to={getDashboardUrl()}
+                className="block px-3 py-2 rounded-md hover:bg-secondary transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Dashboard
+              </Link>
+              <button
+                onClick={() => {
+                  handleLogout();
+                  setIsMenuOpen(false);
+                }}
+                className="w-full text-left block px-3 py-2 rounded-md hover:bg-secondary transition-colors"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link 
+                to="/join-us" 
+                className="block px-3 py-2 rounded-md hover:bg-secondary transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Volunteer
+              </Link>
+              <Link 
+                to="/login" 
                 className="block px-3 py-2 rounded-md hover:bg-secondary transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Login
               </Link>
-              <Link 
-                to="/join-us" 
-                className="block px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Volunteer
-              </Link>
             </>
-          )}
-          
-          {/* Show logout option if logged in (mobile) */}
-          {user && (
-            <button
-              onClick={() => {
-                handleLogout();
-                setIsMenuOpen(false);
-              }}
-              className="w-full text-left block px-3 py-2 rounded-md text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 transition-colors"
-            >
-              Log out
-            </button>
           )}
         </div>
       </div>

@@ -96,24 +96,20 @@ export const eventData = [
 ];
 
 const VolunteerTaskDetails = () => {
-  const [activeView, setActiveView] = useState('table');
-  const navigate = useNavigate();
   const { id } = useParams();
-  const { user, logout } = useVolunteerAuth();
-
-  // Event data for the specific ID
-  const [event, setEvent] = useState(null);
+  const navigate = useNavigate();
+  const { user } = useVolunteerAuth();
   const [loading, setLoading] = useState(true);
-  // Store tasks assigned to the current volunteer for this event
-  const [volunteerTasks, setVolunteerTasks] = useState([]);
-  // Task that needs response (pending invitations)
-  const [pendingInvitations, setPendingInvitations] = useState([]);
-
+  const [event, setEvent] = useState(null);
+  const [tasks, setTasks] = useState([]);
+  const [viewMode, setViewMode] = useState('table');
+  
   useEffect(() => {
-    if (id && user?.id) {
+    // Fetch data when user and id are available
+    if (user && id) {
       fetchEventAndTasks();
     }
-  }, [id, user]);
+  }, [user, id]);
 
   const fetchEventAndTasks = async () => {
     try {
@@ -152,7 +148,6 @@ const VolunteerTaskDetails = () => {
       
       // Find tasks that need response (invitations)
       const invitations = eventTasks.filter(task => task.notification_status === 'sent');
-      setPendingInvitations(invitations);
       
       // Transform tasks to the format expected by the TaskTable/TaskKanban components
       const formattedTasks = eventTasks.map(task => ({
@@ -174,7 +169,7 @@ const VolunteerTaskDetails = () => {
         notification_status: task.notification_status
       }));
       
-      setVolunteerTasks(formattedTasks);
+      setTasks(formattedTasks);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Failed to load event data');
@@ -184,7 +179,6 @@ const VolunteerTaskDetails = () => {
   };
 
   const handleLogout = async () => {
-    await logout();
     // Redirect is handled by the auth context
   };
 
@@ -192,7 +186,7 @@ const VolunteerTaskDetails = () => {
   const handleUpdateTaskStatus = async (taskId, newStatus) => {
     try {
       // Find the task_assignment_id
-      const task = volunteerTasks.find(t => t.id === taskId);
+      const task = tasks.find(t => t.id === taskId);
       if (!task) return;
       
       // If task is being marked as Done, use handleComplete instead
@@ -232,10 +226,10 @@ const VolunteerTaskDetails = () => {
       }
       
       // Update local state
-      const updatedTasks = volunteerTasks.map(t => 
+      const updatedTasks = tasks.map(t => 
         t.id === taskId ? { ...t, status: newStatus } : t
       );
-      setVolunteerTasks(updatedTasks);
+      setTasks(updatedTasks);
       
       toast.success('Task status updated');
     } catch (error) {
@@ -314,7 +308,7 @@ const VolunteerTaskDetails = () => {
       }
       
       // Find the original task in our formatted tasks
-      const formattedTask = volunteerTasks.find(t => t.id === taskId);
+      const formattedTask = tasks.find(t => t.id === taskId);
       
       // Get the real task ID (as opposed to the assignment ID)
       // First try to get it from our tasks array if we have the event_id
@@ -364,7 +358,7 @@ const VolunteerTaskDetails = () => {
       
       // Award points for task completion (10 points per task)
       try {
-        const taskInfo = volunteerTasks.find(t => t.id === taskId);
+        const taskInfo = tasks.find(t => t.id === taskId);
         await pointsService.addPoints({
           volunteerId: user.id,
           points: 10,
@@ -478,13 +472,13 @@ const VolunteerTaskDetails = () => {
           </div>
 
           {/* Pending Invitations Alert */}
-          {pendingInvitations.length > 0 && (
+          {tasks.filter(t => t.notification_status === 'sent').length > 0 && (
             <Alert className="mb-6 bg-yellow-50 border-yellow-200">
               <Info className="h-5 w-5 text-yellow-600" />
-              <AlertTitle className="text-yellow-800">You have {pendingInvitations.length} pending task invitation(s)</AlertTitle>
+              <AlertTitle className="text-yellow-800">You have {tasks.filter(t => t.notification_status === 'sent').length} pending task invitation(s)</AlertTitle>
               <AlertDescription className="mt-2">
                 <div className="space-y-4">
-                  {pendingInvitations.map(task => (
+                  {tasks.filter(t => t.notification_status === 'sent').map(task => (
                     <div key={task.id} className="border rounded-lg p-4 bg-white shadow-sm">
                       <div className="flex justify-between items-start">
                         <div>
@@ -529,9 +523,9 @@ const VolunteerTaskDetails = () => {
             <div className="flex justify-between items-center mb-4">
               <div className="flex bg-gray-200 rounded-lg p-1 event-info-card">
               <button 
-                onClick={() => setActiveView('table')} 
+                onClick={() => setViewMode('table')} 
                 className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
-                  activeView === 'table' 
+                  viewMode === 'table' 
                     ? 'bg-white shadow event-info-card-toggle' 
                     : 'hover:bg-gray-300 dark:hover:bg-transparent dark:hover:bg-red-950'
                 }`}
@@ -541,9 +535,9 @@ const VolunteerTaskDetails = () => {
               </button>
 
               <button 
-                onClick={() => setActiveView('kanban')} 
+                onClick={() => setViewMode('kanban')} 
                 className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
-                  activeView === 'kanban' 
+                  viewMode === 'kanban' 
                     ? 'bg-white shadow event-info-card-toggle' 
                     : 'hover:bg-gray-300 dark:hover:bg-transparent dark:hover:bg-red-950'
                 }`}
@@ -556,15 +550,15 @@ const VolunteerTaskDetails = () => {
 
             {/* Task Views */}
             <div className="bg-white rounded-lg shadow event-info-card">
-              {volunteerTasks.length > 0 ? (
-                activeView === 'table' ? (
+              {tasks.length > 0 ? (
+                viewMode === 'table' ? (
                   <TaskTable 
-                    tasks={volunteerTasks} 
+                    tasks={tasks} 
                     onUpdateStatus={handleUpdateTaskStatus} 
                   />
                 ) : (
                   <TaskKanban 
-                    tasks={volunteerTasks} 
+                    tasks={tasks} 
                     onUpdateStatus={handleUpdateTaskStatus} 
                   />
                 )

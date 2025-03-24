@@ -30,3 +30,33 @@ export function checkAuthStorage() {
     hasUser: !!user
   };
 }
+
+// Simple function to sync auth data across different storage keys
+export function syncAuthData() {
+  try {
+    // Get admin user
+    const adminData = localStorage.getItem('adminUser');
+    if (adminData) {
+      const adminUser = JSON.parse(adminData);
+      if (adminUser.role === 'admin') {
+        localStorage.setItem('user', adminData);
+        return true;
+      }
+    }
+    
+    // Get volunteer user
+    const volunteerData = localStorage.getItem('volunteerUser');
+    if (volunteerData) {
+      const volunteerUser = JSON.parse(volunteerData);
+      if (volunteerUser.role === 'volunteer') {
+        localStorage.setItem('user', volunteerData);
+        return true;
+      }
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Error syncing auth data:', error);
+    return false;
+  }
+}
