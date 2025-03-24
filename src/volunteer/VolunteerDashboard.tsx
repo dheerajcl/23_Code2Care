@@ -1,6 +1,4 @@
-import * as React from 'react';
-const { useState, useEffect } = React;
-
+import React, { useState, useEffect, Suspense } from 'react';
 import { 
   CalendarIcon, 
   Clock, 
@@ -47,6 +45,8 @@ import { getEvents, getTasksForVolunteer } from '@/services/database.service';
 import { notificationService } from '@/services/notification.service';
 import { toast } from 'sonner';
 import Chatbot from "@/components/chatbot";
+import { ErrorBoundary } from 'react-error-boundary';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 export const assignedTasks = [
   {
@@ -244,7 +244,18 @@ export const VolunteerDashboard = () => {
 
               {/* Leaderboard Section */}
               <div className="w-full">
-                <Leaderboard />
+                <Suspense fallback={
+                  <Card>
+                    <CardContent className="py-8 text-center">
+                      <div className="flex justify-center items-center flex-col">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
+                        <p className="text-sm text-muted-foreground">Loading leaderboard...</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                }>
+                  <Leaderboard />
+                </Suspense>
               </div>
 
               {/* Upcoming Events Section */}
@@ -329,9 +340,9 @@ export const VolunteerDashboard = () => {
                     <CardContent className="flex flex-col items-center justify-center py-8">
                       <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
                       <p className="text-lg font-medium mb-2">No upcoming events</p>
-                      <p className="text-sm text-muted-foreground mb-4 text-center">
+                      <div className="text-sm text-muted-foreground mb-4 text-center">
                         There are no upcoming events scheduled at the moment.
-                      </p>
+                      </div>
                       <Button variant="outline" asChild>
                         <Link to="/volunteer/events">
                           Browse All Events
@@ -341,10 +352,8 @@ export const VolunteerDashboard = () => {
                   </Card>
                 )}
               </div>
-              <div className="h-screen bg-gray-100 flex flex-col vol-dashboard">
-      
+              <div className="flex-grow mt-6">
                 <Chatbot />        
-      
               </div>
 
             </div>

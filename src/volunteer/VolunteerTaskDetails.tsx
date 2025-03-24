@@ -370,19 +370,20 @@ const VolunteerTaskDetails = () => {
           points: 10,
           reason: `Completed task: ${taskInfo?.name || 'Task'}`,
           metadata: {
-            taskId: originalTaskId,
+            originalTaskId: originalTaskId,
             assignmentId: assignmentId,
             eventId: event.id
           }
         });
-        toast.success('Task marked as complete and points awarded!');
+        toast.success('Task completed successfully and points awarded!');
       } catch (pointsError) {
         console.error('Error awarding points:', pointsError);
         // Don't fail the entire operation if points couldn't be awarded
-        toast.success('Task marked as complete, but there was an issue awarding points');
+        toast.success('Task completed successfully, but there was an issue awarding points');
       }
       
-      await fetchEventAndTasks(); // Refresh tasks
+      // Refresh tasks
+      await fetchEventAndTasks();
     } catch (error) {
       console.error('Error completing task:', error);
       toast.error('Failed to mark task as complete');

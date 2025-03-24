@@ -2066,7 +2066,7 @@ export const getSkillAnalysis = async (): Promise<{ data: SkillAnalysis[] | null
 // Get volunteer leaderboard
 export const getVolunteerLeaderboard = async () => {
   try {
-    // Use a simple query that doesn't rely on the status column
+    // Use a simpler query without the problematic foreign table references
     const { data, error } = await supabase
       .from('volunteer')
       .select(`
@@ -2074,41 +2074,68 @@ export const getVolunteerLeaderboard = async () => {
         first_name,
         last_name,
         profile_image,
-        badges,
-        event_signup:event_signup (
-          id,
-          event_id,
-          attended,
-          hours
-        )
+        badges
       `)
       .eq('status', 'Active');
     
     if (error) throw error;
     
-    // Process the data in JavaScript instead of relying on the stored function
-    const leaderboardData = data.map(vol => {
-      const eventSignups = vol.event_signup || [];
-      const attendedEvents = eventSignups.filter(signup => signup.attended);
-      const totalHours = attendedEvents.reduce((sum, signup) => sum + (signup.hours || 0), 0);
-      const eventsAttended = attendedEvents.length;
-      const badgeCount = vol.badges ? vol.badges.length : 0;
-      
-      // Calculate points
-      const points = eventsAttended * 20 + badgeCount * 50;
-      
-      return {
-        id: vol.id,
-        first_name: vol.first_name,
-        last_name: vol.last_name,
-        profile_image: vol.profile_image,
-        total_hours: totalHours,
-        events_attended: eventsAttended,
-        badges: vol.badges,
-        points,
-        score: 0 // Will be calculated after sorting
-      };
-    });
+    // Process the data and calculate points separately
+    const leaderboardData = [];
+    
+    for (const vol of data) {
+      try {
+        // Get event signups (attended events)
+        const { data: eventSignups } = await supabase
+          .from('event_signup')
+          .select('id')
+          .eq('volunteer_id', vol.id)
+          .eq('attended', true);
+          
+        const eventsAttended = eventSignups?.length || 0;
+        
+        // Get completed tasks
+        const { data: completedTasks } = await supabase
+          .from('task_assignment')
+          .select('id')
+          .eq('volunteer_id', vol.id)
+          .eq('status', 'completed');
+          
+        const tasksCompleted = completedTasks?.length || 0;
+        
+        // Calculate badge count
+        const badgeCount = vol.badges?.length || 0;
+        
+        // Calculate points (adjusted values)
+        const points = eventsAttended * 20 + tasksCompleted * 10 + badgeCount * 50;
+        
+        leaderboardData.push({
+          id: vol.id,
+          first_name: vol.first_name,
+          last_name: vol.last_name,
+          profile_image: vol.profile_image,
+          total_hours: 0, // Not needed for leaderboard
+          events_attended: eventsAttended,
+          badges: vol.badges,
+          points,
+          score: 0 // Will be calculated after sorting
+        });
+      } catch (err) {
+        console.error(`Error processing volunteer ${vol.id} for leaderboard:`, err);
+        // Still include the volunteer but with default values
+        leaderboardData.push({
+          id: vol.id,
+          first_name: vol.first_name,
+          last_name: vol.last_name,
+          profile_image: vol.profile_image,
+          total_hours: 0,
+          events_attended: 0,
+          badges: vol.badges,
+          points: vol.badges?.length ? vol.badges.length * 50 : 0,
+          score: 0
+        });
+      }
+    }
     
     // Sort by points (descending)
     leaderboardData.sort((a, b) => b.points - a.points);

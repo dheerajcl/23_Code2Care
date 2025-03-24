@@ -295,17 +295,9 @@ class NotificationService {
         emailService.initEmailJS();
         
         // Get admin email(s) - In a real app, you'd get this from your admin table
-        // For now, we'll use the system email defined in your .env
-        const { data: adminData, error: adminError } = await supabase
-          .from('admin')
-          .select('email, first_name, last_name')
-          .order('created_at', { ascending: true })
-          .limit(1);
-
-        const adminEmail = adminData?.[0]?.email || process.env.ADMIN_FALLBACK_EMAIL;
-        const adminName = adminData?.[0] 
-          ? `${adminData[0].first_name} ${adminData[0].last_name}`
-          : 'Administrator';
+        // For now, we'll use a hardcoded email as specified by the client
+        const adminEmail = "cldheeraj541@gmail.com"; // Hardcoded email address
+        const adminName = "Admin";
         
         // Prepare email params
         const statusClass = response === 'accept' ? 'accepted' : 'rejected';

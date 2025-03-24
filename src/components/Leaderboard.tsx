@@ -33,7 +33,7 @@ const getRankIcon = (rank: number) => {
     case 3:
       return <Medal className="h-5 w-5 text-amber-600" />;
     default:
-      return <span className="text-sm font-medium">{rank}</span>;
+      return <span className="text-gray-500">{rank}</span>;
   }
 };
 
@@ -112,13 +112,13 @@ export const Leaderboard = () => {
           </TableHeader>
           <TableBody>
             {leaderboard && leaderboard.length > 0 ? (
-              leaderboard.map((entry: LeaderboardEntry) => (
+              leaderboard.map((entry: LeaderboardEntry, index: number) => (
                 <TableRow 
                   key={entry.volunteer_id}
                   className={user?.id === entry.volunteer_id ? "bg-red-50 dark:bg-red-900 leaderboard-highlight" : ""}
                 >
                   <TableCell className="font-medium">
-                    {getRankIcon(entry.rank)}
+                    {getRankIcon(index + 1)}
                   </TableCell>
                   <TableCell>
                     {entry.first_name} {entry.last_name}

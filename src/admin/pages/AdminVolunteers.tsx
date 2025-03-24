@@ -293,7 +293,7 @@ const AdminVolunteers = () => {
                 key={volunteer.volunteer_id}
                 className="flex items-center py-3 border-b last:border-0 hover:bg-gray-50 transition-colors"
               >
-                <div className="w-10 font-bold text-center">{volunteer.rank}</div>
+                <div className="w-10 font-bold text-center">{index + 1}</div>
                 <div className="flex-1 flex items-center">
                   <div className="w-10 h-10 bg-gray-200 rounded-full mr-3 flex items-center justify-center">
                     {volunteer.profile_image ? (
