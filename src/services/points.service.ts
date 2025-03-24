@@ -186,60 +186,109 @@ export const pointsService = {
     }
   },
 
-  // Track login
+  // Track a volunteer login
   async trackLogin(volunteerId: string) {
-    // Add login tracking entry
-    const { error: trackingError } = await supabase
-      .from('login_tracking')
-      .insert([{ volunteer_id: volunteerId }]);
+    try {
+      console.log('Points service: Tracking login for volunteer:', volunteerId);
+      
+      // Try to insert a login record
+      try {
+        await supabase
+          .from('login_tracking')
+          .insert([{
+            volunteer_id: volunteerId,
+            login_time: new Date().toISOString()
+          }]);
+      } catch (error) {
+        console.warn('Points service: Could not insert into login_tracking table:', error);
+        // Continue anyway, as this is not critical
+      }
 
-    if (trackingError) throw trackingError;
+      // Count existing logins
+      try {
+        const { data: loginCount, error: countError } = await supabase
+          .from('login_tracking')
+          .select('id', { count: 'exact' })
+          .eq('volunteer_id', volunteerId);
 
-    // Count total logins
-    const { data: loginCount, error: countError } = await supabase
-      .from('login_tracking')
-      .select('id', { count: 'exact' })
-      .eq('volunteer_id', volunteerId);
-
-    if (countError) throw countError;
-
-    // Check for login-based badges
-    const count = loginCount?.length || 0;
-    
-    if (count === 1) {
-      await this.awardBadge(volunteerId, 'first-login');
-    } else if (count === 5) {
-      await this.awardBadge(volunteerId, 'regular-visitor');
-    } else if (count === 10) {
-      await this.awardBadge(volunteerId, 'dedicated-volunteer');
+        if (countError) {
+          console.warn('Points service: Could not count logins:', countError);
+        } else {
+          // Check for login-based badges
+          const count = loginCount?.length || 0;
+          
+          if (count === 1) {
+            await this.awardBadge(volunteerId, 'first-login');
+          } else if (count === 5) {
+            await this.awardBadge(volunteerId, 'regular-visitor');
+          } else if (count === 10) {
+            await this.awardBadge(volunteerId, 'dedicated-volunteer');
+          }
+          
+          return { loginCount: count };
+        }
+      } catch (error) {
+        console.warn('Points service: Error checking login count:', error);
+      }
+      
+      return { loginCount: 0 };
+    } catch (error) {
+      console.error('Points service: Error tracking login:', error);
+      return { loginCount: 0 };
     }
-
-    return { loginCount: count };
   },
 
   // Award a badge to a volunteer
   async awardBadge(volunteerId: string, badgeId: string) {
-    const { data: existingBadge, error: checkError } = await supabase
-      .from('volunteer_badges')
-      .select()
-      .eq('volunteer_id', volunteerId)
-      .eq('badge_id', badgeId)
-      .single();
+    try {
+      console.log(`Points service: Attempting to award badge '${badgeId}' to volunteer ${volunteerId}`);
+      
+      // Check if the badge is already awarded
+      try {
+        const { data: existingBadge, error: checkError } = await supabase
+          .from('volunteer_badges')
+          .select()
+          .eq('volunteer_id', volunteerId)
+          .eq('badge_id', badgeId)
+          .single();
 
-    if (checkError && checkError.code !== 'PGRST116') throw checkError;
-    if (existingBadge) return existingBadge; // Badge already awarded
+        if (checkError && checkError.code !== 'PGRST116') {
+          console.warn('Points service: Error checking for existing badge:', checkError);
+        } else if (existingBadge) {
+          console.log('Points service: Badge already awarded');
+          return existingBadge; // Badge already awarded
+        }
+      } catch (error) {
+        console.warn('Points service: Error checking for existing badge:', error);
+        // Continue anyway and try to award the badge
+      }
 
-    const { data, error } = await supabase
-      .from('volunteer_badges')
-      .insert([{
-        volunteer_id: volunteerId,
-        badge_id: badgeId
-      }])
-      .select()
-      .single();
+      // Try to award the badge
+      try {
+        const { data, error } = await supabase
+          .from('volunteer_badges')
+          .insert([{
+            volunteer_id: volunteerId,
+            badge_id: badgeId
+          }])
+          .select()
+          .single();
 
-    if (error) throw error;
-    return data;
+        if (error) {
+          console.error('Points service: Error awarding badge:', error);
+          return null;
+        }
+        
+        console.log('Points service: Badge awarded successfully');
+        return data;
+      } catch (error) {
+        console.error('Points service: Error awarding badge:', error);
+        return null;
+      }
+    } catch (error) {
+      console.error('Points service: Error in awardBadge:', error);
+      return null;
+    }
   },
 
   // Get all badges for a volunteer

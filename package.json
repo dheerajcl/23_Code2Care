@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "db:setup": "node setup-db.js"
+    "db:setup": "node setup-db.js",
+    "migrate:passwords": "tsx src/scripts/migrate-passwords.ts"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",

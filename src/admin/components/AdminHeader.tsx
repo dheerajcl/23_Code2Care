@@ -59,7 +59,7 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ user: propUser, handleLogout:
           <Link to="/admin/dashboard" className="-m-1.5 p-1.5">
             <img className="h-8 w-auto" src={Logo} alt="Samarthanam logo" />
           </Link>
-        </div>
+                </div>
         
         <div className="flex lg:hidden">
           <button
@@ -70,7 +70,7 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ user: propUser, handleLogout:
             <span className="sr-only">Open main menu</span>
             <MenuIcon className="h-6 w-6" aria-hidden="true" />
           </button>
-        </div>
+              </div>
         
         {/* Desktop navigation links */}
         <div className="hidden lg:flex lg:gap-x-12">
@@ -83,7 +83,7 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ user: propUser, handleLogout:
         <div className="hidden lg:flex lg:flex-1 lg:justify-end gap-2">
           <div className="relative">
             <button
-              onClick={handleNotificationClick}
+            onClick={handleNotificationClick}
               className="text-black hover:text-green-600 p-2"
             >
               <Bell size={24} />
@@ -229,8 +229,8 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ user: propUser, handleLogout:
                 </div>
               </div>
             </div>
-          </div>
         </div>
+      </div>
       )}
     </header>
   );

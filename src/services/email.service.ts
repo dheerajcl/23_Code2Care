@@ -401,6 +401,71 @@ export const verifyEmailJSConfiguration = (): boolean => {
   return isValid;
 };
 
+// Test email sending function for debug purposes
+export const testEmailSending = async (email: string): Promise<{ success: boolean; message: string; details?: any }> => {
+  try {
+    console.log('Testing email sending to:', email);
+    
+    // Check environment variables
+    const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+    const templateId = import.meta.env.VITE_EMAILJS_TASK_TEMPLATE_ID; 
+    const userId = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+    
+    if (!serviceId || !templateId || !userId) {
+      console.error('Missing EmailJS environment variables');
+      return {
+        success: false,
+        message: 'EmailJS configuration is incomplete',
+        details: {
+          serviceId: serviceId ? 'Configured' : 'Missing',
+          templateId: templateId ? 'Configured' : 'Missing',
+          userId: userId ? 'Configured' : 'Missing'
+        }
+      };
+    }
+    
+    // Create a simple test template params
+    const templateParams = {
+      to_name: 'Test User',
+      volunteer_name: 'Test Volunteer',
+      task_name: 'Test Task',
+      event_name: 'Test Event',
+      to_email: email,
+      email: email,
+      reply_to: email,
+      recipient: email,
+      to: email,
+      subject: 'Test Email from Samarthanam',
+      message: 'This is a test email to verify your email configuration is working correctly.'
+    };
+    
+    console.log('Sending test email with params:', JSON.stringify(templateParams));
+    
+    // Try to send the email
+    const response = await emailjs.send(
+      serviceId,
+      templateId,
+      templateParams,
+      userId
+    );
+    
+    console.log('Test email sent successfully:', response);
+    
+    return {
+      success: true,
+      message: 'Test email sent successfully',
+      details: response
+    };
+  } catch (error) {
+    console.error('Error sending test email:', error);
+    return {
+      success: false,
+      message: 'Failed to send test email',
+      details: error instanceof Error ? { errorMessage: error.message, stack: error.stack } : error
+    };
+  }
+};
+
 // Export the emailService object
 export const emailService = {
   initEmailJS,
@@ -408,5 +473,6 @@ export const emailService = {
   sendTaskResponseEmail,
   generateTaskResponseUrls,
   debugTemplate,
-  verifyEmailJSConfiguration
+  verifyEmailJSConfiguration,
+  testEmailSending
 }; 

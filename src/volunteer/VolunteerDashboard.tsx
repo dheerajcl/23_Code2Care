@@ -17,7 +17,7 @@ import {
   BookOpen,
   ExternalLink
 } from 'lucide-react';
-import { useAuth } from '@/lib/authContext';
+import { useVolunteerAuth } from '@/lib/authContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -46,7 +46,7 @@ import { notificationService } from '@/services/notification.service';
 import { toast } from 'sonner';
 import Chatbot from "@/components/chatbot";
 import { ErrorBoundary } from 'react-error-boundary';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export const assignedTasks = [
   {
@@ -159,7 +159,7 @@ const feedbackData = [
 ];
 
 export const VolunteerDashboard = () => {
-  const { user, logout } = useAuth();
+  const { user, logout } = useVolunteerAuth();
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
