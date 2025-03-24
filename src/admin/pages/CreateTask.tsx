@@ -2,38 +2,33 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/lib/authContext';
 import AdminSidebar from '../components/AdminSidebar';
-<<<<<<< HEAD
-import AdminHeader from '../components/AdminHeader';
 import AdminLayout from '../components/AdminLayout';
-=======
-import AdminLayout from '../components/AdminLayout'
->>>>>>> main
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
 } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { 
+import {
   Select,
   SelectContent,
   SelectGroup,
@@ -54,7 +49,7 @@ const CreateTask = () => {
   const navigate = useNavigate();
   const auth = useAuth();
   const { id: eventId } = useParams(); // Extract event ID from URL params
-  
+
   // Event state
   const [event, setEvent] = useState(null);
   const [eventLoading, setEventLoading] = useState(true);
@@ -66,12 +61,12 @@ const CreateTask = () => {
   const [status, setStatus] = useState('todo');
   const [deadline, setDeadline] = useState(null);
   const [selectedVolunteers, setSelectedVolunteers] = useState([]);
-  
+
   // Reference Data
   const [allVolunteers, setAllVolunteers] = useState([]);
   const [filteredVolunteers, setFilteredVolunteers] = useState([]);
   const [volunteersLoading, setVolunteersLoading] = useState(true);
-  
+
   // Volunteer Filter State
   const [availabilityFilter, setAvailabilityFilter] = useState('');
   const [skillsFilter, setSkillsFilter] = useState([]);
@@ -125,16 +120,16 @@ const handleViewVolunteer = (volunteer) => {
   setSelectedVolunteer(volunteer);
 };
 
-// Function to close modal
-const closeModal = () => {
-  setSelectedVolunteer(null);
-};
-
 const handleLogout = async () => {
   await auth.logout();
   navigate('/admin/login');
 };
 
+
+// Function to close modal
+const closeModal = () => {
+  setSelectedVolunteer(null);
+};
 
 // Helper function to format dates
 const formatDate = (dateString) => {
@@ -150,7 +145,7 @@ const formatDate = (dateString) => {
     const fetchEventAndVolunteers = async () => {
       setEventLoading(true);
       setVolunteersLoading(true);
-      
+
       try {
         // Fetch event details
         const { data: eventData, error: eventError } = await supabase
@@ -158,10 +153,10 @@ const formatDate = (dateString) => {
           .select('*')
           .eq('id', eventId)
           .single();
-          
+
         if (eventError) throw eventError;
         setEvent(eventData);
-        
+
         // Fetch volunteers registered for this event from event_signup table
         const { data: signupData, error: signupError } = await supabase
           .from('event_signup')
@@ -175,7 +170,7 @@ const formatDate = (dateString) => {
             volunteer:volunteer_id (*)
           `)
           .eq('event_id', eventId);
-  
+
         if (signupError) {
           console.error('Error fetching event signups:', signupError);
           toast.error('Failed to load registered volunteers');
@@ -190,15 +185,15 @@ const formatDate = (dateString) => {
 
         if (signupData && signupData.length > 0) {
           const volunteerIds = signupData.map(signup => signup.volunteer_id);
-          
+
           // Fetch volunteer details
           const { data: volunteersData, error: volunteersError } = await supabase
             .from('volunteer')
             .select('*')
             .in('id', volunteerIds);
-            
+
           if (volunteersError) throw volunteersError;
-          
+
           // Process volunteer data to match the required format
           const formattedVolunteers = volunteersData.map(vol => ({
             id: vol.id,
@@ -210,7 +205,7 @@ const formatDate = (dateString) => {
             state: vol.state || 'Karnataka',
             isRecommended: eventData.category && vol.skills && vol.skills.includes(eventData.category)
           }));
-          
+
           setAllVolunteers(formattedVolunteers);
           setFilteredVolunteers(formattedVolunteers);
         } else {
@@ -226,7 +221,7 @@ const formatDate = (dateString) => {
         setVolunteersLoading(false);
       }
     };
-    
+
     if (eventId) {
       fetchEventAndVolunteers();
     }
@@ -240,8 +235,8 @@ const formatDate = (dateString) => {
     // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(volunteer => 
-        volunteer.name?.toLowerCase().includes(query) || 
+      filtered = filtered.filter(volunteer =>
+        volunteer.name?.toLowerCase().includes(query) ||
         volunteer.email?.toLowerCase().includes(query) ||
         volunteer.location?.toLowerCase().includes(query)
       );
@@ -249,21 +244,21 @@ const formatDate = (dateString) => {
 
     // Apply availability filter
     if (availabilityFilter) {
-      filtered = filtered.filter(volunteer => 
+      filtered = filtered.filter(volunteer =>
         volunteer.availability === availabilityFilter
       );
     }
 
     // Apply skills filter
     if (skillsFilter.length > 0) {
-      filtered = filtered.filter(volunteer => 
+      filtered = filtered.filter(volunteer =>
         volunteer.skills?.some(skill => skillsFilter.includes(skill))
       );
     }
 
     // Apply interest filter
     if (interestFilter.length > 0) {
-      filtered = filtered.filter(volunteer => 
+      filtered = filtered.filter(volunteer =>
         volunteer.skills?.some(skill => interestFilter.includes(skill))
       );
     }
@@ -277,7 +272,7 @@ const formatDate = (dateString) => {
       // If volunteer is already selected, remove them
       if (prev.includes(volunteerId)) {
         return prev.filter(id => id !== volunteerId);
-      } 
+      }
       // If we've reached max volunteers, don't add more
       else if (prev.length >= maxVolunteers) {
         toast.error(`Maximum of ${maxVolunteers} volunteer(s) allowed`);
@@ -299,7 +294,7 @@ const formatDate = (dateString) => {
       // If not all selected, select up to max volunteers
       const toSelect = filteredVolunteers.slice(0, maxVolunteers).map(v => v.id);
       setSelectedVolunteers(toSelect);
-      
+
       if (filteredVolunteers.length > maxVolunteers) {
         toast.info(`Selected first ${maxVolunteers} volunteers (maximum allowed)`);
       }
@@ -309,20 +304,20 @@ const formatDate = (dateString) => {
 
   // Reset select all when filtered volunteers change
   useEffect(() => {
-    const allSelected = filteredVolunteers.length > 0 && 
+    const allSelected = filteredVolunteers.length > 0 &&
                         filteredVolunteers.slice(0, maxVolunteers).every(v => selectedVolunteers.includes(v.id));
     setSelectAll(allSelected);
   }, [filteredVolunteers, selectedVolunteers, maxVolunteers]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validation
     if (!title.trim()) {
       toast.error('Please enter a task title');
       return;
     }
-    
+
     if (!eventId) {
       toast.error('Please select an event');
       return;
@@ -333,12 +328,12 @@ const formatDate = (dateString) => {
       toast.error('Please enter a valid number of maximum volunteers');
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     try {
       const now = new Date().toISOString();
-      
+
       // 1. Create the task
       const taskInput = {
         title,
@@ -358,14 +353,14 @@ const formatDate = (dateString) => {
         .insert(taskInput)
         .select('id')
         .single();
-        
+
       if (taskError) {
         throw taskError;
       }
-      
+
       const taskId = taskData.id;
       console.log('Created task with ID:', taskId);
-      
+
       // 2. Assign volunteers
       if (selectedVolunteers.length > 0) {
         const assignmentToast = toast.loading(
@@ -381,7 +376,7 @@ const formatDate = (dateString) => {
             // Instead of using createTaskAssignment, insert directly
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
-            
+
             // Check if volunteer is registered for the event first
             const { data: registration } = await supabase
               .from('event_signup')
@@ -389,20 +384,20 @@ const formatDate = (dateString) => {
               .eq('event_id', eventId)
               .eq('volunteer_id', volunteerId)
               .single();
-              
+
             if (!registration) {
               console.error(`Volunteer ${volunteerId} is not registered for event ${eventId}`);
               errorCount++;
               continue;
             }
-            
+
             // Get volunteer details for email and notification
             const { data: volunteerData, error: volunteerError } = await supabase
               .from('volunteer')
               .select('*')
               .eq('id', volunteerId)
               .single();
-              
+
             if (volunteerError || !volunteerData) {
               console.error(`Error fetching volunteer ${volunteerId} details:`, volunteerError);
               errorCount++;
@@ -450,7 +445,7 @@ const formatDate = (dateString) => {
                   is_read: false,
                   created_at: now
                 });
-                
+
               if (notifError) {
                 console.error(`Notification creation failed: ${notifError.message}`);
                 // Rollback task assignment if notification fails
@@ -460,7 +455,7 @@ const formatDate = (dateString) => {
                   .eq('id', assignmentData.id);
                 throw notifError;
               }
-              
+
               // Add email notification using the dedicated notification service
               try {
                 // Use the notification service to handle all aspects of the notification
@@ -471,40 +466,40 @@ const formatDate = (dateString) => {
                   taskId,
                   eventId
                 );
-                
+
                 if (!success) {
                   console.error(`Failed to send notification to volunteer ${volunteerId}:`, error);
-                  
+
                   // Email debug helper - run only if there's an error with sending
                   console.log("🔍 DEBUGGING EMAIL ISSUE:");
                   console.log("Service ID:", import.meta.env.VITE_EMAILJS_SERVICE_ID);
                   console.log("Template ID:", import.meta.env.VITE_EMAILJS_TASK_TEMPLATE_ID);
-                  
+
                   // Check volunteer data
                   const { data: volunteerCheck } = await supabase
                     .from('volunteer')
                     .select('email, first_name, last_name')
                     .eq('id', volunteerId)
                     .single();
-                    
+
                   if (volunteerCheck) {
                     console.log("Volunteer email check:", {
                       email: volunteerCheck.email,
                       name: `${volunteerCheck.first_name} ${volunteerCheck.last_name}`
                     });
                   }
-                  
+
                   // Try debugging the template
                   await emailService.debugTemplate(import.meta.env.VITE_EMAILJS_TASK_TEMPLATE_ID);
-                  
+
                   toast.error(`Volunteer assigned but notification failed: ${error.message || 'Unknown error'}`);
                 } else {
                   console.log(`Notification sent successfully to volunteer ${volunteerId}`);
                 }
-                
+
                 // Increment success count ONLY after all operations succeed
                 successCount++;
-                
+
                 // Refresh dashboard data
                 window.dispatchEvent(new CustomEvent('task-assignment-update'));
               } catch (notifyError) {
@@ -533,7 +528,7 @@ const formatDate = (dateString) => {
 
       // 3. Navigate back to event details
       navigate(`/admin/events/${eventId}`);
-      
+
     } catch (error) {
       console.error('Error creating task:', error);
       toast.error('Failed to create task: ' + error.message);
@@ -545,7 +540,7 @@ const formatDate = (dateString) => {
   // Filter toggle buttons
   const SkillToggle = ({ skill }) => {
     const isSelected = skillsFilter.includes(skill);
-    
+
     return (
       <Button
         variant={isSelected ? "default" : "outline"}
@@ -566,7 +561,7 @@ const formatDate = (dateString) => {
 
   const InterestToggle = ({ interest }) => {
     const isSelected = interestFilter.includes(interest);
-    
+
     return (
       <Button
         variant={isSelected ? "default" : "outline"}
@@ -587,7 +582,7 @@ const formatDate = (dateString) => {
 
   const AvailabilityToggle = ({ availability }) => {
     const isSelected = availabilityFilter === availability;
-    
+
     return (
       <Button
         variant={isSelected ? "default" : "outline"}
@@ -631,7 +626,7 @@ const formatDate = (dateString) => {
       const now = new Date().toISOString();
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
-      
+
       // Directly create the assignment without using the function that might have triggers
       const { error: assignError } = await supabase
         .from('task_assignment')
@@ -673,89 +668,55 @@ const formatDate = (dateString) => {
     }
   };
 
-<<<<<<< HEAD
-return (
+  return (
       <AdminLayout
           user={auth.user}
           handleLogout={handleLogout}
           title={`Create Task for Event: ${eventLoading ? 'Loading...' : event?.title || 'Unknown Event'}`}
-          className="sticky"
         >
-=======
-  return (
-<AdminLayout
-    user={auth.user}
-    handleLogout={handleLogout}
-    title={`Create Task for Event: ${eventLoading ? 'Loading...' : event?.title || 'Unknown Event'}`}
-  >
-        
->>>>>>> main
         <main className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-6xl mx-auto">
-          {eventLoading ? (
-            <div className="text-center py-8">Loading event details...</div>
-          ) : (
-            <form onSubmit={handleSubmit}>
-              {/* Task Details Card */}
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle>Task Details</CardTitle>
-                  <CardDescription>
-                    Enter the basic information for this task
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Title <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="title"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Enter task title"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Describe the task in detail"
-                      rows={5}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="max-w-6xl mx-auto">
+            {eventLoading ? (
+              <div className="text-center py-8">Loading event details...</div>
+            ) : (
+              <form onSubmit={handleSubmit}>
+                {/* Task Details Card */}
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle>Task Details</CardTitle>
+                    <CardDescription>
+                      Enter the basic information for this task
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="title">Title <span className="text-red-500">*</span></Label>
-                      <Input 
-                        id="title" 
-                        value={title} 
+                      <Input
+                        id="title"
+                        value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         placeholder="Enter task title"
                         required
                       />
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="description">Description</Label>
-                      <Textarea 
-                        id="description" 
-                        value={description} 
+                      <Textarea
+                        id="description"
+                        value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         placeholder="Describe the task in detail"
                         rows={5}
                       />
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="maxVolunteers">Maximum Volunteers</Label>
-                        <Input 
-                          id="maxVolunteers" 
-                          type="number" 
+                        <Input
+                          id="maxVolunteers"
+                          type="number"
                           min="1"
                           value={String(maxVolunteers)}
                           onChange={(e) => {
@@ -769,7 +730,7 @@ return (
                           }}
                         />
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="status">Status</Label>
                         <Select value={status} onValueChange={setStatus}>
@@ -787,7 +748,7 @@ return (
                           </SelectContent>
                         </Select>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="deadline">Deadline</Label>
                         <Popover>
@@ -814,7 +775,7 @@ return (
                     </div>
                   </CardContent>
                 </Card>
-                
+
                 {/* Volunteer Assignment Card - Updated to match the image */}
                 <Card className="mb-6">
                   <CardHeader className="pb-3">
@@ -855,7 +816,7 @@ return (
                               </Button>
                             </div>
                           </div>
-                          
+
                           {isFiltersOpen && (
                             <div className="space-y-4 mb-6">
                               {/* Skills Section */}
@@ -867,7 +828,7 @@ return (
                                   ))}
                                 </div>
                               </div>
-                              
+
                               {/* Primary Interest Section */}
                               <div>
                                 <h3 className="text-sm font-medium mb-2">Primary Interest</h3>
@@ -877,7 +838,7 @@ return (
                                   ))}
                                 </div>
                               </div>
-                              
+
                               {/* Availability Section */}
                               <div>
                                 <h3 className="text-sm font-medium mb-2">Availability</h3>
@@ -890,7 +851,7 @@ return (
                             </div>
                           )}
                         </div>
-                        
+
                         {/* Select All Button */}
                         <div className="flex justify-between items-center mb-4">
                           <Button
@@ -906,7 +867,7 @@ return (
                             {filteredVolunteers.length} volunteers found from {allVolunteers.length} registered for this event
                           </span>
                         </div>
-                        
+
           {/* Volunteer List Table */}
 <div className="overflow-x-auto">
   <table className="min-w-full divide-y divide-gray-200">
@@ -1001,7 +962,7 @@ return (
         ))
       ) : (
         <tr>
-          <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+          <td colSpan="5" className="px-4 py-8 text-center text-gray-500">
             No volunteers found matching your filters
           </td>
         </tr>
@@ -1013,11 +974,11 @@ return (
                     )}
                   </CardContent>
                 </Card>
-                
+
                 {/* Submit Button */}
                 <div className="flex justify-end">
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={isSubmitting || !title}
                     className="w-40"
                   >
@@ -1035,13 +996,7 @@ return (
             <XIcon className="h-5 w-5" />
           </Button>
         </div>
-<<<<<<< HEAD
-      </main>
-</AdminLayout>
-);
 
-=======
-        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Left column - Personal info */}
           <div className="md:col-span-1">
@@ -1052,7 +1007,7 @@ return (
               <h3 className="text-xl font-semibold">{selectedVolunteer.name}</h3>
               <p className="text-sm text-gray-500">{selectedVolunteer.email}</p>
             </div>
-            
+
             <div className="space-y-3">
               <div>
                 <p className="text-sm text-gray-500">Location</p>
@@ -1070,11 +1025,11 @@ return (
               </div>
             </div>
           </div>
-          
+
           {/* Right column - Skills and interests */}
           <div className="md:col-span-2">
             <h3 className="text-lg font-semibold mb-3">Skills & Interests</h3>
-            
+
             <div className="mb-4">
               <p className="text-sm text-gray-500 mb-2">Skills</p>
               <div className="flex flex-wrap gap-2">
@@ -1089,9 +1044,9 @@ return (
                 )}
               </div>
             </div>
-            
+
             <div className="mt-6 space-y-3">
-              <Button 
+              <Button
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                 onClick={() => {
                   // Select this volunteer if not already selected and if possible
@@ -1103,14 +1058,14 @@ return (
                 disabled={!selectedVolunteers.includes(selectedVolunteer.id) && selectedVolunteers.length >= maxVolunteers}
                 type="button"
               >
-                {selectedVolunteers.includes(selectedVolunteer.id) 
-                  ? 'Selected for Task' 
-                  : selectedVolunteers.length >= maxVolunteers 
-                    ? 'Maximum Volunteers Reached' 
+                {selectedVolunteers.includes(selectedVolunteer.id)
+                  ? 'Selected for Task'
+                  : selectedVolunteers.length >= maxVolunteers
+                    ? 'Maximum Volunteers Reached'
                     : 'Select for Task'}
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="w-full"
                 onClick={closeModal}
                 type="button"
@@ -1128,9 +1083,8 @@ return (
             )}
           </div>
         </main>
-</AdminLayout>
+      </AdminLayout>
   );
->>>>>>> main
 };
 
 export default CreateTask;
