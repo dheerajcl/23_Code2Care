@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, Moon, Sun, Settings, User, LogOut } from 'lucide-react';
+import { Menu, X, Moon, Sun, Settings, User, LogOut, Languages } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu,
@@ -8,16 +8,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-  DropdownMenuLabel
+  DropdownMenuLabel,
+  DropdownMenuGroup
 } from '@/components/ui/dropdown-menu';
 import Logo from "../assets/logo.png";
 import { useAuth } from '@/lib/authContext';
+import { useLanguage } from './LanguageContext'; // Adjust the import path as needed
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { user, logout } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -43,6 +46,12 @@ const Header: React.FC = () => {
       document.documentElement.classList.add('dark');
     }
 
+    // Check for saved language preference
+    const savedLang = localStorage.getItem('language') as Language | null;
+    if (savedLang && ['en', 'hi', 'kn'].includes(savedLang)) {
+      setLanguage(savedLang);
+    }
+
     window.addEventListener('scroll', handleScroll);
     window.addEventListener('resize', handleResize);
 
@@ -50,7 +59,7 @@ const Header: React.FC = () => {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleResize);
     };
-  }, []);
+  }, [setLanguage]);
 
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
@@ -65,6 +74,11 @@ const Header: React.FC = () => {
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
+  };
+
+  const changeLanguage = (lang: Language) => {
+    setLanguage(lang);
+    localStorage.setItem('language', lang);
   };
 
   // Function to get the dashboard URL based on user role
@@ -95,45 +109,67 @@ const Header: React.FC = () => {
               to="/" 
               className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
             >
-              Home
+              {t('home')}
             </Link>
             <Link 
               to="/events" 
               className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
             >
-              Events
+              {t('events')}
             </Link>
             <Link 
               to="/about" 
               className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
             > 
-              About
+              {t('about')}
             </Link>
             <Link 
               to="/donate" 
               className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
             >
-              Donate
+              {t('donate')}
             </Link>
             {user ? (
               <Link 
                 to={getDashboardUrl()}
                 className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
               >
-                Dashboard
+                {t('dashboard')}
               </Link>
             ) : (
               <Link 
                 to="/join-us" 
                 className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
               >
-                Volunteer
+                {t('volunteer')}
               </Link>
             )}
           </nav>
 
           {/* User Menu & Controls */}
           <div className="flex items-center space-x-4">
+            {/* Language Selector */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Language selector">
+                  <Languages className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{t('language')}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => changeLanguage('en')}>
+                  {t('english')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => changeLanguage('hi')}>
+                  {t('hindi')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => changeLanguage('kn')}>
+                  {t('kannada')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {/* Login or User Menu */}
             {user ? (
               <DropdownMenu>
@@ -152,18 +188,18 @@ const Header: React.FC = () => {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate(getDashboardUrl())}>
-                    Dashboard
+                    {t('dashboard')}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
+                    <span>{t('logout')}</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
               <Button asChild variant="ghost" size="sm">
-                <Link to="/login">Login</Link>
+                <Link to="/login">{t('login')}</Link>
               </Button>
             )}
 
@@ -192,14 +228,14 @@ const Header: React.FC = () => {
                 <DropdownMenuItem 
                   onSelect={() => document.documentElement.classList.toggle('high-contrast')}
                 >
-                  Toggle High Contrast
+                  {t('toggleHighContrast')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={() => document.body.style.fontSize = 
                     document.body.style.fontSize === '110%' ? '100%' : '110%'
                   }
                 >
-                  Toggle Larger Text
+                  {t('toggleLargerText')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -236,21 +272,21 @@ const Header: React.FC = () => {
             className="block px-3 py-2 rounded-md hover:bg-secondary transition-colors"
             onClick={() => setIsMenuOpen(false)}
           >
-            Home
+            {t('home')}
           </Link>
           <Link 
             to="/events" 
             className="block px-3 py-2 rounded-md hover:bg-secondary transition-colors"
             onClick={() => setIsMenuOpen(false)}
           >
-            Events
+            {t('events')}
           </Link>
           <Link 
             to="/about" 
             className="block px-3 py-2 rounded-md hover:bg-secondary transition-colors"
             onClick={() => setIsMenuOpen(false)}
           >
-            About
+            {t('about')}
           </Link>
           
           {user ? (
@@ -260,7 +296,7 @@ const Header: React.FC = () => {
               className="block px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
               onClick={() => setIsMenuOpen(false)}
             >
-              Dashboard
+              {t('dashboard')}
             </Link>
           ) : (
             // Show login and volunteer links if user is not logged in
@@ -270,14 +306,14 @@ const Header: React.FC = () => {
                 className="block px-3 py-2 rounded-md hover:bg-secondary transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Login
+                {t('login')}
               </Link>
               <Link 
                 to="/join-us" 
                 className="block px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Volunteer
+                {t('volunteer')}
               </Link>
             </>
           )}
@@ -291,7 +327,7 @@ const Header: React.FC = () => {
               }}
               className="w-full text-left block px-3 py-2 rounded-md text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 transition-colors"
             >
-              Log out
+              {t('logout')}
             </button>
           )}
         </div>
