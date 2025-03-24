@@ -88,15 +88,31 @@ class NotificationService {
         console.warn("Could not update task assignment with notification status:", updateError);
       }
       
-      // Generate accept/reject URLs
-      const { acceptUrl, rejectUrl } = emailService.generateTaskResponseUrls(taskAssignmentId, volunteerId);
+      // Generate accept/reject URLs - update to use the TaskResponse page
+      const baseUrl = window.location.origin;
+      const acceptUrl = `${baseUrl}/volunteer/task-response?action=accept&id=${taskAssignmentId}&volunteerId=${volunteerId}`;
+      const rejectUrl = `${baseUrl}/volunteer/task-response?action=reject&id=${taskAssignmentId}&volunteerId=${volunteerId}`;
+      
+      console.log('Generated response URLs:', { acceptUrl, rejectUrl });
       
       // Initialize EmailJS
-      emailService.initEmailJS();
+      const initResult = emailService.initEmailJS();
+      console.log("EmailJS initialization result:", initResult);
+      
+      // Log all environment variables for debugging (without exposing secrets)
+      console.log('Email environment check:', {
+        serviceIdExists: !!import.meta.env.VITE_EMAILJS_SERVICE_ID,
+        templateIdExists: !!import.meta.env.VITE_EMAILJS_TASK_TEMPLATE_ID,
+        userIdExists: !!import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+      });
       
       // Prepare email parameters
       const emailParams = {
         to_email: volunteerData.email,
+        email: volunteerData.email,
+        recipient: volunteerData.email,
+        reply_to: volunteerData.email,
+        from_name: "Samarthanam Trust",
         to_name: `${volunteerData.first_name} ${volunteerData.last_name}`,
         subject: `New Task Assignment: ${taskData.title}`,
         message: `You have been assigned to task "${taskData.title}" for event "${taskData.event?.title || 'Unknown event'}". Please review the details below.`,
@@ -110,13 +126,24 @@ class NotificationService {
       };
       
       console.log("Sending task assignment email to:", volunteerData.email);
+      console.log("Email params:", JSON.stringify(emailParams));
       
-      const emailResult = await emailService.sendTaskAssignmentEmail(emailParams);
-      if (!emailResult.success) {
-        console.error("Failed to send email:", emailResult.error);
-        // Still return success for now, but log the error
-      } else {
-        console.log("Email sent successfully");
+      try {
+        const emailResult = await emailService.sendTaskAssignmentEmail(emailParams);
+        if (!emailResult.success) {
+          console.error("Failed to send email:", emailResult.error);
+          // Still return success for now, but log the error
+        } else {
+          console.log("Email sent successfully");
+          
+          // Update task assignment to record email sent
+          await supabase
+            .from('task_assignment')
+            .update({ email_sent: true })
+            .eq('id', taskAssignmentId);
+        }
+      } catch (emailError) {
+        console.error("Error sending email:", emailError);
       }
       
       return { success: true, notification: notificationData };

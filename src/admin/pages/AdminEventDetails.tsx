@@ -180,7 +180,7 @@ const AdminEventDetails = () => {
   }, [id]);
 
   // Function to refresh tasks
-  const refreshTasks = async () => {
+    const refreshTasks = async () => {
     if (!id) return;
 
     try {
@@ -366,13 +366,13 @@ const AdminEventDetails = () => {
       }
 
       // Update tasks state
-      setAllTasks(allTasks.map(task =>
-        task.id === taskId ? { ...task, status: newStatus } : task
-      ));
+        setAllTasks(allTasks.map(task =>
+          task.id === taskId ? { ...task, status: newStatus } : task
+        ));
 
-      setEventTasks(eventTasks.map(task =>
-        task.id === taskId ? { ...task, status: newStatus } : task
-      ));
+        setEventTasks(eventTasks.map(task =>
+          task.id === taskId ? { ...task, status: newStatus } : task
+        ));
       
       toast.success(`Task status updated to ${newStatus}`);
       
