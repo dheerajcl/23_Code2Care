@@ -138,7 +138,7 @@ const LandingHeader: React.FC = () => {
           <div className="flex items-center space-x-4">
             {/* Login or User Menu */}
             {user ? (
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative">
                     <User className="h-5 w-5" />
@@ -184,7 +184,7 @@ const LandingHeader: React.FC = () => {
             </Button>
 
             {/* Accessibility Options */}
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Accessibility options">
                   <Settings className="h-5 w-5" />

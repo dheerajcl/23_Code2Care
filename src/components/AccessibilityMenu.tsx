@@ -302,7 +302,7 @@ const AccessibilityMenu: React.FC = () => {
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button 
             className="fixed bottom-6 right-6 z-50 bg-[#AE1919] hover:bg-red-600 text-white" 
