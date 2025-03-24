@@ -186,7 +186,7 @@ const LandingHeader: React.FC = () => {
             {/* Accessibility Options */}
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Accessibility options">
+                <Button variant="ghost" size="icon" aria-label="Settings">
                   <Settings className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
