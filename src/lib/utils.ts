@@ -60,3 +60,28 @@ export function syncAuthData() {
     return false;
   }
 }
+
+// Format date function
+export function formatDate(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+}
+
+// Check if an event is upcoming (future start date)
+export function checkIfEventIsUpcoming(startDate: string): boolean {
+  const today = new Date();
+  const eventStartDate = new Date(startDate);
+  return eventStartDate > today;
+}
+
+// Check if an event is currently live (between start and end dates)
+export function checkIfEventIsLive(startDate: string, endDate: string): boolean {
+  const today = new Date();
+  const eventStartDate = new Date(startDate);
+  const eventEndDate = new Date(endDate);
+  return today >= eventStartDate && today <= eventEndDate;
+}
