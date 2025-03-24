@@ -1394,6 +1394,8 @@ export const getVolunteerStats = async (volunteerId: string) => {
 // Get volunteer details with all related data for the detailed view
 export const getVolunteerDetails = async (volunteerId: string) => {
   try {
+    console.log("getVolunteerDetails called with ID:", volunteerId);
+    
     // Get volunteer data
     const { data: volunteer, error: volunteerError } = await supabase
       .from('volunteer')
@@ -1401,7 +1403,10 @@ export const getVolunteerDetails = async (volunteerId: string) => {
       .eq('id', volunteerId)
       .single();
     
-    if (volunteerError) throw volunteerError;
+    if (volunteerError) {
+      console.error("Error fetching volunteer data:", volunteerError);
+      throw volunteerError;
+    }
     
     if (!volunteer) {
       return { data: null, error: new Error('Volunteer not found') };
@@ -1415,61 +1420,80 @@ export const getVolunteerDetails = async (volunteerId: string) => {
     let pastEvents = [];
     
     try {
-      // Get event signups
+      // Get event signups with a simpler query first
       const { data: registrations, error: signupsError } = await supabase
         .from('event_signup')
-        .select(`
-          id,
-          event_id,
-          created_at,
-          attended,
-          hours,
-          feedback,
-          status,
-          event:event_id(
-            id,
-            title,
-            description,
-            start_date,
-            end_date,
-            location,
-            status,
-            category,
-            image_url
-          )
-        `)
-        .eq('volunteer_id', volunteerId)
-        .order('created_at', { ascending: false });
-        
+        .select('*')
+        .eq('volunteer_id', volunteerId);
+      
+      console.log("Basic event signups query result:", { registrationsCount: registrations?.length, signupsError });
+      
       if (!signupsError && registrations && registrations.length > 0) {
-        console.log('Using event_signup table for volunteer details');
+        console.log('Found event signups, fetching related event details');
         
-        // Use the data directly
-        signups = registrations;
+        // Now fetch the events separately
+        const eventIds = registrations.map(signup => signup.event_id);
+        
+        const { data: events, error: eventsError } = await supabase
+          .from('event')
+          .select('*')
+          .in('id', eventIds);
+        
+        console.log("Events query result:", { eventsCount: events?.length, eventsError });
+        
+        // Combine the data
+        if (!eventsError && events) {
+          // Create a map for easy lookup
+          const eventsMap = {};
+          events.forEach(event => {
+            eventsMap[event.id] = event;
+          });
+          
+          // Add event data to each signup
+          signups = registrations.map(signup => ({
+            ...signup,
+            event: eventsMap[signup.event_id] || null
+          }));
+        } else {
+          signups = registrations;
+        }
         
         // Calculate stats
-        hoursAttended = signups
-          .filter(s => s.attended)
+        const attendedSignups = signups.filter(s => s.attended);
+        hoursAttended = attendedSignups
           .reduce((sum, s) => sum + (parseFloat(s.hours) || 0), 0);
-          
+        
+        console.log('Attended signups:', attendedSignups.length, 'Total hours:', hoursAttended);
+        
         eventsAttended = new Set(
-          signups
-            .filter(s => s.attended)
-            .map(s => s.event_id)
+          attendedSignups.map(s => s.event_id)
         ).size;
-          
+        
+        console.log('Unique events attended:', eventsAttended);
+        
+        // Current date for comparison
+        const currentDate = new Date();
+        
         upcomingEvents = signups.filter(s => {
           const event = s.event;
-          return event && 
+          const isUpcoming = event && 
             !s.attended && 
-            new Date(event.start_date || Date.now()) > new Date();
+            new Date(event.start_date || Date.now()) > currentDate;
+          
+          return isUpcoming;
         });
           
         pastEvents = signups.filter(s => {
           const event = s.event;
-          return s.attended || 
-            (event && new Date(event.end_date || 0) < new Date());
+          const isPast = s.attended || 
+            (event && new Date(event.end_date || 0) < currentDate);
+          
+          return isPast;
         });
+        
+        console.log('Upcoming events:', upcomingEvents.length, 'Past events:', pastEvents.length);
+      } else {
+        console.log('No event signups found for volunteer ID:', volunteerId);
       }
     } catch (error) {
       console.warn('Error fetching event signups:', error);
@@ -1487,6 +1511,8 @@ export const getVolunteerDetails = async (volunteerId: string) => {
       upcomingEvents,
       pastEvents,
     };
+    
+    console.log("Final stats:", enrichedVolunteer.stats);
     
     return { data: enrichedVolunteer, error: null };
   } catch (error) {
@@ -2905,3 +2931,177 @@ export async function getDonationReportData(): Promise<{ data: DonationReportDat
     };
   }
 }
+
+// Helper function to check if event_signup table is available and properly structured
+export const checkEventSignupTable = async () => {
+  try {
+    console.log("Checking event_signup table structure...");
+    
+    // Try to get the table information
+    const { data, error } = await supabase
+      .from('event_signup')
+      .select('*')
+      .limit(1);
+      
+    if (error) {
+      console.error("Error accessing event_signup table:", error);
+      return { 
+        exists: false, 
+        error: error.message,
+        details: "Failed to access event_signup table"
+      };
+    }
+    
+    console.log("event_signup table exists with sample data:", data);
+    
+    // Check for a valid row structure
+    const columnInfo = data && data.length > 0 ? Object.keys(data[0]) : [];
+    console.log("Available columns:", columnInfo);
+    
+    // Check for expected columns
+    const expectedColumns = ['id', 'event_id', 'volunteer_id', 'attended', 'hours'];
+    const missingColumns = expectedColumns.filter(col => !columnInfo.includes(col));
+    
+    if (missingColumns.length > 0) {
+      console.warn("Missing expected columns:", missingColumns);
+      return {
+        exists: true,
+        complete: false,
+        missingColumns,
+        details: "Table exists but is missing some expected columns"
+      };
+    }
+    
+    return {
+      exists: true,
+      complete: true,
+      columns: columnInfo,
+      details: "Table exists and has expected structure"
+    };
+    
+  } catch (error) {
+    console.error("Error checking event_signup table:", error);
+    return {
+      exists: false,
+      error: error.message,
+      details: "Exception while checking table"
+    };
+  }
+};
+
+// Direct function to get volunteer events without complex joins
+export const getVolunteerEvents = async (volunteerId: string) => {
+  try {
+    console.log("Getting events directly for volunteer:", volunteerId);
+    
+    // Get event signups for this volunteer
+    const { data: signups, error: signupsError } = await supabase
+      .from('event_signup')
+      .select('*')
+      .eq('volunteer_id', volunteerId);
+    
+    if (signupsError) {
+      console.error("Error fetching event signups:", signupsError);
+      return { 
+        pastEvents: [], 
+        upcomingEvents: [], 
+        error: signupsError 
+      };
+    }
+    
+    if (!signups || signups.length === 0) {
+      console.log("No event signups found for volunteer:", volunteerId);
+      return { 
+        pastEvents: [], 
+        upcomingEvents: [], 
+        error: null 
+      };
+    }
+    
+    console.log(`Found ${signups.length} event signups for volunteer:`, volunteerId);
+    
+    // Get all the event IDs
+    const eventIds = signups.map(signup => signup.event_id);
+    console.log("Event IDs to fetch:", eventIds);
+    
+    // Get all events
+    const { data: events, error: eventsError } = await supabase
+      .from('event')
+      .select('*')
+      .in('id', eventIds);
+    
+    if (eventsError) {
+      console.error("Error fetching events:", eventsError);
+      return { 
+        pastEvents: [], 
+        upcomingEvents: [], 
+        error: eventsError 
+      };
+    }
+    
+    if (!events || events.length === 0) {
+      console.log("No events found for the signups");
+      return { 
+        pastEvents: [], 
+        upcomingEvents: [], 
+        error: null 
+      };
+    }
+    
+    console.log(`Found ${events.length} events`);
+    
+    // Create a map for easier lookup
+    const eventsMap = {};
+    events.forEach(event => {
+      eventsMap[event.id] = event;
+    });
+    
+    // Create combined data
+    const currentDate = new Date();
+    const combinedSignups = signups.map(signup => ({
+      ...signup,
+      event: eventsMap[signup.event_id] || null
+    }));
+    
+    // Split into past and upcoming events
+    const pastEvents = combinedSignups.filter(signup => {
+      const event = signup.event;
+      return signup.attended || (event && new Date(event.end_date) < currentDate);
+    });
+    
+    const upcomingEvents = combinedSignups.filter(signup => {
+      const event = signup.event;
+      return event && !signup.attended && new Date(event.start_date) > currentDate;
+    });
+    
+    // Calculate total stats
+    const totalHours = combinedSignups
+      .filter(signup => signup.attended)
+      .reduce((sum, signup) => sum + (parseFloat(signup.hours) || 0), 0);
+      
+    const eventsAttended = new Set(
+      combinedSignups
+        .filter(signup => signup.attended)
+        .map(signup => signup.event_id)
+    ).size;
+    
+    return {
+      pastEvents,
+      upcomingEvents,
+      stats: {
+        totalHours,
+        eventsAttended,
+        signupCount: combinedSignups.length
+      },
+      error: null
+    };
+    
+  } catch (error) {
+    console.error("Error in getVolunteerEvents:", error);
+    return { 
+      pastEvents: [], 
+      upcomingEvents: [], 
+      error 
+    };
+  }
+};
