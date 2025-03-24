@@ -8,7 +8,7 @@ import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
 import { useAuth } from '@/lib/authContext';
 import { supabase } from '@/lib/supabase';
-import { getVolunteers } from '@/services/database.service';
+import { getVolunteers, getVolunteerDetails } from '@/services/database.service';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ import { pointsService } from '@/services/points.service';
 import { getVolunteerLeaderboard } from '@/services/database.service';
 import { useQuery } from '@tanstack/react-query';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { toast } from 'react-hot-toast';
 
 const AdminVolunteers = () => {
   // State for volunteers data
@@ -32,6 +33,12 @@ const AdminVolunteers = () => {
 
   const [selectedVolunteer, setSelectedVolunteer] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  
+  // New state for event history modal
+  const [showEventHistoryModal, setShowEventHistoryModal] = useState(false);
+  const [eventHistory, setEventHistory] = useState(null);
+  const [loadingEventHistory, setLoadingEventHistory] = useState(false);
+  
   const { adminUser, logout } = useAuth();
   const auth = useAuth();
   const navigate = useNavigate();
@@ -52,6 +59,7 @@ const AdminVolunteers = () => {
 
   // Handle opening the volunteer details modal
   const handleViewVolunteer = (volunteer) => {
+    console.log("Selected volunteer for view:", volunteer);
     setSelectedVolunteer(volunteer);
     setShowModal(true);
   };
@@ -561,6 +569,75 @@ const AdminVolunteers = () => {
     </div>
   );
 
+  // New function to handle viewing event history
+  const handleViewEventHistory = async () => {
+    if (!selectedVolunteer) return;
+    
+    try {
+      setLoadingEventHistory(true);
+      const volunteerId = selectedVolunteer.id;
+      console.log("Fetching event history for volunteer ID:", volunteerId);
+      
+      // First check if the event_signup table is working correctly
+      const { checkEventSignupTable, getVolunteerEvents } = await import('@/services/database.service');
+      const tableStatus = await checkEventSignupTable();
+      console.log("Event signup table status:", tableStatus);
+      
+      // If table doesn't exist or has issues, show a toast message
+      if (!tableStatus.exists || !tableStatus.complete) {
+        toast.error(`Database issue: ${tableStatus.details}`);
+        console.error("Event signup table issue:", tableStatus);
+      }
+      
+      // Get volunteer details first
+      const { data: volunteerData, error: volunteerError } = await getVolunteerDetails(volunteerId);
+      
+      if (volunteerError) throw volunteerError;
+      
+      // Get events directly with our new function
+      const { pastEvents, upcomingEvents, stats, error: eventsError } = 
+        await getVolunteerEvents(volunteerId);
+      
+      if (eventsError) {
+        console.error("Error fetching volunteer events:", eventsError);
+        toast.error("Failed to load events data");
+      }
+      
+      // Combine the volunteer details with event history
+      const completeData = {
+        ...volunteerData,
+        pastEvents: pastEvents || [],
+        upcomingEvents: upcomingEvents || [],
+        stats: stats || { totalHours: 0, eventsAttended: 0, signupCount: 0 }
+      };
+      
+      console.log("Combined volunteer data:", completeData);
+      console.log("Past events:", completeData.pastEvents);
+      console.log("Upcoming events:", completeData.upcomingEvents);
+      console.log("Stats:", completeData.stats);
+      
+      // If no event data but the volunteer exists, show a message
+      if (completeData.stats.signupCount === 0) {
+        toast.info(`${completeData.first_name} hasn't registered for any events yet`);
+      }
+      
+      setEventHistory(completeData);
+      setShowEventHistoryModal(true);
+      
+    } catch (err) {
+      console.error('Error fetching volunteer event history:', err);
+      toast.error('Failed to load event history');
+    } finally {
+      setLoadingEventHistory(false);
+    }
+  };
+  
+  // Close the event history modal
+  const closeEventHistoryModal = () => {
+    setShowEventHistoryModal(false);
+    setEventHistory(null);
+  };
+
   // Modal for viewing volunteer details
   const renderVolunteerModal = () => {
     if (!selectedVolunteer) return null;
@@ -659,10 +736,209 @@ const AdminVolunteers = () => {
                 </div>
                 
                 <div className="space-y-3">
-                  <Button className="w-full bg-purple-600 hover:bg-purple-700">
-                    View Event History
+                  <Button 
+                    className="w-full bg-purple-600 hover:bg-purple-700"
+                    onClick={handleViewEventHistory}
+                    disabled={loadingEventHistory}
+                  >
+                    {loadingEventHistory ? 'Loading...' : 'View Event History'}
                   </Button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // New modal for displaying event history
+  const renderEventHistoryModal = () => {
+    if (!showEventHistoryModal || !eventHistory) return null;
+    
+    console.log("Rendering event history modal with data:", eventHistory);
+    const pastEvents = eventHistory.pastEvents || [];
+    const upcomingEvents = eventHistory.upcomingEvents || [];
+    
+    console.log("Past events count:", pastEvents.length);
+    console.log("Upcoming events count:", upcomingEvents.length);
+    console.log("Stats for display:", eventHistory.stats);
+    
+    // Ensure stats exists and has default values if any property is missing
+    const stats = eventHistory.stats || {};
+    const totalEvents = stats.signupCount || pastEvents.length + upcomingEvents.length;
+    const eventsAttended = stats.eventsAttended || 0;
+    const totalHours = stats.totalHours || 0;
+    
+    console.log("Calculated stats for display:", { totalEvents, eventsAttended, totalHours });
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">Event History for {eventHistory.first_name} {eventHistory.last_name}</h2>
+              <Button variant="ghost" size="sm" onClick={closeEventHistoryModal}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            
+            <div className="space-y-8">
+              {/* Volunteer stats summary */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="border rounded-lg p-4 text-center">
+                  <p className="text-sm text-gray-500">Total Events</p>
+                  <p className="text-2xl font-bold">{totalEvents}</p>
+                </div>
+                <div className="border rounded-lg p-4 text-center">
+                  <p className="text-sm text-gray-500">Events Attended</p>
+                  <p className="text-2xl font-bold">{eventsAttended}</p>
+                </div>
+                <div className="border rounded-lg p-4 text-center">
+                  <p className="text-sm text-gray-500">Total Hours</p>
+                  <p className="text-2xl font-bold">{totalHours}</p>
+                </div>
+              </div>
+              
+              {/* Upcoming events section */}
+              <div>
+                <h3 className="text-xl font-semibold mb-4">Upcoming Events</h3>
+                {upcomingEvents.length > 0 ? (
+                  <div className="overflow-hidden rounded-lg border">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Event Name
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Date
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Location
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Category
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {upcomingEvents.map((signup) => (
+                          <tr key={signup.id}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900">
+                                {signup.event?.title || 'Unknown Event'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
+                                {signup.event?.start_date ? formatDate(signup.event.start_date) : 'N/A'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
+                                {signup.event?.location || 'N/A'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <Badge variant="outline">
+                                {signup.event?.category || 'Uncategorized'}
+                              </Badge>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <Badge variant="outline" className={`
+                                ${signup.status === 'confirmed' ? 'bg-green-100 text-green-800' : ''}
+                                ${signup.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : ''}
+                              `}>
+                                {signup.status || 'Registered'}
+                              </Badge>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 bg-gray-50 rounded-lg">
+                    <p className="text-gray-500">No upcoming events</p>
+                  </div>
+                )}
+              </div>
+              
+              {/* Past events section */}
+              <div>
+                <h3 className="text-xl font-semibold mb-4">Past Events</h3>
+                {pastEvents.length > 0 ? (
+                  <div className="overflow-hidden rounded-lg border">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Event Name
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Date
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Location
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Category
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Hours
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Attended
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {pastEvents.map((signup) => (
+                          <tr key={signup.id}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900">
+                                {signup.event?.title || 'Unknown Event'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
+                                {signup.event?.start_date ? formatDate(signup.event.start_date) : 'N/A'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
+                                {signup.event?.location || 'N/A'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <Badge variant="outline">
+                                {signup.event?.category || 'Uncategorized'}
+                              </Badge>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
+                                {signup.hours || '0'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <Badge className={signup.attended ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                                {signup.attended ? 'Yes' : 'No'}
+                              </Badge>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 bg-gray-50 rounded-lg">
+                    <p className="text-gray-500">No past events</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -842,6 +1118,9 @@ const AdminVolunteers = () => {
           
           {/* Volunteer details modal */}
           {showModal && renderVolunteerModal()}
+          
+          {/* Event history modal */}
+          {renderEventHistoryModal()}
         </main>
       </div>
     </div>
