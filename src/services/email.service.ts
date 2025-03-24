@@ -219,9 +219,47 @@ export const sendTaskResponseEmail = async (params: EmailParams): Promise<{ succ
     
     console.log('Sending task response email to:', params.to_email);
     
-    const result = await emailjs.send(SERVICE_ID, TEMPLATE_ID_TASK_RESPONSE, params);
-    console.log('Task response email sent successfully:', result.text);
-    return { success: true };
+    // Prepare template parameters - ensure we're using the exact parameter names expected by EmailJS
+    const templateParams = {
+      // Add multiple recipient field names for EmailJS
+      email: params.to_email,
+      recipient: params.to_email,
+      reply_to: params.to_email,
+      to: params.to_email,
+      to_email: params.to_email,
+      to_name: params.to_name,
+      from_name: "Samarthanam Trust",
+      subject: params.subject || "Task Response Notification",
+      // Include all other parameters
+      ...params
+    };
+    
+    console.log('Task response email template parameters:', JSON.stringify(templateParams));
+    
+    try {
+      const result = await emailjs.send(SERVICE_ID, TEMPLATE_ID_TASK_RESPONSE, templateParams);
+      console.log('Task response email sent successfully:', result.text);
+      return { success: true };
+    } catch (sendError) {
+      // Analyze the error to provide more helpful information
+      const errorMsg = sendError.message || 'Email sending failed';
+      console.error('EmailJS send error:', sendError);
+      
+      // Special handling for recipient errors
+      if (errorMsg.includes('recipient') || errorMsg.includes('address is empty')) {
+        console.error('RECIPIENT ERROR: This usually means the template is expecting a specific field name for the email address.');
+        console.error('Current fields we tried:', {
+          email: templateParams.email,
+          to_email: templateParams.to_email,
+          recipient: templateParams.recipient,
+          reply_to: templateParams.reply_to,
+          to: templateParams.to
+        });
+        console.error('Check your EmailJS template and make sure it matches one of these parameter names.');
+      }
+      
+      return { success: false, error: sendError };
+    }
   } catch (error) {
     console.error('Failed to send task response email:', error);
     return { success: false, error };
