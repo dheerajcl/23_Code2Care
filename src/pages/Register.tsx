@@ -31,6 +31,46 @@ import { registerVolunteer } from '@/services/auth.service';
 import { useAuth } from '@/lib/authContext';
 import LandingHeader from '@/components/LandingHeader';
 
+
+const stateCityMap: { [key: string]: string[] } = {
+  "andhra_pradesh": ["Visakhapatnam", "Vijayawada", "Guntur", "Nellore", "Kurnool"],
+  "arunachal_pradesh": ["Itanagar", "Naharlagun", "Pasighat"],
+  "assam": ["Guwahati", "Silchar", "Dibrugarh", "Jorhat", "Nagaon"],
+  "bihar": ["Patna", "Gaya", "Bhagalpur", "Muzaffarpur", "Purnia"],
+  "chhattisgarh": ["Raipur", "Bhilai", "Durg", "Bilaspur", "Korba"],
+  "goa": ["Panaji", "Margao", "Vasco da Gama"],
+  "gujarat": ["Ahmedabad", "Surat", "Vadodara", "Rajkot", "Gandhinagar"],
+  "haryana": ["Faridabad", "Gurugram", "Panipat", "Ambala", "Yamunanagar"],
+  "himachal_pradesh": ["Shimla", "Manali", "Dharamshala", "Solan", "Mandi"],
+  "jharkhand": ["Ranchi", "Jamshedpur", "Dhanbad", "Bokaro", "Deoghar"],
+  "karnataka": ["Bengaluru", "Mysuru", "Mangaluru", "Hubli", "Belagavi"],
+  "kerala": ["Thiruvananthapuram", "Kochi", "Kozhikode", "Thrissur", "Kollam"],
+  "madhya_pradesh": ["Bhopal", "Indore", "Jabalpur", "Gwalior", "Ujjain"],
+  "maharashtra": ["Mumbai", "Pune", "Nagpur", "Nashik", "Aurangabad"],
+  "manipur": ["Imphal", "Thoubal", "Bishnupur"],
+  "meghalaya": ["Shillong", "Tura", "Nongstoin"],
+  "mizoram": ["Aizawl", "Lunglei", "Champhai"],
+  "nagaland": ["Kohima", "Dimapur", "Mokokchung"],
+  "odisha": ["Bhubaneswar", "Cuttack", "Rourkela", "Berhampur", "Sambalpur"],
+  "punjab": ["Ludhiana", "Amritsar", "Jalandhar", "Patiala", "Bathinda"],
+  "rajasthan": ["Jaipur", "Jodhpur", "Udaipur", "Kota", "Ajmer"],
+  "sikkim": ["Gangtok", "Namchi", "Gyalshing"],
+  "tamil_nadu": ["Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem"],
+  "telangana": ["Hyderabad", "Warangal", "Nizamabad", "Karimnagar", "Khammam"],
+  "tripura": ["Agartala", "Udaipur", "Dharmanagar"],
+  "uttar_pradesh": ["Lucknow", "Kanpur", "Ghaziabad", "Agra", "Varanasi"],
+  "uttarakhand": ["Dehradun", "Haridwar", "Rishikesh", "Nainital", "Haldwani"],
+  "west_bengal": ["Kolkata", "Howrah", "Durgapur", "Siliguri", "Asansol"],
+  "andaman_nicobar": ["Port Blair"],
+  "chandigarh": ["Chandigarh"],
+  "dadra_nagar_haveli_daman_diu": ["Daman", "Diu", "Silvassa"],
+  "delhi": ["New Delhi", "Delhi"],
+  "jammu_kashmir": ["Srinagar", "Jammu", "Anantnag"],
+  "ladakh": ["Leh", "Kargil"],
+  "lakshadweep": ["Kavaratti"],
+  "puducherry": ["Puducherry", "Karaikal", "Mahe", "Yanam"]
+};
+
 const Register: React.FC = () => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -215,63 +255,63 @@ const Register: React.FC = () => {
                           Tell us about yourself so we can match you with the right volunteering opportunities.
                         </p>
                       </div>
-                      
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <Label htmlFor="firstName" className="required">First Name</Label>
-                          <Input 
-                            id="firstName" 
-                            placeholder="John" 
+                          <Input
+                            id="firstName"
+                            placeholder="John"
                             value={formData.firstName}
                             onChange={(e) => updateFormData('firstName', e.target.value)}
                             required
                           />
                         </div>
-                        
+
                         <div className="space-y-2">
                           <Label htmlFor="lastName" className="required">Last Name</Label>
-                          <Input 
-                            id="lastName" 
-                            placeholder="Doe" 
+                          <Input
+                            id="lastName"
+                            placeholder="Doe"
                             value={formData.lastName}
                             onChange={(e) => updateFormData('lastName', e.target.value)}
                             required
                           />
                         </div>
                       </div>
-                      
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <Label htmlFor="email" className="required">Email</Label>
-                          <Input 
-                            id="email" 
-                            type="email" 
-                            placeholder="john.doe@example.com" 
+                          <Input
+                            id="email"
+                            type="email"
+                            placeholder="john.doe@example.com"
                             value={formData.email}
                             onChange={(e) => updateFormData('email', e.target.value)}
                             required
                           />
                         </div>
-                        
+
                         <div className="space-y-2">
                           <Label htmlFor="phone" className="required">Phone Number</Label>
-                          <Input 
-                            id="phone" 
-                            type="tel" 
-                            placeholder="+91 98765 43210" 
+                          <Input
+                            id="phone"
+                            type="tel"
+                            placeholder="+91 98765 43210"
                             value={formData.phone}
                             onChange={(e) => updateFormData('phone', e.target.value)}
                             required
                           />
                         </div>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="password" className="required">Password</Label>
-                        <Input 
-                          id="password" 
-                          type="password" 
-                          placeholder="Create a secure password" 
+                        <Input
+                          id="password"
+                          type="password"
+                          placeholder="Create a secure password"
                           value={formData.password}
                           onChange={(e) => updateFormData('password', e.target.value)}
                           required
@@ -280,43 +320,56 @@ const Register: React.FC = () => {
                           Password must be at least 6 characters long.
                         </p>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="address">Address</Label>
-                        <Textarea 
-                          id="address" 
-                          placeholder="123 Main St, Apartment 4B" 
+                        <Textarea
+                          id="address"
+                          placeholder="123 Main St, Apartment 4B"
                           value={formData.address}
                           onChange={(e) => updateFormData('address', e.target.value)}
                         />
                       </div>
-                      
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                          <Label htmlFor="city">City</Label>
-                          <Input 
-                            id="city" 
-                            placeholder="Bengaluru" 
-                            value={formData.city}
-                            onChange={(e) => updateFormData('city', e.target.value)}
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
                           <Label htmlFor="state">State</Label>
-                          <Select 
-                            value={formData.state} 
-                            onValueChange={(value) => updateFormData('state', value)}
+                          <Select
+                            value={formData.state}
+                            onValueChange={(value) => {
+                              updateFormData('state', value);
+                              updateFormData('city', ''); // Reset city when state changes
+                            }}
                           >
                             <SelectTrigger id="state">
                               <SelectValue placeholder="Select state" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="karnataka">Karnataka</SelectItem>
-                              <SelectItem value="tamil_nadu">Tamil Nadu</SelectItem>
-                              <SelectItem value="maharashtra">Maharashtra</SelectItem>
-                              <SelectItem value="delhi">Delhi</SelectItem>
-                              <SelectItem value="other">Other</SelectItem>
+                              {Object.keys(stateCityMap).map((state) => (
+                                <SelectItem key={state} value={state}>
+                                  {state.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="city">City</Label>
+                          <Select
+                            value={formData.city}
+                            onValueChange={(value) => updateFormData('city', value)}
+                            disabled={!formData.state}
+                          >
+                            <SelectTrigger id="city">
+                              <SelectValue placeholder={formData.state ? "Select city" : "Select state first"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {formData.state && stateCityMap[formData.state]?.map((city) => (
+                                <SelectItem key={city} value={city.toLowerCase().replace(/\s+/g, '_')}>
+                                  {city}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
