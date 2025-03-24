@@ -25,12 +25,11 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
   const speechSynthesis = window.speechSynthesis;
   let lastTap = 0;
   let lastTarget: EventTarget | null = null;
+  let speakTimeout: NodeJS.Timeout | null = null;
 
-  // Detect if we're on a mobile device (basic heuristic)
   const isMobile = () => 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
   useEffect(() => {
-    // Keyboard shortcuts for desktop
     const handleKeyDown = (e: KeyboardEvent) => {
       const isOriginalShortcut = e.ctrlKey && e.altKey && e.key === 't';
       const isNewShortcut = e.ctrlKey && e.shiftKey && e.key === 's';
@@ -40,7 +39,6 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
       }
     };
 
-    // Focus for desktop tab navigation
     const handleFocus = (e: FocusEvent) => {
       if (isActive && e.target instanceof HTMLElement) {
         const selection = window.getSelection();
@@ -51,7 +49,6 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
       }
     };
 
-    // Click for desktop mouse use
     const handleClick = (e: MouseEvent) => {
       if (isActive && e.target instanceof HTMLElement) {
         const selection = window.getSelection();
@@ -62,11 +59,10 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
       }
     };
 
-    // Mobile touch handling
     const handleTouchStart = (e: TouchEvent) => {
       if (!isActive) return;
 
-      if (e.touches.length === 2) { // Two-finger toggle
+      if (e.touches.length === 2) {
         const now = Date.now();
         if (now - lastTap < 300) {
           e.preventDefault();
@@ -80,12 +76,11 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
         const target = e.target as HTMLElement;
         const tagName = target.tagName.toLowerCase();
 
-        // Only handle buttons and links on mobile
         if (tagName !== 'button' && tagName !== 'a') return;
 
         const now = Date.now();
 
-        if (now - lastTap < 300 && target === lastTarget) { // Double tap
+        if (now - lastTap < 300 && target === lastTarget) {
           e.preventDefault();
           console.log('Double tap detected on:', target);
           const clickEvent = new MouseEvent('click', {
@@ -94,7 +89,7 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
             view: window,
           });
           target.dispatchEvent(clickEvent);
-        } else { // Single tap
+        } else {
           e.preventDefault();
           console.log('Single tap detected on:', target);
           speakElement(target);
@@ -105,7 +100,6 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
       }
     };
 
-    // Speak selected text (works on both desktop and mobile)
     const handleSelectionChange = () => {
       if (!isActive) return;
       const selection = window.getSelection();
@@ -127,6 +121,7 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
       document.removeEventListener('click', handleClick, true);
       document.removeEventListener('touchstart', handleTouchStart);
       document.removeEventListener('selectionchange', handleSelectionChange);
+      if (speakTimeout) clearTimeout(speakTimeout);
     };
   }, [isActive]);
 
@@ -135,19 +130,39 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
       const newState = !prev;
       document.body.classList.toggle('talkback-active', newState);
       const status = newState ? 'Talk-back enabled' : 'Talk-back disabled';
-      speak(status);
+      speak(status, true); // Priority speech for toggle
       return newState;
     });
   };
 
-  const speak = (text: string) => {
+  const speak = (text: string, priority = false) => {
     console.log('Speaking:', text);
-    speechSynthesis.cancel();
+    if (speakTimeout && !priority) {
+      clearTimeout(speakTimeout);
+    }
+
+    speechSynthesis.cancel(); // Cancel any ongoing speech
+
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'en-US';
-    utterance.onend = () => console.log('Speech ended:', text);
-    utterance.onerror = (e) => console.error('Speech error:', e);
-    speechSynthesis.speak(utterance);
+    utterance.onend = () => {
+      console.log('Speech ended:', text);
+      speakTimeout = null;
+    };
+    utterance.onerror = (e) => {
+      if (e.error !== 'interrupted') { // Only log non-interruption errors
+        console.error('Speech error:', e);
+      }
+    };
+
+    if (priority) {
+      speechSynthesis.speak(utterance); // Immediate for toggle messages
+    } else {
+      speakTimeout = setTimeout(() => {
+        speechSynthesis.speak(utterance);
+        speakTimeout = null;
+      }, 200); // Debounce non-priority speech by 200ms
+    }
   };
 
   const speakElement = (element: HTMLElement) => {
