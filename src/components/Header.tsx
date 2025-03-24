@@ -106,7 +106,7 @@ const Header: React.FC = () => {
             <Link 
               to="/about" 
               className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
-            >
+            > 
               About
             </Link>
             <Link 
