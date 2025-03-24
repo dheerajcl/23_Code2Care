@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/authContext';
+import { useVolunteerAuth } from '@/lib/authContext';
 import { Calendar, Clock, MapPin, Users, List, Columns, Tag, User2, Check, X, Info } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -99,7 +99,7 @@ const VolunteerTaskDetails = () => {
   const [activeView, setActiveView] = useState('table');
   const navigate = useNavigate();
   const { id } = useParams();
-  const { user, logout } = useAuth();
+  const { user, logout } = useVolunteerAuth();
 
   // Event data for the specific ID
   const [event, setEvent] = useState(null);

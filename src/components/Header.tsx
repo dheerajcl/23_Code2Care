@@ -12,19 +12,26 @@ import {
   DropdownMenuGroup
 } from '@/components/ui/dropdown-menu';
 import Logo from "../assets/logo.png";
-import { useAuth } from '@/lib/authContext';
+import { useAuth, useVolunteerAuth } from '@/lib/authContext';
 import { useLanguage } from './LanguageContext'; // Adjust the import path as needed
+
+// Define the Language type to match what's used in the language context
+type Language = 'en' | 'hi' | 'kn';
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const { user, logout } = useAuth();
+  const { user: legacyUser } = useAuth();
+  const { user: volunteerUser, logout: volunteerLogout } = useVolunteerAuth();
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
+  
+  // Use the volunteer user if available, otherwise fallback to the legacy user
+  const user = volunteerUser || legacyUser;
 
   const handleLogout = async () => {
-    await logout();
+    await volunteerLogout();
     navigate('/');
   };
 

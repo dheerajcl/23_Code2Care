@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/lib/authContext';
+import { useVolunteerAuth } from '@/lib/authContext';
 import { supabase } from '@/lib/supabase';
 import { Search, X, ListTodo, MessageSquare } from 'lucide-react';
 import Header from '../components/Header';
@@ -24,7 +24,7 @@ import EventDetailsModal from '@/components/EventDetailsModal';
 
 const VolunteerEvents = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout } = useVolunteerAuth();
   const [events, setEvents] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('all');

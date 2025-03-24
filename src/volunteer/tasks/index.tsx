@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/authContext';
+import { useVolunteerAuth } from '@/lib/authContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export const VolunteerTasks = () => {
-  const { user } = useAuth();
+  const { user } = useVolunteerAuth();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
