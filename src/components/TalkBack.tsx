@@ -25,29 +25,72 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
   const speechSynthesis = window.speechSynthesis;
 
   useEffect(() => {
+    // Keyboard shortcuts for desktop
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Original shortcut: Ctrl + Alt + T
       const isOriginalShortcut = e.ctrlKey && e.altKey && e.key === 't';
-      // New shortcut: Ctrl + Shift + A
-      const isNewShortcut = e.ctrlKey && e.altKey && e.key === 'a';
-
+      const isNewShortcut = e.ctrlKey && e.shiftKey && e.key === 's';
       if (isOriginalShortcut || isNewShortcut) {
-        e.preventDefault(); // Prevent default browser behavior
+        e.preventDefault();
         toggleTalkBack();
       }
     };
 
+    // Focus and click for element reading
     const handleFocus = (e: FocusEvent) => {
       if (isActive && e.target instanceof HTMLElement) {
-        speakElement(e.target);
+        const selection = window.getSelection();
+        const selectedText = selection?.toString().trim();
+        if (!selectedText) { // Only speak element if no text is selected
+          speakElement(e.target);
+        }
+      }
+    };
+
+    const handleClick = (e: MouseEvent) => {
+      if (isActive && e.target instanceof HTMLElement) {
+        const selection = window.getSelection();
+        const selectedText = selection?.toString().trim();
+        if (!selectedText) { // Only speak element if no text is selected
+          speakElement(e.target);
+        }
+      }
+    };
+
+    // Gesture for mobile (two-finger double-tap)
+    let lastTap = 0;
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        const now = Date.now();
+        if (now - lastTap < 300) {
+          e.preventDefault();
+          toggleTalkBack();
+        }
+        lastTap = now;
+      }
+    };
+
+    // Speak selected text only
+    const handleSelectionChange = () => {
+      if (!isActive) return;
+      const selection = window.getSelection();
+      const selectedText = selection?.toString().trim();
+      if (selectedText) {
+        speak(selectedText); // Speak only the selected text
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('focusin', handleFocus);
+    document.addEventListener('focusin', handleFocus, true);
+    document.addEventListener('click', handleClick, true);
+    document.addEventListener('touchstart', handleTouchStart);
+    document.addEventListener('selectionchange', handleSelectionChange);
+
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('focusin', handleFocus);
+      document.removeEventListener('focusin', handleFocus, true);
+      document.removeEventListener('click', handleClick, true);
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('selectionchange', handleSelectionChange);
     };
   }, [isActive]);
 
@@ -62,28 +105,38 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
   };
 
   const speak = (text: string) => {
+    console.log('Speaking:', text); // Debug
     speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'en-US';
+    utterance.onend = () => console.log('Speech ended:', text);
+    utterance.onerror = (e) => console.error('Speech error:', e);
     speechSynthesis.speak(utterance);
   };
 
   const speakElement = (element: HTMLElement) => {
     const text = getElementText(element);
-    speak(text);
+    if (text) speak(text);
   };
 
   const getElementText = (element: HTMLElement): string => {
+    const ariaLabel = element.getAttribute('aria-label');
+    if (ariaLabel) return ariaLabel;
+
     if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
       return `${(element as HTMLInputElement).type} field${(element as HTMLInputElement).value ? ', value: ' + (element as HTMLInputElement).value : ''}`;
     }
     if (element.tagName === 'BUTTON') {
-      return `Button: ${element.textContent?.trim() || ''}`;
+      const buttonText = element.textContent?.trim() || element.querySelector('span.sr-only')?.textContent?.trim();
+      return `Button: ${buttonText || 'unnamed'}`;
     }
     if (element.tagName === 'A') {
-      return `Link: ${element.textContent?.trim() || element.getAttribute('href') || ''}`;
+      return `Link: ${element.textContent?.trim() || element.getAttribute('href') || 'unnamed'}`;
     }
-    return element.textContent?.trim() || element.getAttribute('aria-label') || 'Unknown element';
+
+    const content = element.textContent?.trim();
+    const role = element.getAttribute('role');
+    return content || `${role || 'element'}: unnamed`;
   };
 
   return (
@@ -94,4 +147,4 @@ export const TalkBackProvider = ({ children }: TalkBackProviderProps) => {
 };
 
 const TalkBack = () => null;
-export default TalkBack;  
+export default TalkBack;
