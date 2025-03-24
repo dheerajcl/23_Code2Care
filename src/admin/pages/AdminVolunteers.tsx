@@ -36,6 +36,20 @@ const AdminVolunteers = () => {
   const auth = useAuth();
   const navigate = useNavigate();
 
+  // Leaderboard data fetch with React Query - moved to component top level
+  const { 
+    data: leaderboardData, 
+    isLoading: leaderboardLoading, 
+    error: leaderboardError 
+  } = useQuery({
+    queryKey: ['admin-leaderboard'],
+    queryFn: () => pointsService.getLeaderboard(20), // Get top 20 volunteers
+    retryDelay: 1000,
+    retry: 3,
+    // Only fetch when viewing leaderboard to save resources
+    enabled: viewMode === 'leaderboard'
+  });
+
   // Handle opening the volunteer details modal
   const handleViewVolunteer = (volunteer) => {
     setSelectedVolunteer(volunteer);
@@ -257,15 +271,7 @@ const AdminVolunteers = () => {
 
   // LEADERBOARD VIEW COMPONENTS - Using points system
   const renderLeaderboard = () => {
-    // Use React Query to fetch leaderboard data
-    const { data: leaderboardData, isLoading, error } = useQuery({
-      queryKey: ['admin-leaderboard'],
-      queryFn: () => pointsService.getLeaderboard(20), // Get top 20 volunteers
-      retryDelay: 1000,
-      retry: 3
-    });
-    
-    if (isLoading) {
+    if (leaderboardLoading) {
       return (
         <div className="bg-white p-6 rounded-lg shadow-md flex justify-center">
           <LoadingSpinner size="medium" text="Loading leaderboard..." />
@@ -273,7 +279,7 @@ const AdminVolunteers = () => {
       );
     }
     
-    if (error) {
+    if (leaderboardError) {
       return (
         <div className="bg-white p-6 rounded-lg shadow-md">
           <div className="text-center text-red-500 py-4">
