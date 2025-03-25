@@ -1,12 +1,13 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Calendar, Users, BarChart2 } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, BarChart2, HardDriveUpload } from 'lucide-react';
 
 const menuItems = [
   { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/admin/dashboard' },
   { name: 'Events', icon: <Calendar size={20} />, path: '/admin/events' },
   { name: 'Volunteers', icon: <Users size={20} />, path: '/admin/volunteers' },
   { name: 'Reports', icon: <BarChart2 size={20} />, path: '/admin/reports' },
+  { name: 'Migrate', icon: <HardDriveUpload size={20} />, path: '/admin/migration' },
 ];
 
 const AdminSidebar = () => {
