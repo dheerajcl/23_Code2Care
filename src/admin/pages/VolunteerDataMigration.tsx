@@ -8,6 +8,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useNavigate } from 'react-router-dom';
+import AdminHeader from '../components/AdminHeader';
+import AdminSidebar from '../components/AdminSidebar';
 // import * as crypto from 'crypto';
 
 // Define the volunteer schema interface based on your table
@@ -46,6 +49,16 @@ const VolunteerDataMigration = () => {
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<{ success: number; failed: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { adminUser, logout } = useAuth();
+  const auth = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    // Fixed logout handler
+    await logout();
+    navigate('/admin/login');
+  };
+
 
   // All volunteer table columns with default no-value
   const volunteerColumns = [
@@ -312,30 +325,50 @@ successCount += batch.length;
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
+    <div className="h-screen bg-gray-100 flex flex-col">
+    <AdminHeader  user={auth.user} handleLogout={handleLogout} title="Data Migration" />
+
+    <div className="flex h-screen bg-gray-100 overflow-hidden">
+
+      <AdminSidebar />
+      
+      <main className="flex-1 overflow-y-auto p-4">
+      <Card className="w-full max-w-4xl mx-auto mt-4">
       <CardHeader>
-        <CardTitle>Volunteer Data Migration</CardTitle>
-        <CardDescription>
-          Upload an Excel or CSV file to import volunteer data into the system.
-        </CardDescription>
+        <div className="flex justify-between items-center">
+          <div>
+          <CardTitle>Volunteer Data Migration</CardTitle>
+          <CardDescription>
+            Upload an Excel or CSV file to import volunteer data into the database.
+          </CardDescription>
+          </div>
+        <Button onClick={() => navigate('/admin/migration')} className='bg-purple-600 hover:bg-purple-700 text-white' variant="outline">
+          Go Back
+        </Button>
+        </div>
       </CardHeader>
+
       
       <CardContent>
         {!file && (
           <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-12">
-            <input
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              onChange={handleFileUpload}
-              className="block w-full text-sm text-gray-500
-                file:mr-4 file:py-2 file:px-4
-                file:rounded file:border-0
-                file:text-sm file:font-semibold
-                file:bg-blue-50 file:text-blue-700
-                hover:file:bg-blue-100"
-            />
-            <p className="mt-2 text-sm text-gray-500">
-              Upload Excel (.xlsx, .xls) or CSV files
+            <div className="flex justify-center items-center ml-20">
+              <input
+                type="file"
+                aria-label="upload-csv-file"
+                accept=".xlsx,.xls,.csv"
+                onChange={handleFileUpload}
+                className="block w-full max-w-xs text-sm text-gray-500
+                  file:mr-4 file:py-2 file:px-4
+                  file:rounded file:border-0
+                  file:text-sm file:font-semibold
+                  file:bg-blue-50 file:text-blue-700
+                  hover:file:bg-blue-100"
+              />
+            </div>
+
+            <p className="mt-10 text-sm text-gray-500">
+              Upload Excel (.xlsx, .xls) or CSV (.csv) files
             </p>
           </div>
         )}
@@ -454,6 +487,9 @@ successCount += batch.length;
         </div>
       </CardFooter>
     </Card>
+      </main>
+    </div>
+  </div>
   );
 };
 

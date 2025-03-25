@@ -1,11 +1,34 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Book, DollarSign } from 'lucide-react';
+import AdminSidebar from '../components/AdminSidebar';
+import AdminHeader from '../components/AdminHeader';
+import { logout } from '@/services/auth.service';
+import { useAuth } from '@/lib/authContext';
 
 const MigratePage: React.FC = () => {
+
+  const { adminUser, logout } = useAuth();
+  const auth = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    // Fixed logout handler
+    await logout();
+    navigate('/admin/login');
+  };
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6 text-center">Data Migration</h1>
+    <div className="h-screen bg-gray-100 flex flex-col">
+      <AdminHeader  user={auth.user} handleLogout={handleLogout} title="Data Migration" />
+
+      <div className="flex h-screen bg-gray-100 overflow-hidden">
+
+        <AdminSidebar />
+        
+        <main className="flex-1 overflow-y-auto p-4">
+        <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-6 text-left">Data Migration</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Volunteer Data Migration Card */}
@@ -43,6 +66,9 @@ const MigratePage: React.FC = () => {
             </div>
           </Link>
         </div>
+      </div>
+    </div>
+        </main>
       </div>
     </div>
   );
