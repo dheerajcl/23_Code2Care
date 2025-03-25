@@ -344,7 +344,7 @@ const AdminDashboard: React.FC = () => {
                   <CardContent>
                     <div className="text-2xl font-bold">{dashboardStats.newVolunteers}</div>
                     <p className="text-xs text-muted-foreground mt-1 flex items-center">
-                      <span className={dashboardStats.newVolunteers > 0 ? "text-green-500" : "text-red-500"} flex items-center mr-1>
+                    <span className={`${dashboardStats.newVolunteers > 0 ? "text-green-500" : "text-red-500"} flex items-center mr-1`}>
                         {dashboardStats.newVolunteers > 0 ? <ArrowUpRight className="h-3 w-3 mr-1" /> : <ArrowDownRight className="h-3 w-3 mr-1" />}
                         this month
                       </span>
