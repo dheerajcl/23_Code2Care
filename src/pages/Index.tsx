@@ -10,12 +10,14 @@ import AccessibilityMenu from '@/components/AccessibilityMenu';
 import { useAuth } from '@/lib/authContext';
 import { supabase } from '@/lib/supabase';
 import LandingHeader from '@/components/LandingHeader';
+import { useLanguage } from '../components/LanguageContext'; // Add language context import
 
 // Events component to show upcoming events
 const Events: React.FC = () => {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useLanguage(); // Add translation function
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -30,7 +32,7 @@ const Events: React.FC = () => {
 
       if (error) {
         console.error('Error fetching events:', error.message);
-        setError('Failed to load events. Please try again later.');
+        setError(t('failedToLoadEvents')); // Use translated error message
       } else {
         setEvents(data);
       }
@@ -38,46 +40,49 @@ const Events: React.FC = () => {
     };
 
     fetchEvents();
-  }, []);
+  }, [t]); // Add t to dependencies
 
   return (
     <div>
       <LandingHeader />
       <AccessibilityMenu />
       <div className="container mx-auto py-8">
-        <h1 className="text-3xl font-bold text-center mb-6">Upcoming Events</h1>
+        <h1 className="text-3xl font-bold text-center mb-6">{t('upcomingEvents')}</h1>
         {loading ? (
-          <p className="text-center">Loading events...</p>
+          <p className="text-center">{t('loadingEvents')}</p>
         ) : error ? (
           <p className="text-center text-red-500">{error}</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {events.map(event => (
-                <EventCard key={event.id} {...event} />
+              <EventCard key={event.id} {...event} />
             ))}
           </div>
         )}
         <div className="mt-6 flex justify-center">
-              <Button asChild>
-                <Link to="/events">
-                  Show More
-                  <ChevronRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
+          <Button asChild>
+            <Link to="/events">
+              {t('showMore')}
+              <ChevronRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
       </div>
     </div>
   );
 };
 
-const impactStats = [
-  { icon: <Users className="h-12 w-12 text-primary" />, value: "20,000+", label: "Lives Impacted" },
-  { icon: <Calendar className="h-12 w-12 text-primary" />, value: "500+", label: "Events Organized" },
-  { icon: <Heart className="h-12 w-12 text-primary" />, value: "5,000+", label: "Volunteers Engaged" },
-  { icon: <BookOpen className="h-12 w-12 text-primary" />, value: "15+", label: "Years of Service" }
-];
-
 const Index: React.FC = () => {
+  const { t } = useLanguage(); // Add translation function
+
+  // Update impactStats with translated labels
+  const impactStats = [
+    { icon: <Users className="h-12 w-12 text-primary" />, value: "20,000+", label: t('livesImpacted') },
+    { icon: <Calendar className="h-12 w-12 text-primary" />, value: "500+", label: t('eventsOrganized') },
+    { icon: <Heart className="h-12 w-12 text-primary" />, value: "5,000+", label: t('volunteersEngaged') },
+    { icon: <BookOpen className="h-12 w-12 text-primary" />, value: "15+", label: t('yearsOfService') }
+  ];
+
   return (
     <div className="min-h-screen flex flex-col">
       <LandingHeader />
@@ -87,7 +92,13 @@ const Index: React.FC = () => {
           <div className="container mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
               {impactStats.map((stat, index) => (
-                <motion.div key={index} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: index * 0.1 }} className="bg-card rounded-xl p-6 text-center shadow-sm border border-border">
+                <motion.div 
+                  key={index} 
+                  initial={{ opacity: 0, y: 20 }} 
+                  whileInView={{ opacity: 1, y: 0 }} 
+                  transition={{ duration: 0.5, delay: index * 0.1 }} 
+                  className="bg-card rounded-xl p-6 text-center shadow-sm border border-border"
+                >
                   <div className="flex justify-center mb-4">{stat.icon}</div>
                   <h2 className="text-3xl font-bold mb-2">{stat.value}</h2>
                   <p className="text-muted-foreground">{stat.label}</p>
@@ -102,23 +113,20 @@ const Index: React.FC = () => {
                 viewport={{ once: true, margin: "-100px" }}
               >
                 <span className="inline-block bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium mb-4">
-                  About Us
+                  {t('aboutUs')}
                 </span>
                 <h2 className="text-3xl font-bold mb-6">
-                  Breaking Barriers for Inclusive Growth
+                  {t('breakingBarriers')}
                 </h2>
                 <p className="text-muted-foreground mb-6">
-                  Founded in 1997, Samarthanam Trust has been at the forefront of 
-                  empowering persons with disabilities through various initiatives 
-                  in education, livelihood, sports, rehabilitation, and cultural activities.
+                  {t('aboutDescription1')}
                 </p>
                 <p className="text-muted-foreground mb-6">
-                  Our technology-driven approach ensures that we can provide the right tools and 
-                  resources to help individuals overcome barriers and achieve their full potential.
+                  {t('aboutDescription2')}
                 </p>
                 <Button asChild>
                   <Link to="/about">
-                    Learn More About Us
+                    {t('learnMore')}
                     <ChevronRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
@@ -133,7 +141,7 @@ const Index: React.FC = () => {
               >
                 <img 
                   src="https://samarthanam.org/wp-content/uploads/2024/07/volunteer-img1-group.jpg" 
-                  alt="Samarthanam Trust community activities" 
+                  alt={t('communityActivitiesAlt')} 
                   className="w-full h-full object-cover"
                 />
               </motion.div>
