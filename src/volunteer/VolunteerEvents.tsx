@@ -49,26 +49,31 @@ const VolunteerEvents = () => {
       setLoading(true);
       
       // First, get all events
-      const { data: allEvents, error: eventsError } = await supabase
-        .from('event')
-        .select('*');
-        
-      if (eventsError) {
-        console.error('Error fetching events:', eventsError);
-        toast.error('Failed to load events. Please try again.');
-        setLoading(false);
-        return;
-      }
-      
-      // Filter to only include events that the user is registered for
-      const userEvents = allEvents.filter(event => registeredEvents[event.id]);
+      const { data: registrations, error: registrationsError } = await supabase
+      .from('event_signup')
+      .select('event_id')
+      .eq('volunteer_id', user.id);
+
+    if (registrationsError) {
+      console.error('Error fetching registrations:', registrationsError);
+      return;
+    }
+
+    // Extract just the event_ids from the result
+    const eventIds = registrations.map(reg => reg.event_id);
+
+    // Now fetch the events with those IDs
+    const { data: userEvents, error: eventsError } = await supabase
+      .from('event')
+      .select('*')
+      .in('id', eventIds);
       setEvents(userEvents);
       
       // Load feedback status for each registered event
       const feedbackStatusObj = {};
       for (const event of userEvents) {
         const { data: feedbackData } = await supabase
-          .from('event_feedback')
+          .from('feedback')
           .select('*')
           .eq('volunteer_id', user.id)
           .eq('event_id', event.id)

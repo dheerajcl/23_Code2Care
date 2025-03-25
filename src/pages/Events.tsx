@@ -39,10 +39,12 @@ const Events = () => {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('event')
-        .select('*')
-        .order('start_date', { ascending: true });
+     
+const { data, error } = await supabase
+.from('event')
+.select('*')
+.gt('close_date', new Date().toISOString())
+.order('start_date', { ascending: true });
 
       if (error) {
         console.error('Error fetching events:', error);
