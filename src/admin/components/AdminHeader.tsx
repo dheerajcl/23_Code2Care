@@ -1,15 +1,33 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Menu as MenuIcon, User, Settings, LogOut, Bell } from "lucide-react";
+import { Menu as MenuIcon, User, LogOut, Bell, Edit2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Logo from '../../assets/logo.png'
 import { Link } from 'react-router-dom';
 import { useAdminAuth } from '@/lib/authContext';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { updateVolunteer } from '@/services/database.service';
 
 interface User {
+  id?: string;
   firstName?: string;
   lastName?: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  role?: string;
 }
 
 interface AdminHeaderProps {
@@ -20,10 +38,27 @@ interface AdminHeaderProps {
 const AdminHeader: React.FC<AdminHeaderProps> = ({ user: propUser, handleLogout: propLogout }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const { user: contextUser, logout: contextLogout } = useAdminAuth();
+  const { user: contextUser, logout: contextLogout, setUser: setContextUser } = useAdminAuth();
+  
+  // Add state for dropdown menu
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
   const user = contextUser || propUser;
   const handleLogout = contextLogout || propLogout;
+
+  // Edit profile state
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [firstName, setFirstName] = useState(user?.firstName || user?.first_name || '');
+  const [lastName, setLastName] = useState(user?.lastName || user?.last_name || '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Update form values when user changes
+  useEffect(() => {
+    if (user) {
+      setFirstName(user.firstName || user.first_name || '');
+      setLastName(user.lastName || user.last_name || '');
+    }
+  }, [user]);
 
   const onLogout = () => {
     localStorage.removeItem('adminUser');
@@ -35,6 +70,77 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ user: propUser, handleLogout:
 
   const handleNotificationClick = () => {
     navigate('/admin/notifications');
+  };
+
+  const handleEditProfileClick = () => {
+    setIsEditProfileOpen(true);
+    setIsDropdownOpen(false);
+    setIsMobileMenuOpen(false);
+  };
+
+  // Toggle dropdown menu
+  const toggleDropdown = () => {
+    setIsDropdownOpen(!isDropdownOpen);
+  };
+
+  // Close dropdown when clicking outside
+  const closeDropdownOnOutsideClick = (e) => {
+    if (!e.target.closest('.profile-dropdown-container')) {
+      setIsDropdownOpen(false);
+    }
+  };
+
+  // Add event listener to close dropdown when clicking outside
+  useEffect(() => {
+    if (isDropdownOpen) {
+      document.addEventListener('click', closeDropdownOnOutsideClick);
+    } else {
+      document.removeEventListener('click', closeDropdownOnOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('click', closeDropdownOnOutsideClick);
+    };
+  }, [isDropdownOpen]);
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    
+    if (!user?.id) return;
+    
+    try {
+      setIsSaving(true);
+      
+      // Update the admin in the database (using the same function since the schema is similar)
+      const { data, error } = await updateVolunteer(user.id, {
+        first_name: firstName,
+        last_name: lastName
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Update the user in context and localStorage
+      if (data && setContextUser) {
+        const updatedUser = {
+          ...user,
+          firstName: firstName,
+          lastName: lastName,
+          first_name: firstName,
+          last_name: lastName
+        };
+        
+        setContextUser(updatedUser as User);
+        
+        toast.success('Profile updated successfully');
+        setIsEditProfileOpen(false);
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error('Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -75,30 +181,44 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ user: propUser, handleLogout:
             </Button>
 
             {user ? (
-              <div className="relative group">
-                <div className="flex items-center cursor-pointer">
+              <div className="relative profile-dropdown-container">
+                <div 
+                  className="flex items-center cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleDropdown();
+                  }}
+                >
                   <Avatar className="h-8 w-8">
                     <AvatarImage src="/placeholder-avatar.jpg" alt={user?.firstName} />
                     <AvatarFallback>{user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <span className="ml-2 text-sm font-medium text-gray-700">{user?.firstName} {user?.lastName}</span>
                 </div>
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg hidden group-hover:block z-10">
-                  <div className="py-1">
-                    <Link to="/admin/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                      Profile
-                    </Link>
-                    <Link to="/admin/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                      Settings
-                    </Link>
-                    <button
-                      onClick={onLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Sign out
-                    </button>
+                {isDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                    <div className="py-1">
+                      <button
+                        onClick={handleEditProfileClick}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <div className="flex items-center">
+                          <Edit2 className="h-4 w-4 mr-2" />
+                          Edit Profile
+                        </div>
+                      </button>
+                      <button
+                        onClick={onLogout}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <div className="flex items-center">
+                          <LogOut className="h-4 w-4 mr-2" />
+                          Sign out
+                        </div>
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             ) : (
               <Link to="/login" className="text-sm font-medium text-gray-900 hover:text-green-600">
@@ -167,24 +287,18 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ user: propUser, handleLogout:
                       </Avatar>
                       <span className="text-base font-medium">{user?.firstName} {user?.lastName}</span>
                     </div>
-                    <Link
-                      to="/admin/profile"
-                      className="block py-2 text-base font-medium text-gray-900 hover:text-green-600"
-                      onClick={() => setIsMobileMenuOpen(false)}
+                    <button
+                      onClick={handleEditProfileClick}
+                      className="flex w-full items-center py-2 text-base font-medium text-gray-900 hover:text-green-600"
                     >
-                      Profile
-                    </Link>
-                    <Link
-                      to="/admin/settings"
-                      className="block py-2 text-base font-medium text-gray-900 hover:text-green-600"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      Settings
-                    </Link>
+                      <Edit2 className="h-5 w-5 mr-2" />
+                      Edit Profile
+                    </button>
                     <button
                       onClick={onLogout}
-                      className="block w-full text-left py-2 text-base font-medium text-gray-900 hover:text-green-600"
+                      className="flex w-full items-center py-2 text-base font-medium text-gray-900 hover:text-green-600"
                     >
+                      <LogOut className="h-5 w-5 mr-2" />
                       Sign out
                     </button>
                   </div>
@@ -202,6 +316,57 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ user: propUser, handleLogout:
           </div>
         </div>
       )}
+
+      {/* Edit Profile Dialog */}
+      <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <form onSubmit={handleUpdateProfile}>
+            <DialogHeader>
+              <DialogTitle>Edit Profile</DialogTitle>
+              <DialogDescription>
+                Update your profile information below.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="py-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input 
+                  id="firstName" 
+                  value={firstName} 
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="First Name"
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input 
+                  id="lastName" 
+                  value={lastName} 
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Last Name"
+                  required
+                />
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setIsEditProfileOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </header>
   );
 };
