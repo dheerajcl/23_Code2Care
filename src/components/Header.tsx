@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, Moon, Sun, Settings, User, LogOut, Languages } from 'lucide-react';
+import { Menu, X, Moon, Sun, Settings, User, LogOut, Languages,Bell,XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu,
@@ -14,23 +14,28 @@ import {
 import Logo from "../assets/logo.png";
 import { useAuth, useVolunteerAuth } from '@/lib/authContext';
 import { useLanguage } from './LanguageContext'; // Adjust the import path as needed
-import { useTranslation } from 'react-i18next';
-
+import { supabase } from '@/lib/supabase';
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 // Define the Language type to match what's used in the language context
 type Language = 'en' | 'hi' | 'kn';
+type Notification = {
+  id: string;
+  volunteer_id: string;
+  message: string;
+  sent_at: string;
+  title_noti: string;
+};
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const { user: legacyUser } = useAuth();
   const { user: volunteerUser, logout: volunteerLogout } = useVolunteerAuth();
-  // const { language, setLanguage, t } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation('translation'); // Namespace is 'translation'
-  const changeLanguage = (lng: SupportedLanguages) => {
-    i18n.changeLanguage(lng);
-  };
   
   // Use the volunteer user if available, otherwise fallback to the legacy user
   const user = volunteerUser || legacyUser;
@@ -57,12 +62,14 @@ const Header: React.FC = () => {
       setIsDarkMode(true);
       document.documentElement.classList.add('dark');
     }
+    
+// Fetch notifications when the popover is opened
 
     // Check for saved language preference
-    // const savedLang = localStorage.getItem('language') as Language | null;
-    // if (savedLang && ['en', 'hi', 'kn'].includes(savedLang)) {
-    //   setLanguage(savedLang);
-    // }
+    const savedLang = localStorage.getItem('language') as Language | null;
+    if (savedLang && ['en', 'hi', 'kn'].includes(savedLang)) {
+      setLanguage(savedLang);
+    }
 
     window.addEventListener('scroll', handleScroll);
     window.addEventListener('resize', handleResize);
@@ -71,7 +78,7 @@ const Header: React.FC = () => {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleResize);
     };
-  });
+  }, [setLanguage]);
 
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
@@ -88,17 +95,38 @@ const Header: React.FC = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
-  // const changeLanguage = (lang: Language) => {
-  //   setLanguage(lang);
-  //   localStorage.setItem('language', lang);
-  // };
+  const changeLanguage = (lang: Language) => {
+    setLanguage(lang);
+    localStorage.setItem('language', lang);
+  };
 
   // Function to get the dashboard URL based on user role
   const getDashboardUrl = () => {
     if (!user) return '/login';
     return '/volunteer/dashboard';
   };
+  const fetchNotifications = async () => {
+    if (user && isNotificationOpen) {
+      try {
+        const { data, error } = await supabase
+          .from('internal_noti')
+          .select('*')
+          .eq('volunteer_id', user.id)
+          .order('sent_at', { ascending: false });
+        if (error) {
+          throw error;
+        }
 
+        setNotifications(data || []);
+      } catch (error) {
+        console.error('Failed to fetch notifications:', error);
+      }
+    }
+  };useEffect(() => {
+    if (isNotificationOpen) {
+      fetchNotifications();
+    }
+  }, [isNotificationOpen, user]);
   return (
     <header 
       className='fixed top-0 left-0 w-full bg-white shadow-sm z-50 vol-dashboard-header'
@@ -181,14 +209,66 @@ const Header: React.FC = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-
+            {user && (
+              <Popover open={isNotificationOpen} onOpenChange={setIsNotificationOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label="Notifications" onClick={() => setIsNotificationOpen(true)}>
+                    <Bell className="h-5 w-5" />
+                    {notifications.length > 0 && (
+                      <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full animate-pulse"></span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent 
+                  align="end" 
+                  className="w-96 max-h-96 overflow-y-auto"
+                >
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold">{t('notifications')}</h3>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => setIsNotificationOpen(false)}
+                    >
+                      <XIcon className="h-5 w-5" />
+                    </Button>
+                  </div>
+                  {notifications.length === 0 ? (
+                    <p className="text-center text-muted-foreground">
+                      {t('No Notifications')}
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {notifications.map((notification) => (
+                        <div 
+                          key={notification.id} 
+                          className="p-3 bg-secondary/50 rounded-md"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-medium">{notification.title_noti}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {notification.message}
+                              </p>
+                              <span className="text-xs text-muted-foreground mt-1">
+                                {new Date(notification.sent_at).toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+            )}
             {/* Login or User Menu */}
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative">
                     <User className="h-5 w-5" />
-                    <span className="sr-only">{t('userMenu')}</span>
+                    <span className="sr-only">User menu</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
@@ -216,27 +296,35 @@ const Header: React.FC = () => {
             )}
 
             {/* Theme Toggle */}
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            aria-label={isDarkMode ? t("switchToLightMode") : t("switchToDarkMode")}
-            onClick={toggleTheme}
-          >
-            {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+              onClick={toggleTheme}
+            >
+              {isDarkMode ? (
+                <Sun className="h-5 w-5" />
+              ) : (
+                <Moon className="h-5 w-5" />
+              )}
+            </Button>
 
 
 
             {/* Mobile Menu Button */}
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="md:hidden"
-            aria-label={isMenuOpen ? t("closeMenu") : t("openMenu")}
-            onClick={toggleMenu}
-          >
-            {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="md:hidden"
+              aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+              onClick={toggleMenu}
+            >
+              {isMenuOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
+            </Button>
           </div>
         </div>
       </div>

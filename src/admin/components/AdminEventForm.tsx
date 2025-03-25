@@ -274,6 +274,7 @@ const AdminEventForm = ({ initialData, isEditing = false }: EventFormProps) => {
                     selected={endDate}
                     onSelect={setEndDate}
                     initialFocus
+                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                   />
                 </PopoverContent>
               </Popover>
@@ -307,6 +308,7 @@ const AdminEventForm = ({ initialData, isEditing = false }: EventFormProps) => {
                     selected={startDate}
                     onSelect={setStartDate}
                     initialFocus
+                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                   />
                 </PopoverContent>
               </Popover>
@@ -339,6 +341,10 @@ const AdminEventForm = ({ initialData, isEditing = false }: EventFormProps) => {
                     selected={endDate}
                     onSelect={setEndDate}
                     initialFocus
+                    disabled={(date) => {
+                      const today = new Date(new Date().setHours(0, 0, 0, 0));
+                      return date < today || (startDate && date < startDate);
+                    }}
                   />
                 </PopoverContent>
               </Popover>

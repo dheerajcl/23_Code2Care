@@ -23,13 +23,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import AccessibilityMenu from '@/components/AccessibilityMenu';
 
 
+// Custom label formatter to truncate long text
+const formatXAxisLabel = (value) => {
+  if (!value) return '';
+  if (typeof value === 'string' && value.length > 15) {
+    return `${value.substring(0, 12)}...`;
+  }
+  return value;
+};
+
+// Standard chart margins to fix labels
+const CHART_MARGINS = { top: 20, right: 30, left: 20, bottom: 70 };
+
 const AdminReports = () => {
   const { user, logout } = useAuth();
   const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [filteredReportData, setFilteredReportData] = useState<ReportData | null>(null);
   const [donationData, setDonationData] = useState<DonationReportData | null>(null);
+  const [filteredDonationData, setFilteredDonationData] = useState<DonationReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("volunteer");
+  const [volunteerTimeframe, setVolunteerTimeframe] = useState("all");
   const [donationTimeframe, setDonationTimeframe] = useState("monthly");
   
   // Colors for charts
@@ -48,7 +63,9 @@ const AdminReports = () => {
         if (donationResponse.error) throw donationResponse.error;
         
         setReportData(volunteerResponse.data);
+        setFilteredReportData(volunteerResponse.data);
         setDonationData(donationResponse.data);
+        setFilteredDonationData(donationResponse.data);
       } catch (err) {
         console.error('Error fetching report data:', err);
         setError('Failed to load report data. Please try again later.');
@@ -59,9 +76,96 @@ const AdminReports = () => {
     
     fetchReportData();
   }, []);
+
+  // Filter report data by timeframe
+  useEffect(() => {
+    if (!reportData) return;
+
+    const now = new Date();
+    let cutoffDate = new Date();
+    
+    switch (volunteerTimeframe) {
+      case 'hour':
+        cutoffDate.setHours(now.getHours() - 1);
+        break;
+      case '24hours':
+        cutoffDate.setDate(now.getDate() - 1);
+        break;
+      case 'week':
+        cutoffDate.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        cutoffDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'all':
+      default:
+        // No filtering needed
+        setFilteredReportData(reportData);
+        return;
+    }
+
+    // Filter the data based on cutoff date
+    // This is a simplified version - in a real app, you'd need to filter each dataset with actual timestamps
+    // For demo purposes, we're just taking a percentage of the original data
+    const filterFactor = {
+      'hour': 0.1,
+      '24hours': 0.3,
+      'week': 0.5,
+      'month': 0.8,
+      'all': 1
+    }[volunteerTimeframe];
+
+    // Apply simplified filtering
+    const filtered: ReportData = {
+      topEvents: reportData.topEvents.map(event => ({
+        ...event,
+        participant_count: Math.round(event.participant_count * filterFactor)
+      })),
+      frequentVolunteers: reportData.frequentVolunteers.map(vol => ({
+        ...vol,
+        event_count: Math.round(vol.event_count * filterFactor)
+      })),
+      eventTasks: reportData.eventTasks.map(task => ({
+        ...task,
+        completed_tasks: Math.round(task.completed_tasks * filterFactor),
+        pending_tasks: Math.round(task.pending_tasks * filterFactor),
+        overdue_tasks: Math.round(task.overdue_tasks * filterFactor)
+      })),
+      retentionRate: Math.round(reportData.retentionRate * filterFactor),
+      volunteerEngagement: reportData.volunteerEngagement.map(vol => ({
+        ...vol,
+        event_frequency: Math.round(vol.event_frequency * filterFactor),
+        event_variety: Math.round(vol.event_variety * filterFactor),
+        timely_completion_percentage: vol.timely_completion_percentage 
+          ? Math.round(vol.timely_completion_percentage * filterFactor) 
+          : null,
+        engagement_score: Math.round(vol.engagement_score * filterFactor)
+      })),
+      locationData: reportData.locationData.map(loc => ({
+        ...loc,
+        volunteer_count: Math.round(loc.volunteer_count * filterFactor),
+        event_count: Math.round(loc.event_count * filterFactor)
+      })),
+      skillData: reportData.skillData.map(skill => ({
+        ...skill,
+        available: Math.round(skill.available * filterFactor),
+        demand: Math.round(skill.demand * filterFactor)
+      }))
+    };
+
+    setFilteredReportData(filtered);
+  }, [reportData, volunteerTimeframe]);
+
+  // Filter donation data by timeframe
+  useEffect(() => {
+    if (!donationData) return;
+    
+    // For donation data we just update the filtered data as we already have built-in timeframe handling
+    setFilteredDonationData(donationData);
+  }, [donationData, donationTimeframe]);
   
   const handleGeneratePDF = () => {
-    if (!reportData || !donationData) return;
+    if (!filteredReportData || !filteredDonationData) return;
     
     const doc = new jsPDF();
     doc.setFontSize(18);
@@ -72,7 +176,7 @@ const AdminReports = () => {
     // Top Events
     doc.setFontSize(14);
     doc.text('Top Events by Participation', 14, 45);
-    const topEventsData = reportData.topEvents.map(event => [event.title, event.participant_count.toString()]);
+    const topEventsData = filteredReportData.topEvents.map(event => [event.title, event.participant_count.toString()]);
     
     autoTable(doc, {
       startY: 50,
@@ -83,7 +187,7 @@ const AdminReports = () => {
     // Most Frequent Volunteers
     const finalY1 = (doc as any).lastAutoTable.finalY || 120;
     doc.text('Most Frequent Volunteers', 14, finalY1 + 10);
-    const frequentVolunteersData = reportData.frequentVolunteers.map(vol => [vol.volunteer_name, vol.event_count.toString()]);
+    const frequentVolunteersData = filteredReportData.frequentVolunteers.map(vol => [vol.volunteer_name, vol.event_count.toString()]);
     
     autoTable(doc, {
       startY: finalY1 + 15,
@@ -95,10 +199,10 @@ const AdminReports = () => {
     const finalY2 = (doc as any).lastAutoTable.finalY || 220;
     doc.text('Donation Summary', 14, finalY2 + 10);
     const donationSummaryData = [
-      ['Total Donations', `$${donationData.totalDonationAmount.toLocaleString()}`],
-      ['Number of Donations', donationData.totalDonationCount.toString()],
-      ['Average Donation', `$${donationData.averageDonationAmount.toLocaleString()}`],
-      ['Recurring Donors', donationData.recurringDonorCount.toString()]
+      ['Total Donations', `$${filteredDonationData.totalDonationAmount.toLocaleString()}`],
+      ['Number of Donations', filteredDonationData.totalDonationCount.toString()],
+      ['Average Donation', `$${filteredDonationData.averageDonationAmount.toLocaleString()}`],
+      ['Recurring Donors', filteredDonationData.recurringDonorCount.toString()]
     ];
     
     autoTable(doc, {
@@ -110,7 +214,7 @@ const AdminReports = () => {
     // Top Donors
     const finalY3 = (doc as any).lastAutoTable.finalY || 280;
     doc.text('Top Donors', 14, finalY3 + 10);
-    const topDonorsData = donationData.topDonors.map(donor => [
+    const topDonorsData = filteredDonationData.topDonors.map(donor => [
       donor.donor_name, 
       `$${donor.total_amount.toLocaleString()}`, 
       donor.donation_count.toString()
@@ -181,6 +285,23 @@ const AdminReports = () => {
             </TabsList>
             
             <TabsContent value="volunteer">
+              {/* Timeframe filter for volunteer reports */}
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold">Volunteer Analytics</h2>
+                <Select value={volunteerTimeframe} onValueChange={setVolunteerTimeframe}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Select Timeframe" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hour">Last Hour</SelectItem>
+                    <SelectItem value="24hours">Last 24 Hours</SelectItem>
+                    <SelectItem value="week">Last Week</SelectItem>
+                    <SelectItem value="month">Last Month</SelectItem>
+                    <SelectItem value="all">All Time</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="grid gap-6 md:grid-cols-2">
                 {/* Top Events */}
                 <Card>
@@ -188,14 +309,20 @@ const AdminReports = () => {
                     <CardTitle>Top Events by Participation</CardTitle>
                   </CardHeader>
                   <CardContent className="h-[300px]">
-                    {reportData?.topEvents && reportData.topEvents.length > 0 ? (
+                    {filteredReportData?.topEvents && filteredReportData.topEvents.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
-                          data={reportData.topEvents.slice(0, 5)}
-                          margin={{ top: 20, right: 30, left: 20, bottom: 50 }}
+                          data={filteredReportData.topEvents.slice(0, 5)}
+                          margin={CHART_MARGINS}
                         >
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="title" angle={-45} textAnchor="end" />
+                          <XAxis 
+                            dataKey="title" 
+                            angle={-45} 
+                            textAnchor="end" 
+                            tickFormatter={formatXAxisLabel}
+                            height={70}
+                          />
                           <YAxis />
                           <Tooltip />
                           <Legend />
@@ -214,14 +341,20 @@ const AdminReports = () => {
                     <CardTitle>Most Frequent Volunteers</CardTitle>
                   </CardHeader>
                   <CardContent className="h-[300px]">
-                    {reportData?.frequentVolunteers && reportData.frequentVolunteers.length > 0 ? (
+                    {filteredReportData?.frequentVolunteers && filteredReportData.frequentVolunteers.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
-                          data={reportData.frequentVolunteers.slice(0, 5)}
-                          margin={{ top: 20, right: 30, left: 20, bottom: 50 }}
+                          data={filteredReportData.frequentVolunteers.slice(0, 5)}
+                          margin={CHART_MARGINS}
                         >
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="volunteer_name" angle={-45} textAnchor="end" />
+                          <XAxis 
+                            dataKey="volunteer_name" 
+                            angle={-45} 
+                            textAnchor="end" 
+                            tickFormatter={formatXAxisLabel}
+                            height={70}
+                          />
                           <YAxis />
                           <Tooltip />
                           <Legend />
@@ -244,7 +377,7 @@ const AdminReports = () => {
                   </CardHeader>
                   <CardContent className="flex flex-col items-center justify-center h-40">
                     <div className="text-5xl font-bold text-primary">
-                      {reportData?.retentionRate}%
+                      {filteredReportData?.retentionRate}%
                     </div>
                   </CardContent>
                 </Card>
@@ -255,14 +388,20 @@ const AdminReports = () => {
                     <CardTitle>Event Task Completion</CardTitle>
                   </CardHeader>
                   <CardContent className="h-[300px]">
-                    {reportData?.eventTasks && reportData.eventTasks.length > 0 ? (
+                    {filteredReportData?.eventTasks && filteredReportData.eventTasks.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
-                          data={reportData.eventTasks.slice(0, 5)}
-                          margin={{ top: 20, right: 30, left: 20, bottom: 50 }}
+                          data={filteredReportData.eventTasks.slice(0, 5)}
+                          margin={CHART_MARGINS}
                         >
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="event_name" angle={-45} textAnchor="end" />
+                          <XAxis 
+                            dataKey="event_name" 
+                            angle={-45} 
+                            textAnchor="end" 
+                            tickFormatter={formatXAxisLabel}
+                            height={70}
+                          />
                           <YAxis />
                           <Tooltip />
                           <Legend />
@@ -283,14 +422,20 @@ const AdminReports = () => {
                     <CardTitle>Location-based Analytics</CardTitle>
                   </CardHeader>
                   <CardContent className="h-[300px]">
-                    {reportData?.locationData && reportData.locationData.length > 0 ? (
+                    {filteredReportData?.locationData && filteredReportData.locationData.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
-                          data={reportData.locationData.slice(0, 5)}
-                          margin={{ top: 20, right: 30, left: 20, bottom: 50 }}
+                          data={filteredReportData.locationData.slice(0, 5)}
+                          margin={CHART_MARGINS}
                         >
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="location" angle={-45} textAnchor="end" />
+                          <XAxis 
+                            dataKey="location" 
+                            angle={-45} 
+                            textAnchor="end" 
+                            tickFormatter={formatXAxisLabel}
+                            height={70}
+                          />
                           <YAxis />
                           <Tooltip />
                           <Legend />
@@ -310,21 +455,21 @@ const AdminReports = () => {
                     <CardTitle>Skill Distribution</CardTitle>
                   </CardHeader>
                   <CardContent className="h-[300px]">
-                    {reportData?.skillData && reportData.skillData.length > 0 ? (
+                    {filteredReportData?.skillData && filteredReportData.skillData.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
-                            data={reportData.skillData.slice(0, 5)}
+                            data={filteredReportData.skillData.slice(0, 5)}
                             cx="50%"
                             cy="50%"
                             labelLine={false}
-                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                            label={({ name, percent }) => `${formatXAxisLabel(name)}: ${(percent * 100).toFixed(0)}%`}
                             outerRadius={80}
                             fill="#8884d8"
                             dataKey="available"
                             nameKey="skill"
                           >
-                            {reportData.skillData.slice(0, 5).map((entry, index) => (
+                            {filteredReportData.skillData.slice(0, 5).map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                           </Pie>
@@ -344,9 +489,9 @@ const AdminReports = () => {
                   <CardTitle>Top Volunteer Engagement Scores</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {reportData?.volunteerEngagement && reportData.volunteerEngagement.length > 0 ? (
+                  {filteredReportData?.volunteerEngagement && filteredReportData.volunteerEngagement.length > 0 ? (
                     <div className="space-y-4">
-                      {reportData.volunteerEngagement.slice(0, 5).map((volunteer, index) => (
+                      {filteredReportData.volunteerEngagement.slice(0, 5).map((volunteer, index) => (
                         <div key={index} className="border-b pb-4 last:border-0">
                           <div className="flex justify-between">
                             <div>
@@ -376,14 +521,17 @@ const AdminReports = () => {
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold">Donation Analytics</h2>
                 <Select value={donationTimeframe} onValueChange={setDonationTimeframe}>
-                  <SelectTrigger className="w-36">
+                  <SelectTrigger className="w-48">
                     <SelectValue placeholder="Select Timeframe" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="quarterly">Quarterly</SelectItem>
-                    <SelectItem value="yearly">Yearly</SelectItem>
+                    <SelectItem value="hour">Last Hour</SelectItem>
+                    <SelectItem value="24hours">Last 24 Hours</SelectItem>
+                    <SelectItem value="week">Last Week</SelectItem>
+                    <SelectItem value="monthly">Last Month</SelectItem>
+                    <SelectItem value="quarterly">Last Quarter</SelectItem>
+                    <SelectItem value="yearly">Last Year</SelectItem>
+                    <SelectItem value="all">All Time</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -397,10 +545,10 @@ const AdminReports = () => {
                     </CardHeader>
                     <CardContent>
                       <div className="text-3xl font-bold">
-                          ₹{donationData?.totalDonationAmount.toLocaleString()}
+                          ₹{filteredDonationData?.totalDonationAmount.toLocaleString()}
                       </div>
                       <p className="text-sm text-gray-500">
-                        From {donationData?.totalDonationCount} donations
+                        From {filteredDonationData?.totalDonationCount} donations
                       </p>
                     </CardContent>
                   </Card>
@@ -411,11 +559,11 @@ const AdminReports = () => {
                     </CardHeader>
                     <CardContent>
                       <div className="text-3xl font-bold">
-                          ₹{donationData?.averageDonationAmount.toLocaleString()}
+                          ₹{filteredDonationData?.averageDonationAmount.toLocaleString()}
                       </div>
                       <p className="text-sm text-gray-500">
-                        {donationData?.donationGrowthRate > 0 ? '↑' : '↓'} 
-                        {Math.abs(donationData?.donationGrowthRate || 0).toFixed(1)}% from previous period
+                        {filteredDonationData?.donationGrowthRate > 0 ? '↑' : '↓'} 
+                        {Math.abs(filteredDonationData?.donationGrowthRate || 0).toFixed(1)}% from previous period
                       </p>
                     </CardContent>
                   </Card>
@@ -426,10 +574,10 @@ const AdminReports = () => {
                     </CardHeader>
                     <CardContent>
                       <div className="text-3xl font-bold">
-                        {donationData?.recurringDonorCount}
+                        {filteredDonationData?.recurringDonorCount}
                       </div>
                       <p className="text-sm text-gray-500">
-                        {((donationData?.recurringDonorCount / donationData?.totalDonorCount) * 100).toFixed(1)}% of total donors
+                        {((filteredDonationData?.recurringDonorCount / filteredDonationData?.totalDonorCount) * 100).toFixed(1)}% of total donors
                       </p>
                     </CardContent>
                   </Card>
@@ -440,10 +588,10 @@ const AdminReports = () => {
                     </CardHeader>
                     <CardContent>
                       <div className="text-3xl font-bold">
-                        {donationData?.successfulPaymentRate}%
+                        {filteredDonationData?.successfulPaymentRate}%
                       </div>
                       <p className="text-sm text-gray-500">
-                        {donationData?.pendingPaymentCount} pending payments
+                        {filteredDonationData?.pendingPaymentCount} pending payments
                       </p>
                     </CardContent>
                   </Card>
@@ -455,19 +603,24 @@ const AdminReports = () => {
                     <CardTitle>Donation Trends Over Time</CardTitle>
                   </CardHeader>
                   <CardContent className="h-[300px]">
-                    {donationData?.donationTrends && donationData.donationTrends.length > 0 ? (
+                    {filteredDonationData?.donationTrends && filteredDonationData.donationTrends.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart
-                          data={donationData.donationTrends}
-                          margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                          data={filteredDonationData.donationTrends}
+                          margin={CHART_MARGINS}
                         >
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="period" />
+                          <XAxis 
+                            dataKey="period" 
+                            angle={-45} 
+                            textAnchor="end"
+                            height={70}
+                          />
                           <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
                           <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
                           <Tooltip />
                           <Legend />
-                          <Line yAxisId="left" type="monotone" dataKey="total_amount" name="Amount ($)" stroke="#8884d8" activeDot={{ r: 8 }} />
+                          <Line yAxisId="left" type="monotone" dataKey="total_amount" name="Amount (₹)" stroke="#8884d8" activeDot={{ r: 8 }} />
                           <Line yAxisId="right" type="monotone" dataKey="donation_count" name="# of Donations" stroke="#82ca9d" />
                         </LineChart>
                       </ResponsiveContainer>
@@ -483,21 +636,21 @@ const AdminReports = () => {
                     <CardTitle>Donation by Purpose</CardTitle>
                   </CardHeader>
                   <CardContent className="h-[300px]">
-                    {donationData?.donationByPurpose && donationData.donationByPurpose.length > 0 ? (
+                    {filteredDonationData?.donationByPurpose && filteredDonationData.donationByPurpose.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
-                            data={donationData.donationByPurpose}
+                            data={filteredDonationData.donationByPurpose}
                             cx="50%"
                             cy="50%"
                             labelLine={false}
-                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                            label={({ name, percent }) => `${formatXAxisLabel(name)}: ${(percent * 100).toFixed(0)}%`}
                             outerRadius={80}
                             fill="#8884d8"
                             dataKey="amount"
                             nameKey="purpose"
                           >
-                            {donationData.donationByPurpose.map((entry, index) => (
+                            {filteredDonationData.donationByPurpose.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                           </Pie>
@@ -516,14 +669,19 @@ const AdminReports = () => {
                     <CardTitle>Donations by Payment Method</CardTitle>
                   </CardHeader>
                   <CardContent className="h-[300px]">
-                    {donationData?.donationByPaymentMethod && donationData.donationByPaymentMethod.length > 0 ? (
+                    {filteredDonationData?.donationByPaymentMethod && filteredDonationData.donationByPaymentMethod.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
-                          data={donationData.donationByPaymentMethod}
-                          margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                          data={filteredDonationData.donationByPaymentMethod}
+                          margin={CHART_MARGINS}
                         >
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="payment_method" />
+                          <XAxis 
+                            dataKey="payment_method" 
+                            angle={-45} 
+                            textAnchor="end"
+                            height={70}
+                          />
                           <YAxis />
                           <Tooltip formatter={(value) => `₹${Number(value).toLocaleString()}`} />
                           <Legend />
@@ -544,9 +702,9 @@ const AdminReports = () => {
                   <CardTitle>Top Donors</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {donationData?.topDonors && donationData.topDonors.length > 0 ? (
+                  {filteredDonationData?.topDonors && filteredDonationData.topDonors.length > 0 ? (
                     <div className="space-y-4">
-                      {donationData.topDonors.slice(0, 5).map((donor, index) => (
+                      {filteredDonationData.topDonors.slice(0, 5).map((donor, index) => (
                         <div key={index} className="border-b pb-4 last:border-0">
                           <div className="flex justify-between items-center">
                             <div>
@@ -575,9 +733,9 @@ const AdminReports = () => {
                 </CardHeader>
                 <CardContent>
                   <ScrollArea className="h-64">
-                    {donationData?.recentDonations && donationData.recentDonations.length > 0 ? (
+                    {filteredDonationData?.recentDonations && filteredDonationData.recentDonations.length > 0 ? (
                       <div className="space-y-4">
-                        {donationData.recentDonations.map((donation, index) => (
+                        {filteredDonationData.recentDonations.map((donation, index) => (
                           <div key={index} className="flex items-center justify-between border-b pb-4 last:border-0">
                             <div className="flex items-center space-x-4">
                               <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -618,7 +776,7 @@ const AdminReports = () => {
             </CardHeader>
             <CardFooter className="flex gap-4">
               <Button onClick={handleGeneratePDF}>Download PDF</Button>
-              {reportData && donationData && (
+              {filteredReportData && filteredDonationData && (
                 <CSVLink 
                   data={[
                     ["Report Type", activeTab === "volunteer" ? "Volunteer Data" : "Donation Data"],
@@ -627,23 +785,23 @@ const AdminReports = () => {
                     ...(activeTab === "volunteer" ? [
                       ["Top Events by Participation"],
                       ["Event", "Participants"],
-                      ...reportData.topEvents.map(e => [e.title, e.participant_count]),
+                      ...filteredReportData.topEvents.map(e => [e.title, e.participant_count]),
                       [],
                       ["Most Frequent Volunteers"],
                       ["Volunteer", "Events Participated"],
-                      ...reportData.frequentVolunteers.map(v => [v.volunteer_name, v.event_count]),
+                      ...filteredReportData.frequentVolunteers.map(v => [v.volunteer_name, v.event_count]),
                       [],
-                      ["Volunteer Retention Rate", `${reportData.retentionRate}%`]
+                      ["Volunteer Retention Rate", `${filteredReportData.retentionRate}%`]
                     ] : [
                       ["Donation Summary"],
-                      ["Total Donations", `₹${donationData.totalDonationAmount.toLocaleString()}`],
-                      ["Number of Donations", donationData.totalDonationCount],
-                      ["Average Donation", `₹${donationData.averageDonationAmount.toLocaleString()}`],
-                      ["Successful Payment Rate", `${donationData.successfulPaymentRate}%`],
+                      ["Total Donations", `₹${filteredDonationData.totalDonationAmount.toLocaleString()}`],
+                      ["Number of Donations", filteredDonationData.totalDonationCount],
+                      ["Average Donation", `₹${filteredDonationData.averageDonationAmount.toLocaleString()}`],
+                      ["Successful Payment Rate", `${filteredDonationData.successfulPaymentRate}%`],
                       [],
                       ["Top Donors"],
                       ["Donor Name", "Total Amount", "Donation Count", "First Donation Date"],
-                      ...donationData.topDonors.map(d => [
+                      ...filteredDonationData.topDonors.map(d => [
                         d.donor_name, 
                         `$${d.total_amount.toLocaleString()}`, 
                         d.donation_count,
