@@ -182,19 +182,35 @@ const VolunteerEvents = () => {
   const renderCustomButtons = (event) => {
     const isEnded = isEventEnded(event.end_date);
     const hasFeedback = feedbackStatus[event.id];
-
+  
     if (isEnded) {
       if (hasFeedback) {
         return (
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled
-            className="flex items-center bg-gray-400 hover:bg-gray-400 justify-center gap-1 text-sm text-white w-full cursor-not-allowed"
-          >
-            <MessageSquare size={16} />
-            <span>Feedback Submitted</span>
-          </Button>
+          <div className="flex flex-col gap-2 w-full">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/volunteer/events/${event.id}/certificate`);
+              }}
+              className="flex items-center bg-yellow-600 hover:bg-yellow-700 justify-center gap-1 text-sm text-white w-full"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-4 w-4" 
+                viewBox="0 0 20 20" 
+                fill="currentColor"
+              >
+                <path 
+                  fillRule="evenodd" 
+                  d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" 
+                  clipRule="evenodd" 
+                />
+              </svg>
+              <span>Download Certificate</span>
+            </Button>
+          </div>
         );
       } else {
         return (
@@ -210,7 +226,19 @@ const VolunteerEvents = () => {
         );
       }
     }
-
+  
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={(e) => handleViewTasksOrFeedback(event.id, event.end_date, e)}
+        className="flex items-center bg-green-600 hover:bg-green-700 justify-center gap-1 text-sm text-white w-full"
+      >
+        <ListTodo size={16} />
+        <span>View Tasks</span>
+      </Button>
+    );
+  
     return (
       <Button
         variant="ghost"
@@ -342,22 +370,11 @@ const VolunteerEvents = () => {
           {filteredEvents.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredEvents.map((event) => {
-                const isCompleted = feedbackStatus[event.id] && isEventEnded(event.end_date);
                 return (
                   <div
                     key={event.id}
-                    onClick={(e) => {
-                      if (isCompleted) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        return;
-                      }
-                      navigateToEventDetails(event);
-                    }}
-                    className={`${isCompleted
-                      ? 'opacity-50 grayscale cursor-default pointer-events-none'
-                      : 'cursor-pointer hover:scale-[1.02] transition-transform duration-200'
-                      }`}
+                    onClick={() => navigateToEventDetails(event)}
+                    className="cursor-pointer hover:scale-[1.02] transition-transform duration-200"
                   >
                     <EventCard
                       id={event.id.toString()}
