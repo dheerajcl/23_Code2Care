@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+supabase
+google-generativeai
+faiss-cpu
+sentence-transformers
+numpy
+python-dotenv
+transformers 
+torch 
+sentencepiece
