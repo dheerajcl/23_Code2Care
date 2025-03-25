@@ -97,63 +97,67 @@ const LandingHeader: React.FC = () => {
         isScrolled ? 'bg-background/80 backdrop-blur-md shadow-sm' : 'bg-transparent'
       }`}
     >
-      <div className="container mx-auto px-4 md:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 md:h-20">
+      <div className="w-full">
+        <div className="flex items-center h-16 md:h-20">
           {/* Logo */}
-          <Link 
-            to="/" 
-            className="flex items-center space-x-2"
-            aria-label="Samarthanam Trust - Home"
-          >
-            <img src={Logo} alt="Samarth Connect Logo" className='h-12 w-12 s-logo'/>
-            <span className="font-semibold text-xl hidden md:block">Samarth Connect</span>
-          </Link>
-
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-6">
+          <div className="pl-2">
             <Link 
               to="/" 
-              className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
+              className="flex items-center space-x-2"
+              aria-label="Samarthanam Trust - Home"
             >
-              Home
+              <img src={Logo} alt="Samarth Connect Logo" className='h-12 w-12 s-logo'/>
+              <span className="font-semibold text-xl hidden md:block">Samarth Connect</span>
             </Link>
-            <Link 
-              to="/events" 
-              className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
-            >
-              Events
-            </Link>
-            <Link 
-              to="/about" 
-              className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
-            >
-              About
-            </Link>
-            <Link 
-              to="/donate" 
-              className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
-            >
-              Donate
-            </Link>
-            {user ? (
+          </div>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center justify-center flex-1 px-4">
+            <div className="flex items-center justify-center space-x-8">
               <Link 
-                to={getDashboardUrl()}
+                to="/" 
                 className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
               >
-                Dashboard
+                Home
               </Link>
-            ) : (
               <Link 
-                to="/join-us" 
+                to="/events" 
                 className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
               >
-                Volunteer
+                Events
               </Link>
-            )}
+              <Link 
+                to="/about" 
+                className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
+              >
+                About
+              </Link>
+              <Link 
+                to="/donate" 
+                className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
+              >
+                Donate
+              </Link>
+              {user ? (
+                <Link 
+                  to={getDashboardUrl()}
+                  className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
+                >
+                  Dashboard
+                </Link>
+              ) : (
+                <Link 
+                  to="/join-us" 
+                  className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
+                >
+                  Volunteer
+                </Link>
+              )}
+            </div>
           </nav>
 
           {/* User Menu & Controls */}
-          <div className="flex items-center space-x-4">
+          <div className="w-[240px] flex items-center justify-end space-x-4">
             {/* Login or User Menu */}
             {user ? (
               <DropdownMenu modal={false}>
