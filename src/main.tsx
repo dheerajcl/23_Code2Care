@@ -4,6 +4,7 @@ import { HelmetProvider } from 'react-helmet-async'
 import App from './App.tsx'
 import './index.css'
 import { LanguageProvider } from './components/LanguageContext.tsx'
+import '../i18n';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
