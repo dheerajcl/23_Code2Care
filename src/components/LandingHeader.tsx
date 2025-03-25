@@ -104,60 +104,68 @@ const LandingHeader: React.FC = () => {
         isScrolled ? 'bg-background/80 backdrop-blur-md shadow-sm' : 'bg-transparent'
       }`}
     >
-      <div className="container mx-auto px-4 md:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 md:h-20">
-          <Link 
-            to="/" 
-            className="flex items-center space-x-2"
-            aria-label="Samarthanam Trust - Home"
-          >
-            <img src={Logo} alt="Samarth Connect Logo" className='h-12 w-12 s-logo'/>
-            <span className="font-semibold text-xl hidden md:block">Samarth Connect</span>
-          </Link>
-
-          <nav className="hidden md:flex items-center space-x-6">
+      <div className="w-full">
+        <div className="flex items-center h-16 md:h-20">
+          {/* Logo */}
+          <div className="pl-2">
             <Link 
               to="/" 
-              className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
+              className="flex items-center space-x-2"
+              aria-label="Samarthanam Trust - Home"
             >
-              {t('home')}
+              <img src={Logo} alt="Samarth Connect Logo" className='h-12 w-12 s-logo'/>
+              <span className="font-semibold text-xl hidden md:block">Samarth Connect</span>
             </Link>
-            <Link 
-              to="/events" 
-              className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
-            >
-              {t('events')}
-            </Link>
-            <Link 
-              to="/about" 
-              className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
-            >
-              {t('about')}
-            </Link>
-            <Link 
-              to="/donate" 
-              className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
-            >
-              {t('donate')}
-            </Link>
-            {user ? (
+          </div>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center justify-center flex-1 px-4">
+            <div className="flex items-center justify-center space-x-8">
               <Link 
-                to={getDashboardUrl()}
+                to="/" 
                 className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
               >
-                {t('dashboard')}
+                {t('home')}
               </Link>
-            ) : (
               <Link 
-                to="/join-us" 
+                to="/events" 
                 className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
               >
-                {t('volunteer')}
+                {t('events')}
               </Link>
-            )}
+              <Link 
+                to="/about" 
+                className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
+              >
+                {t('about')}
+              </Link>
+              <Link 
+                to="/donate" 
+                className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
+              >
+                {t('donate')}
+              </Link>
+              {user ? (
+                <Link 
+                  to={getDashboardUrl()}
+                  className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
+                >
+                  {t('dashboard')}
+                </Link>
+              ) : (
+                <Link 
+                  to="/join-us" 
+                  className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
+                >
+                  {t('volunteer')}
+                </Link>
+              )}
+            </div>
           </nav>
 
-          <div className="flex items-center space-x-4">
+          {/* User Menu & Controls */}
+          <div className="w-[240px] flex items-center justify-end space-x-4 pr-4">
+            {/* Language Selector */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Language selector">
@@ -179,6 +187,7 @@ const LandingHeader: React.FC = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
+            {/* User Menu */}
             {user ? (
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
@@ -214,6 +223,7 @@ const LandingHeader: React.FC = () => {
               </Button>
             )}
 
+            {/* Theme Toggle */}
             <Button 
               variant="ghost" 
               size="icon" 
@@ -227,6 +237,7 @@ const LandingHeader: React.FC = () => {
               )}
             </Button>
 
+            {/* Mobile Menu Toggle */}
             <Button 
               variant="ghost" 
               size="icon" 
@@ -244,6 +255,7 @@ const LandingHeader: React.FC = () => {
         </div>
       </div>
 
+      {/* Mobile Menu */}
       <div
         className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
           isMenuOpen 
@@ -251,7 +263,7 @@ const LandingHeader: React.FC = () => {
             : 'max-h-0'
         }`}
       >
-        <div className="container mx-auto px-4 py-3 space-y-1">
+        <div className="px-4 py-3 space-y-1">
           <Link 
             to="/" 
             className="block px-3 py-2 rounded-md hover:bg-secondary transition-colors"

@@ -45,7 +45,7 @@ export const WebmasterEventFeedback: React.FC = () => {
         // Get event details
         const { data: eventData, error: eventError } = await getEventById(id);
         if (eventError) throw eventError;
-        
+        // console.log(eventData);
         if (eventData) {
           setEvent(eventData);
         } else {
@@ -55,7 +55,7 @@ export const WebmasterEventFeedback: React.FC = () => {
         // Get feedback for the event
         const { data: feedbackData, error: feedbackError } = await getEventFeedback(id);
         if (feedbackError) throw feedbackError;
-        
+        // console.log(feedbackData);
         if (feedbackData) {
           setFeedback(feedbackData);
           
@@ -86,18 +86,23 @@ export const WebmasterEventFeedback: React.FC = () => {
     // Initialize counts
     const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     
-    // Count ratings
     feedbackData.forEach(item => {
-      if (item.rating >= 1 && item.rating <= 5) {
-        counts[item.rating] = (counts[item.rating] || 0) + 1;
-      }
+      // Calculate the average rating for this feedback
+      const rating = (item.event_experience + item.event_organization + item.volunteer_again) / 6;
+      
+      // Round to nearest integer and clamp between 1 and 5
+      const roundedRating = Math.min(5, Math.max(1, Math.round(rating)));
+      
+      counts[roundedRating] += 1;
     });
     
     // Calculate average
-    const totalRating = feedbackData.reduce((sum, item) => sum + (item.rating || 0), 0);
+    const totalRating = feedbackData.reduce((sum, item) => {
+      return sum + (item.event_experience + item.event_organization + item.volunteer_again) / 6;
+    }, 0);
+    
     const totalCount = feedbackData.length;
     const averageRating = totalCount > 0 ? totalRating / totalCount : 0;
-    
     setFeedbackStats({
       averageRating,
       counts,
@@ -252,7 +257,7 @@ export const WebmasterEventFeedback: React.FC = () => {
                       <span className="text-sm">Time</span>
                     </div>
                     <p className="font-medium">
-                      {formatTime(event.start_date)} - {formatTime(event.end_date)}
+                      {formatDate(event.start_date)} - {formatDate(event.end_date)}
                     </p>
                   </div>
                   
@@ -262,17 +267,6 @@ export const WebmasterEventFeedback: React.FC = () => {
                       <span className="text-sm">Location</span>
                     </div>
                     <p className="font-medium">{event.location || 'No location specified'}</p>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <div className="flex items-center text-gray-500">
-                      <Users className="h-4 w-4 mr-2" />
-                      <span className="text-sm">Volunteers</span>
-                    </div>
-                    <p className="font-medium">
-                      {event.registered_count || 0} 
-                      {event.capacity ? `/${event.capacity}` : ''}
-                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -351,11 +345,13 @@ export const WebmasterEventFeedback: React.FC = () => {
                               </div>
                             </div>
                             <div className="flex">
-                              {renderStars(item.rating || 0)}
+                              {renderStars((item.event_experience/2+item.event_organization/2+item.volunteer_again/2)/3 || 0)}
                             </div>
                           </div>
                           <p className="text-sm text-gray-700">
-                            {item.feedback || 'No comments provided'}
+                            <b>'Suggest to improve: '</b>{item.improvement_suggestions}
+                            <br></br>
+                            <b>'Impactful moment: '</b>{item.impactful_moment || 'No comments provided'}
                           </p>
                         </div>
                       ))}
