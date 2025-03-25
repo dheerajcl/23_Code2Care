@@ -30,13 +30,12 @@ const VolunteerEvents = () => {
   const [selectedType, setSelectedType] = useState('all');
   const [selectedDate, setSelectedDate] = useState('all');
   const [loading, setLoading] = useState(true);
-  const [feedbackStatus, setFeedbackStatus] = useState({});  // Track feedback status for each event
+  const [feedbackStatus, setFeedbackStatus] = useState({});
   const [eventTypes, setEventTypes] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    // Fetch events when user is available
     if (user) {
       fetchEvents();
     }
@@ -47,46 +46,81 @@ const VolunteerEvents = () => {
 
     try {
       setLoading(true);
-      
-      // First, get all events
+
+      // Fetch user's registered event IDs
       const { data: registrations, error: registrationsError } = await supabase
-      .from('event_signup')
-      .select('event_id')
-      .eq('volunteer_id', user.id);
+        .from('event_signup')
+        .select('event_id')
+        .eq('volunteer_id', user.id);
 
-    if (registrationsError) {
-      console.error('Error fetching registrations:', registrationsError);
-      return;
-    }
+      if (registrationsError) {
+        console.error('Error fetching registrations:', registrationsError);
+        toast.error('Failed to load events');
+        setLoading(false);
+        return;
+      }
 
-    // Extract just the event_ids from the result
-    const eventIds = registrations.map(reg => reg.event_id);
+      const eventIds = registrations.map(reg => reg.event_id);
 
-    // Now fetch the events with those IDs
-    const { data: userEvents, error: eventsError } = await supabase
-      .from('event')
-      .select('*')
-      .in('id', eventIds);
-      setEvents(userEvents);
-      
-      // Load feedback status for each registered event
+      // Fetch events with max_volunteers
+      const { data: userEvents, error: eventsError } = await supabase
+        .from('event')
+        .select('*, max_volunteers')
+        .in('id', eventIds);
+
+      if (eventsError) {
+        console.error('Error fetching events:', eventsError);
+        toast.error('Failed to load events');
+        setLoading(false);
+        return;
+      }
+
+      // Fetch signup counts for these events
+      const { data: signupData, error: signupError } = await supabase
+        .from('event_signup')
+        .select('event_id')
+        .in('event_id', eventIds)
+        .then(res => {
+          const counts = res.data.reduce((acc, signup) => {
+            acc[signup.event_id] = (acc[signup.event_id] || 0) + 1;
+            return acc;
+          }, {});
+          return { data: counts, error: res.error };
+        });
+
+      if (signupError) {
+        console.error('Error fetching signup counts:', signupError);
+        toast.error('Failed to load volunteer counts');
+        setLoading(false);
+        return;
+      }
+
+      // Merge events with signup counts and calculate remaining spots
+      const eventsWithCounts = userEvents.map(event => ({
+        ...event,
+        registered_count: signupData[event.id] || 0,
+        remainingSpots: event.max_volunteers ? event.max_volunteers - (signupData[event.id] || 0) : null
+      }));
+
+      setEvents(eventsWithCounts);
+
+      // Load feedback status
       const feedbackStatusObj = {};
-      for (const event of userEvents) {
+      for (const event of eventsWithCounts) {
         const { data: feedbackData } = await supabase
           .from('feedback')
           .select('*')
           .eq('volunteer_id', user.id)
           .eq('event_id', event.id)
           .maybeSingle();
-          
         feedbackStatusObj[event.id] = !!feedbackData;
       }
       setFeedbackStatus(feedbackStatusObj);
 
-      // Extract unique event types for filtering
-      const types = [...new Set(userEvents.map(event => event.category))];
+      // Extract unique event types
+      const types = [...new Set(eventsWithCounts.map(event => event.category))];
       setEventTypes(types);
-      
+
       setLoading(false);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -97,11 +131,9 @@ const VolunteerEvents = () => {
 
   const handleLogout = async () => {
     await logout();
-    // Redirect is handled by the auth context
   };
 
   const navigateToEventDetails = (event) => {
-    // Don't open modal if feedback is submitted and event has ended
     if (feedbackStatus[event.id] && isEventEnded(event.end_date)) {
       return;
     }
@@ -111,10 +143,7 @@ const VolunteerEvents = () => {
 
   const handleViewTasksOrFeedback = (id, end_date, e) => {
     e.stopPropagation();
-
-    // Check if event has ended (end_date is before now)
     const isEventEnded = new Date(end_date) < new Date();
-
     if (isEventEnded) {
       navigate(`/volunteer/events/${id}/feedback`);
     } else {
@@ -140,12 +169,10 @@ const VolunteerEvents = () => {
     setSelectedDate('all');
   };
 
-  // Check if event is in the past
   const isEventEnded = (end_date) => {
     return new Date(end_date) < new Date();
   };
 
-  // Filter events based on search term and filters
   const filteredEvents = events.filter(event => {
     const matchesSearch = searchTerm === '' ||
       event.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -178,7 +205,6 @@ const VolunteerEvents = () => {
     );
   }
 
-  // Custom buttons for EventCard
   const renderCustomButtons = (event) => {
     const isEnded = isEventEnded(event.end_date);
     const hasFeedback = feedbackStatus[event.id];
@@ -238,18 +264,6 @@ const VolunteerEvents = () => {
         <span>View Tasks</span>
       </Button>
     );
-  
-    return (
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={(e) => handleViewTasksOrFeedback(event.id, event.end_date, e)}
-        className="flex items-center bg-green-600 hover:bg-green-700 justify-center gap-1 text-sm text-white w-full"
-      >
-        <ListTodo size={16} />
-        <span>View Tasks</span>
-      </Button>
-    );
   };
 
   return (
@@ -258,7 +272,6 @@ const VolunteerEvents = () => {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
         <main className="flex-1 overflow-auto p-8 pt-28">
-          {/* Events Header */}
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold">My Registered Events</h1>
@@ -266,7 +279,6 @@ const VolunteerEvents = () => {
             </div>
           </div>
 
-          {/* Search and Filter */}
           <div className="bg-card rounded-xl shadow-sm border border-border mb-8 p-6">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="relative flex-grow">
@@ -321,7 +333,6 @@ const VolunteerEvents = () => {
               </div>
             </div>
 
-            {/* Active Filters */}
             {(searchTerm || selectedType !== 'all' || selectedDate !== 'all') && (
               <div className="mt-4 flex flex-wrap gap-2">
                 {searchTerm && (
@@ -366,7 +377,6 @@ const VolunteerEvents = () => {
             )}
           </div>
 
-          {/* Events Grid */}
           {filteredEvents.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredEvents.map((event) => {
@@ -384,7 +394,8 @@ const VolunteerEvents = () => {
                       end_date={event.end_date}
                       location={event.location}
                       category={event.category}
-                      volunteersNeeded={event.volunteers_needed}
+                      volunteersNeeded={event.max_volunteers}
+                      remainingSpots={event.remainingSpots}
                       image_url={event.image_url}
                       isRegistered={true}
                       isRecommended={false}
@@ -431,10 +442,20 @@ const VolunteerEvents = () => {
       </div>
       <AccessibilityMenu />
 
-      {/* Event Details Modal */}
       {selectedEvent && (
         <EventDetailsModal
-          event={selectedEvent}
+          event={{
+            id: selectedEvent.id,
+            title: selectedEvent.title,
+            description: selectedEvent.description,
+            start_date: selectedEvent.start_date,
+            end_date: selectedEvent.end_date,
+            location: selectedEvent.location,
+            category: selectedEvent.category,
+            volunteersNeeded: selectedEvent.max_volunteers,
+            remainingSpots: selectedEvent.remainingSpots,
+            image_url: selectedEvent.image_url
+          }}
           isOpen={isModalOpen}
           onClose={() => {
             setIsModalOpen(false);

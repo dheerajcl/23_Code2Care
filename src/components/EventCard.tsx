@@ -26,7 +26,8 @@ interface EventCardProps {
   end_date: string;
   location: string;
   category: string;
-  volunteersNeeded: number;
+  volunteersNeeded: number; // Max volunteers
+  remainingSpots?: number | null; // New prop for remaining spots
   image_url?: string;
   isRegistered?: boolean;
   isRecommended?: boolean;
@@ -44,6 +45,7 @@ const EventCard: React.FC<EventCardProps> = ({
   location: eventLocation,
   category,
   volunteersNeeded,
+  remainingSpots,
   image_url = "https://source.unsplash.com/random/800x600/?volunteer",
   isRegistered = false,
   isRecommended = false,
@@ -121,7 +123,7 @@ const EventCard: React.FC<EventCardProps> = ({
       let result;
       
       if (registerForEvent) {
-        result = await registerForEvent(id); // Now returns { success, message }
+        result = await registerForEvent(id);
       } else if (handleVolunteerSignup) {
         const success = await handleVolunteerSignup(id);
         result = { success, message: success ? `Successfully registered for "${title}"!` : `Failed to register for "${title}".` };
@@ -222,6 +224,14 @@ const EventCard: React.FC<EventCardProps> = ({
               <MapPin className="h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
               <span className="line-clamp-1">{eventLocation}</span>
             </div>
+            <div className="flex items-center text-sm text-muted-foreground">
+              <Users className="h-4 w-4 mr-2 flex-shrink-0" />
+              <span>
+                {remainingSpots !== null 
+                  ? `${remainingSpots} spot${remainingSpots === 1 ? '' : 's'} remaining to volunteer` 
+                  : 'Unlimited volunteers'}
+              </span>
+            </div>
           </CardContent>
 
           <CardFooter className="flex flex-col space-y-2">
@@ -231,7 +241,7 @@ const EventCard: React.FC<EventCardProps> = ({
               <>
                 <Button 
                   className="w-full" 
-                  disabled={localIsRegistered || localLoading} 
+                  disabled={localIsRegistered || localLoading || (remainingSpots !== null && remainingSpots <= 0)} 
                   onClick={onVolunteerSignup}
                 >
                   {localIsRegistered ? t('alreadySignedUp') : localLoading ? t('signingUp') : t('volunteerForEvent')}
