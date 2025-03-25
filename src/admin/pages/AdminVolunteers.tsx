@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Search, Filter, Award, Calendar, MapPin, 
-  Code, Activity, ChevronDown, ChevronUp, User, UserCheck, Clock, X
+  Code, Activity, ChevronDown, ChevronUp, User, UserCheck, Clock, X,MessageSquare, Trash,CheckCircle 
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
@@ -19,7 +19,9 @@ import { useQuery } from '@tanstack/react-query';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
-
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 
 const AdminVolunteers = () => {
   // State for volunteers data
@@ -27,7 +29,12 @@ const AdminVolunteers = () => {
   const [filteredVolunteers, setFilteredVolunteers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+  const [selectedVolunteers, setSelectedVolunteers] = useState(new Set());
+  const [selectAll, setSelectAll] = useState(false);
+  const [messageTitle, setMessageTitle] = useState('');
+  const [messageBody, setMessageBody] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [isSent, setIsSent] = useState(false);
   // State for UI controls
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -194,6 +201,79 @@ const AdminVolunteers = () => {
     
     fetchVolunteersData();
   }, []);
+   // Toggle individual volunteer selection
+   const toggleSelection = (id) => {
+    setSelectedVolunteers((prev) => {
+      const newSelection = new Set(prev);
+      if (newSelection.has(id)) {
+        newSelection.delete(id);
+      } else {
+        newSelection.add(id);
+      }
+      return newSelection;
+    });
+  };
+  const toggleSelectAll = () => {
+    if (selectAll) {
+      setSelectedVolunteers(new Set());
+    } else {
+      setSelectedVolunteers(new Set(volunteers.map((v) => v.id)));
+    }
+    setSelectAll(!selectAll);
+  };
+  const deleteSelected = async () => {
+    if (selectedVolunteers.size === 0) {
+      toast.error('No volunteers selected for deletion');
+      return;
+    }
+
+    const idsToDelete = Array.from(selectedVolunteers);
+    const { error } = await supabase.from('volunteer').delete().in('id', idsToDelete);
+
+    if (error) {
+      toast.error('Failed to delete volunteers');
+    } else {
+      toast.success('Selected volunteers deleted');
+      setVolunteers(volunteers.filter((v) => !selectedVolunteers.has(v.id)));
+      setSelectedVolunteers(new Set());
+      setSelectAll(false);
+    }
+  };
+  
+  const sendMessage = async () => {
+    if (selectedVolunteers.size === 0) {
+      toast.error('No volunteers selected for messaging');
+      return;
+    }
+    if (!messageTitle || !messageBody) {
+      toast.error('Title and message cannot be empty');
+      return;
+    }
+
+    const messages = Array.from(selectedVolunteers).map((volunteerId) => ({
+      volunteer_id: volunteerId,
+      title_noti: messageTitle,
+      message: messageBody,
+      sent_at: new Date().toISOString(),
+    }));
+
+    const { error } = await supabase.from('internal_noti').insert(messages);
+
+    if (error) {
+      toast.error('Failed to send message');
+      setIsSending(false);
+    } else {
+      setIsSent(true);
+      setTimeout(() => {
+        setIsSent(false);
+        setMessageTitle('');
+        setMessageBody('');
+        setSelectedVolunteers(new Set());
+        setSelectAll(false);
+      }, 2000);
+    }
+    setIsSending(false);
+  };
 
   // Filter volunteers based on search and filters
   useEffect(() => {
@@ -505,6 +585,12 @@ const AdminVolunteers = () => {
         <tbody className="bg-white divide-y divide-gray-200">
           {filteredVolunteers.map((volunteer) => (
             <tr key={volunteer.id} className="hover:bg-gray-50 transition-colors">
+               <td className="border px-4 py-2">
+                    <Checkbox
+                      checked={selectedVolunteers.has(volunteer.id)}
+                      onCheckedChange={() => toggleSelection(volunteer.id)}
+                    />
+                  </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-center">
                   <div className="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
@@ -992,6 +1078,9 @@ const AdminVolunteers = () => {
           <div className="mb-6">
             <div className="bg-white rounded-lg shadow-md p-4">
               <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between">
+              <th className="border px-4 py-2">
+                  <Checkbox checked={selectAll} onCheckedChange={toggleSelectAll} />
+                </th>
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
                   <Input
@@ -1016,6 +1105,39 @@ const AdminVolunteers = () => {
                     }
                   </Button>
                 </div>
+                <Button onClick={deleteSelected} variant="destructive">
+                <Trash className="w-5 h-5 mr-2" />
+        </Button>
+              <Popover>
+  <PopoverTrigger asChild>
+    <Button variant="outline">
+      <MessageSquare className="w-5 h-5 mr-2" />
+      Send Message
+    </Button>
+  </PopoverTrigger>
+  <PopoverContent className="w-80 p-4">
+    <h3 className="text-lg font-semibold mb-2">Send Notification</h3>
+    <Input
+      placeholder="Enter Title"
+      value={messageTitle}
+      onChange={(e) => setMessageTitle(e.target.value)}
+      className="mb-2"
+      disabled={isSending}
+    />
+    <Textarea
+      placeholder="Enter Message"
+      value={messageBody}
+      onChange={(e) => setMessageBody(e.target.value)}
+      className="mb-2"
+      disabled={isSending}
+    />
+    <Button onClick={sendMessage} className="w-full" disabled={isSending || isSent}>
+      {isSent ? <CheckCircle className="w-5 h-5 mr-2" /> : null}
+      {isSent ? 'Sent!' : isSending ? 'Sending...' : 'Send'}
+    </Button>
+  </PopoverContent>
+</Popover>
+
               </div>
               
               {showFilters && (
