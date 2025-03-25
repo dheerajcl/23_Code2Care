@@ -12,7 +12,7 @@ type User = {
   last_name?: string;
   firstName?: string;
   lastName?: string;
-  role?: 'admin' | 'volunteer';
+  role?: 'admin' | 'volunteer' | 'webmaster';
   [key: string]: string | number | boolean | undefined;
 };
 
@@ -35,9 +35,10 @@ type VolunteerAuthContextType = {
   registerForEvent: (eventId: string) => Promise<boolean>;
 };
 
-// Create separate contexts for Admin and Volunteer
+// Create separate contexts for Admin, Volunteer, and Webmaster
 const AdminAuthContext = createContext<AuthContextType | undefined>(undefined);
 const VolunteerAuthContext = createContext<VolunteerAuthContextType | undefined>(undefined);
+const WebmasterAuthContext = createContext<AuthContextType | undefined>(undefined);
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Get user data from localStorage helper function
@@ -249,6 +250,74 @@ export const VolunteerAuthProvider: React.FC<{ children: ReactNode }> = ({ child
   );
 };
 
+// Webmaster Provider component
+export const WebmasterAuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(() => getStoredUser('webmasterUser'));
+  const [loading, setLoading] = useState(false);
+  const [registeredEvents, setRegisteredEvents] = useState<Record<string, boolean>>({});
+
+  // Update localStorage when webmaster user changes
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('webmasterUser', JSON.stringify(user));
+      
+      // Also update shared user for backwards compatibility
+      localStorage.setItem('user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('webmasterUser');
+    }
+  }, [user]);
+
+  // Logout function for webmaster
+  const logout = async () => {
+    try {
+      setLoading(true);
+      await logoutService();
+      // Clear webmaster user state
+      setUser(null);
+      
+      // Clear webmaster user data from localStorage
+      localStorage.removeItem('webmasterUser');
+      localStorage.removeItem('user');
+      
+      toast({
+        title: 'Logged out successfully',
+        description: 'You have been logged out of your webmaster account',
+      });
+    } catch (error) {
+      console.error('Error logging out webmaster:', error);
+      toast({
+        title: 'Logout failed',
+        description: 'There was an error logging out. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Check for authenticated webmaster user
+  const checkAuth = async () => {
+    try {
+      setLoading(true);
+      const webmasterUser = getStoredUser('webmasterUser');
+      if (webmasterUser?.role === 'webmaster') {
+        setUser(webmasterUser);
+      }
+    } catch (error) {
+      console.error('Error checking webmaster auth:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <WebmasterAuthContext.Provider value={{ user, loading, logout, setUser, checkAuth, registeredEvents }}>
+      {children}
+    </WebmasterAuthContext.Provider>
+  );
+};
+
 // Legacy AuthProvider component
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
@@ -258,11 +327,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const volunteerUser = getStoredUser('volunteerUser');
     if (volunteerUser) return volunteerUser;
     
+    const webmasterUser = getStoredUser('webmasterUser');
+    if (webmasterUser) return webmasterUser;
+    
     return getStoredUser('user');
   });
   const [loading, setLoading] = useState(false);
-  const [adminUser, setAdminUser] = useState<User>(null);
-  const [volunteerUser, setVolunteerUser] = useState<User>(null);
   const [registeredEvents, setRegisteredEvents] = useState<Record<string, boolean>>({});
   const navigate = useNavigate();
 
@@ -281,6 +351,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const volunteerUser = getStoredUser('volunteerUser');
       if (volunteerUser) {
         setUser(volunteerUser);
+        return;
+      }
+      
+      // Check webmaster user
+      const webmasterUser = getStoredUser('webmasterUser');
+      if (webmasterUser) {
+        setUser(webmasterUser);
       }
     } catch (error) {
       console.error('Error checking auth:', error);
@@ -298,6 +375,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.setItem('adminUser', JSON.stringify(user));
       } else if (user.role === 'volunteer') {
         localStorage.setItem('volunteerUser', JSON.stringify(user));
+      } else if (user.role === 'webmaster') {
+        localStorage.setItem('webmasterUser', JSON.stringify(user));
       }
     }
   }, [user]);
@@ -310,93 +389,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         const parsedUser = JSON.parse(localUser);
         setUser(parsedUser);
-        
-        if (parsedUser?.role === 'admin') {
-          setAdminUser(parsedUser);
-        } else if (parsedUser?.role === 'volunteer') {
-          setVolunteerUser(parsedUser);
-          
-          // Try to get registered events from localStorage
-          const localRegisteredEvents = localStorage.getItem('registeredEvents');
-          if (localRegisteredEvents) {
-            try {
-              setRegisteredEvents(JSON.parse(localRegisteredEvents));
-            } catch (error) {
-              console.error('Error parsing registeredEvents from localStorage:', error);
-            }
-          }
-        }
       } catch (error) {
         console.error('Error parsing user from localStorage:', error);
         localStorage.removeItem('user');
       }
     }
 
-    const checkUser = async () => {
-      try {
-        // ... existing code ...
-
-        if (session?.user) {
-          // ... existing code ...
-          
-          // Set role-specific user
-          if (userData.role === 'admin') {
-            setAdminUser(fullUser);
-          } else if (userData.role === 'volunteer') {
-            setVolunteerUser(fullUser);
-            // Fetch registered events
-            await fetchRegisteredEvents(fullUser.id);
-          }
-        } else {
-          setUser(null);
-          setAdminUser(null);
-          setVolunteerUser(null);
-          setRegisteredEvents({});
-          localStorage.removeItem('user');
-          localStorage.removeItem('registeredEvents');
-        }
-      } catch (err) {
-        console.error('Error checking user:', err);
-        // Clear bad data if there's an error
+    // Handle auth state changes
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
         setUser(null);
-        setAdminUser(null);
-        setVolunteerUser(null);
         setRegisteredEvents({});
         localStorage.removeItem('user');
-        localStorage.removeItem('registeredEvents');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // ... existing code ...
-
-    // Listen for auth changes
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        // ... existing code ...
-        
-        // Set role-specific user
-        if (userData.role === 'admin') {
-          setAdminUser(fullUser);
-        } else if (userData.role === 'volunteer') {
-          setVolunteerUser(fullUser);
-          // Fetch registered events
-          await fetchRegisteredEvents(fullUser.id);
-        }
-
-        // ... existing code ...
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setAdminUser(null);
-        setVolunteerUser(null);
-        setRegisteredEvents({});
-        localStorage.removeItem('user');
+        localStorage.removeItem('adminUser');
+        localStorage.removeItem('volunteerUser');
+        localStorage.removeItem('webmasterUser');
         localStorage.removeItem('registeredEvents');
       }
     });
 
-    // ... existing code ...
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
   }, [navigate]);
 
   const fetchRegisteredEvents = async (userId?: string) => {
@@ -433,23 +447,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (error) throw error;
       
       setUser(null);
-      setAdminUser(null);
-      setVolunteerUser(null);
       setRegisteredEvents({});
       localStorage.removeItem('user');
+      localStorage.removeItem('adminUser');
+      localStorage.removeItem('volunteerUser');
+      localStorage.removeItem('webmasterUser');
       localStorage.removeItem('registeredEvents');
       navigate('/');
     } catch (error) {
       console.error('Error logging out:', error);
     }
-  };
-
-  // Role-specific auth values
-  const volunteerAuthValue = {
-    user: volunteerUser,
-    loading,
-    logout,
-    registeredEvents
   };
 
   return (
@@ -472,6 +479,15 @@ export function useVolunteerAuth() {
   const context = useContext(VolunteerAuthContext);
   if (context === undefined) {
     throw new Error('useVolunteerAuth must be used within a VolunteerAuthProvider');
+  }
+  return context;
+}
+
+// Use webmaster auth hook
+export function useWebmasterAuth() {
+  const context = useContext(WebmasterAuthContext);
+  if (context === undefined) {
+    throw new Error('useWebmasterAuth must be used within a WebmasterAuthProvider');
   }
   return context;
 }
