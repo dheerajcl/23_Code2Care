@@ -3105,3 +3105,81 @@ export const getVolunteerEvents = async (volunteerId: string) => {
     };
   }
 };
+
+// Add the missing getEventFeedback function
+export const getEventFeedback = async (eventId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('feedback')
+      .select('*')
+      .eq('event_id', eventId);
+    
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error(`Error fetching feedback for event with id ${eventId}:`, error);
+    return { data: [], error };
+  }
+};
+
+// Add new function to get volunteer event participation history
+export const getVolunteerEventHistory = async (volunteerId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('event_signup')
+      .select(`
+        id,
+        event_id,
+        volunteer_id,
+        status,
+        hours,
+        event:event_id (
+          id,
+          title,
+          start_date,
+          end_date,
+          location
+        )
+      `)
+      .eq('volunteer_id', volunteerId)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error(`Error fetching event history for volunteer with id ${volunteerId}:`, error);
+    return { data: [], error };
+  }
+};
+
+// Add the missing getAllTasks function
+export const getAllTasks = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('task')
+      .select(`
+        *,
+        event:event_id (
+          id, 
+          title
+        ),
+        assignments:task_assignment (
+          id,
+          volunteer_id,
+          status,
+          volunteer:volunteer_id (
+            id,
+            first_name,
+            last_name
+          )
+        )
+      `)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error fetching all tasks:', error);
+    return { data: [], error };
+  }
+};

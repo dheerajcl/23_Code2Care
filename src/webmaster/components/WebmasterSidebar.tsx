@@ -1,0 +1,115 @@
+import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+import {
+  LayoutDashboard,
+  Calendar,
+  Users,
+  BarChart,
+  ClipboardList,
+  FileText,
+  Settings,
+  HelpCircle
+} from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+
+interface SidebarItemProps {
+  icon: React.ElementType;
+  label: string;
+  href: string;
+  active?: boolean;
+}
+
+const SidebarItem: React.FC<SidebarItemProps> = ({
+  icon: Icon,
+  label,
+  href,
+  active,
+}) => {
+  const navigate = useNavigate();
+
+  return (
+    <Button
+      variant="ghost"
+      className={cn(
+        'w-full justify-start gap-3 font-normal px-3 py-2 h-auto',
+        active ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800' : 'hover:bg-gray-100'
+      )}
+      onClick={() => navigate(href)}
+    >
+      <Icon className={cn('h-5 w-5', active ? 'text-blue-700' : 'text-gray-500')} />
+      <span>{label}</span>
+    </Button>
+  );
+};
+
+export const WebmasterSidebar = () => {
+  const location = useLocation();
+  const currentPath = location.pathname;
+
+  const isPathActive = (path: string) => {
+    if (path === '/webmaster' || path === '/webmaster/dashboard') {
+      return currentPath === '/webmaster' || currentPath === '/webmaster/dashboard';
+    }
+    return currentPath.startsWith(path);
+  };
+
+  const sidebarItems = [
+    {
+      icon: LayoutDashboard,
+      label: 'Dashboard',
+      href: '/webmaster/dashboard',
+    },
+    {
+      icon: Calendar,
+      label: 'Events',
+      href: '/webmaster/events',
+    },
+    {
+      icon: Users,
+      label: 'Volunteers',
+      href: '/webmaster/volunteers',
+    },
+    {
+      icon: BarChart,
+      label: 'Reports',
+      href: '/webmaster/reports',
+    },
+    {
+      icon: ClipboardList,
+      label: 'Tasks',
+      href: '/webmaster/tasks',
+    },
+    {
+      icon: FileText,
+      label: 'Feedback',
+      href: '/webmaster/feedback',
+    },
+  ];
+
+  return (
+    <div className="h-screen w-64 border-r border-gray-200 bg-white hidden md:block">
+      <ScrollArea className="h-[calc(100vh-4rem)]">
+        <div className="px-3 py-4">
+          <div className="mb-8">
+            <h2 className="px-4 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Main
+            </h2>
+            <div className="space-y-1">
+              {sidebarItems.map((item, index) => (
+                <SidebarItem
+                  key={index}
+                  icon={item.icon}
+                  label={item.label}
+                  href={item.href}
+                  active={isPathActive(item.href)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}; 
