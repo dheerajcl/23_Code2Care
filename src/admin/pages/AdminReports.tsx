@@ -175,9 +175,9 @@ const AdminReports = () => {
           </div>
           
           <Tabs defaultValue="volunteer" className="mb-6" onValueChange={setActiveTab}>
-            <TabsList>
-              <TabsTrigger value="volunteer">Volunteer Reports</TabsTrigger>
-              <TabsTrigger value="donation">Donation Reports</TabsTrigger>
+            <TabsList className="mb-4 flex">
+              <TabsTrigger value="volunteer" className='flex-1'>Volunteer Reports</TabsTrigger>
+              <TabsTrigger value="donation" className='flex-1'>Donation Reports</TabsTrigger>
             </TabsList>
             
             <TabsContent value="volunteer">

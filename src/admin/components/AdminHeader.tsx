@@ -77,7 +77,7 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ user: propUser, handleLogout:
           <Link to="/admin/dashboard" className="text-sm font-medium text-gray-900 hover:text-green-600">Dashboard</Link>
           <Link to="/admin/events" className="text-sm font-medium text-gray-900 hover:text-green-600">Events</Link>
           <Link to="/admin/volunteers" className="text-sm font-medium text-gray-900 hover:text-green-600">Volunteers</Link>
-          <Link to="/admin/points" className="text-sm font-medium text-gray-900 hover:text-green-600">Points</Link>
+          {/* <Link to="/admin/points" className="text-sm font-medium text-gray-900 hover:text-green-600">Points</Link> */}
         </div>
         
         <div className="hidden lg:flex lg:flex-1 lg:justify-end gap-2">
