@@ -1,34 +1,98 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/authContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Bar, BarChart, ResponsiveContainer } from 'recharts';
+import { Bar, BarChart, ResponsiveContainer, XAxis, Tooltip } from 'recharts';
 import { VolunteerLayout } from '@/components/layouts/VolunteerLayout';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
-
-
-// Mock data (you can replace this with real data from your API)
-const activityData = [
-  { name: 'Jun', hours: 0 },
-  { name: 'Jul', hours: 5 },
-  { name: 'Aug', hours: 0 },
-  { name: 'Sep', hours: 0 },
-  { name: 'Oct', hours: 0 },
-  { name: 'Nov', hours: 0 },
-];
-
-const feedbackData = [
-  {
-    id: '1',
-    eventTitle: 'Blind Cricket Workshop',
-    date: 'Jul 25, 2023',
-    comment: 'Great enthusiasm and very helpful with the participants. Good communication skills.',
-    rating: 5,
-  },
-];
+import { getVolunteerHours, getVolunteerSkills, getVolunteerFeedback } from '@/services/database.service';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 export const VolunteerProgress = () => {
   const { user } = useAuth();
+  const [loading, setLoading] = useState({
+    hours: true,
+    skills: true,
+    feedback: true
+  });
+  const [error, setError] = useState({
+    hours: '',
+    skills: '',
+    feedback: ''
+  });
+  
+  // State for data
+  const [hoursData, setHoursData] = useState({
+    chartData: [],
+    totalHours: 0
+  });
+  const [skillsData, setSkillsData] = useState({
+    skills: [],
+    suggestedSkills: []
+  });
+  const [feedbackData, setFeedbackData] = useState([]);
+
+  // Fetch data when component mounts
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user?.id) return;
+      
+      // Fetch hours data
+      try {
+        setLoading(prev => ({ ...prev, hours: true }));
+        const { success, data, error } = await getVolunteerHours(user.id);
+        if (success && data) {
+          setHoursData({
+            chartData: data.chartData,
+            totalHours: data.totalHours
+          });
+        } else {
+          setError(prev => ({ ...prev, hours: error || 'Failed to fetch hours data' }));
+        }
+      } catch (err) {
+        setError(prev => ({ ...prev, hours: 'Error loading hours data' }));
+      } finally {
+        setLoading(prev => ({ ...prev, hours: false }));
+      }
+      
+      // Fetch skills data
+      try {
+        setLoading(prev => ({ ...prev, skills: true }));
+        const { success, data, error } = await getVolunteerSkills(user.id);
+        if (success && data) {
+          setSkillsData({
+            skills: data.skills,
+            suggestedSkills: data.suggestedSkills
+          });
+        } else {
+          setError(prev => ({ ...prev, skills: error || 'Failed to fetch skills data' }));
+        }
+      } catch (err) {
+        setError(prev => ({ ...prev, skills: 'Error loading skills data' }));
+      } finally {
+        setLoading(prev => ({ ...prev, skills: false }));
+      }
+      
+      // Fetch feedback data
+      try {
+        setLoading(prev => ({ ...prev, feedback: true }));
+        const { success, data, error } = await getVolunteerFeedback(user.id);
+        if (success && data) {
+          setFeedbackData(data);
+        } else {
+          setError(prev => ({ ...prev, feedback: error || 'Failed to fetch feedback data' }));
+        }
+      } catch (err) {
+        setError(prev => ({ ...prev, feedback: 'Error loading feedback data' }));
+      } finally {
+        setLoading(prev => ({ ...prev, feedback: false }));
+      }
+    };
+
+    fetchData();
+  }, [user]);
 
   return (
     <VolunteerLayout>
@@ -42,6 +106,7 @@ export const VolunteerProgress = () => {
         
         <div className="grid gap-6">
           <div className="grid gap-4 md:grid-cols-2">
+            {/* Volunteer Hours Card */}
             <Card>
               <CardHeader>
                 <CardTitle>Volunteer Hours</CardTitle>
@@ -50,16 +115,37 @@ export const VolunteerProgress = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={activityData}>
-                      <Bar dataKey="hours" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                {loading.hours ? (
+                  <div className="h-[300px] flex items-center justify-center">
+                    <Skeleton className="h-[250px] w-full" />
+                  </div>
+                ) : error.hours ? (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error.hours}</AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="h-[300px]">
+                    <div className="text-center mb-4">
+                      <h3 className="text-3xl font-bold">{hoursData.totalHours}</h3>
+                      <p className="text-sm text-muted-foreground">Total Hours</p>
+                    </div>
+                    <ResponsiveContainer width="100%" height="80%">
+                      <BarChart data={hoursData.chartData}>
+                        <XAxis dataKey="name" />
+                        <Tooltip 
+                          formatter={(value) => [`${value} hours`, 'Hours']}
+                          labelFormatter={(label) => `Month: ${label}`}
+                        />
+                        <Bar dataKey="hours" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
+            {/* Skills Development Card */}
             <Card>
               <CardHeader>
                 <CardTitle>Skills Development</CardTitle>
@@ -68,39 +154,62 @@ export const VolunteerProgress = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm font-medium">Teaching</div>
-                      <div className="text-sm text-muted-foreground">Beginner</div>
-                    </div>
-                    <Progress value={30} max={100} className="h-2" />
+                {loading.skills ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-4 w-full" />
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm font-medium">Technology</div>
-                      <div className="text-sm text-muted-foreground">Intermediate</div>
-                    </div>
-                    <Progress value={60} max={100} className="h-2" />
-                  </div>
-                  <div className="pt-4">
-                    <h3 className="text-sm font-medium mb-2">Suggested Skill Development</h3>
-                    <div className="space-y-2">
-                      <div className="p-2 border rounded-md">
-                        <div className="font-medium">Event Management</div>
-                        <div className="text-sm text-muted-foreground">Participate in event organization to develop this skill</div>
+                ) : error.skills ? (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error.skills}</AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="space-y-4">
+                    {skillsData.skills.slice(0, 3).map((skill) => (
+                      <div key={skill.name} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm font-medium">{skill.name}</div>
+                          <div className="text-sm text-muted-foreground">{skill.level}</div>
+                        </div>
+                        <Progress value={skill.progress} max={100} className="h-2" />
                       </div>
-                      <div className="p-2 border rounded-md">
-                        <div className="font-medium">Sports Coaching</div>
-                        <div className="text-sm text-muted-foreground">Assist in sports events to develop coaching skills</div>
+                    ))}
+                    
+                    {skillsData.skills.length === 0 && (
+                      <div className="text-center py-2 text-muted-foreground">
+                        No skills tracked yet. Complete tasks to develop your skills!
+                      </div>
+                    )}
+                    
+                    <div className="pt-4">
+                      <h3 className="text-sm font-medium mb-2">Suggested Skill Development</h3>
+                      <div className="space-y-2">
+                        {skillsData.suggestedSkills.slice(0, 2).map((skill) => (
+                          <div key={skill} className="p-2 border rounded-md">
+                            <div className="font-medium">{skill}</div>
+                            <div className="text-sm text-muted-foreground">
+                              Participate in related activities to develop this skill
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {skillsData.suggestedSkills.length === 0 && (
+                          <div className="text-center py-2 text-muted-foreground">
+                            Great job! You've already started developing all suggested skills.
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
 
+          {/* Feedback Card */}
           <Card>
             <CardHeader>
               <CardTitle>Feedback & Recognition</CardTitle>
@@ -109,7 +218,17 @@ export const VolunteerProgress = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {feedbackData.length > 0 ? (
+              {loading.feedback ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-24 w-full" />
+                  <Skeleton className="h-24 w-full" />
+                </div>
+              ) : error.feedback ? (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error.feedback}</AlertDescription>
+                </Alert>
+              ) : feedbackData.length > 0 ? (
                 <div className="space-y-4">
                   {feedbackData.map((feedback) => (
                     <div key={feedback.id} className="border rounded-lg p-4">
