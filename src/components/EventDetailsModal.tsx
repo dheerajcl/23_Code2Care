@@ -8,9 +8,10 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useLanguage } from './LanguageContext';
 
 interface EventDetailsModalProps {
-  event: {
+  eventData: { // Renamed from 'event' to 'eventData'
     id: string;
     title: string;
     description: string;
@@ -26,62 +27,62 @@ interface EventDetailsModalProps {
 }
 
 const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
-  event,
+  eventData, // Renamed from 'event' to 'eventData'
   isOpen,
   onClose,
 }) => {
+  const { t } = useLanguage();
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[90vw] max-w-[800px] max-h-[90vh] overflow-y-auto p-4 md:p-6">
         <DialogHeader>
-          <DialogTitle className="text-xl md:text-2xl font-bold">{event.title}</DialogTitle>
+          <DialogTitle className="text-xl md:text-2xl font-bold">{eventData.title}</DialogTitle>
         </DialogHeader>
         
         <div className="mt-4">
           <div className="aspect-video relative overflow-hidden rounded-lg mb-4">
             <img
-              src={event.image_url || "https://source.unsplash.com/random/800x600/?volunteer"}
-              alt={event.title}
+              src={eventData.image_url || "https://source.unsplash.com/random/800x600/?volunteer"}
+              alt={t('eventImageAlt', { title: eventData.title })}
               className="object-cover w-full h-full"
             />
             <div className="absolute top-3 right-3">
               <Badge variant="secondary" className="font-medium">
-                {event.category}
+                {t(`category.${eventData.category.toLowerCase()}`, { defaultValue: eventData.category })}
               </Badge>
             </div>
           </div>
 
           <div className="space-y-4">
-            {/* About This Event Section */}
             <div>
-              <h3 className="text-base md:text-lg font-semibold mb-2">About This Event</h3>
-              <p className="text-sm text-muted-foreground">{event.description}</p>
+              <h3 className="text-base md:text-lg font-semibold mb-2">{t('aboutThisEvent')}</h3>
+              <p className="text-sm text-muted-foreground">{eventData.description}</p>
             </div>
 
-            {/* Event Details Section */}
             <div className="flex flex-wrap gap-4 items-center">
               <div className="flex items-center text-sm text-muted-foreground whitespace-nowrap">
                 <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
                 <span>
-                  {new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}
+                  {new Date(eventData.start_date).toLocaleDateString()} - {new Date(eventData.end_date).toLocaleDateString()}
                 </span>
               </div>
               <div className="flex items-center text-sm text-muted-foreground whitespace-nowrap">
                 <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
                 <span>
-                  {new Date(event.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {new Date(eventData.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
               <div className="flex items-center text-sm text-muted-foreground whitespace-nowrap">
                 <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
-                <span>{event.location}</span>
+                <span>{eventData.location}</span>
               </div>
             </div>
           </div>
 
           <div className="flex justify-end mt-4">
             <Button variant="outline" onClick={onClose}>
-              Close
+              {t('close')}
             </Button>
           </div>
         </div>
@@ -90,4 +91,4 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
   );
 };
 
-export default EventDetailsModal; 
+export default EventDetailsModal;

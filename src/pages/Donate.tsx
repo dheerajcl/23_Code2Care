@@ -27,23 +27,22 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
 import LandingHeader from '@/components/LandingHeader';
-import { createClient } from '@supabase/supabase-js';
-
-// Initialize Supabase client
+import { useLanguage } from '../components/LanguageContext'; // Add language context import
 import { supabase } from '@/lib/supabase';
 
 const donationOptions = [
-  { value: 'education', label: 'Education' },
-  { value: 'skill', label: 'Skill Development' },
-  { value: 'livelihood', label: 'Livelihood' },
-  { value: 'sports', label: 'Sports' },
-  { value: 'cultural', label: 'Cultural Programs' },
-  { value: 'general', label: 'General Donation' }
+  { value: 'education', labelKey: 'donationEducation' },
+  { value: 'skill', labelKey: 'donationSkill' },
+  { value: 'livelihood', labelKey: 'donationLivelihood' },
+  { value: 'sports', labelKey: 'donationSports' },
+  { value: 'cultural', labelKey: 'donationCultural' },
+  { value: 'general', labelKey: 'donationGeneral' }
 ];
 
 const presetAmounts = [500, 1000, 2000, 5000, 10000];
 
 const DonationPage: React.FC = () => {
+  const { t } = useLanguage(); // Add translation hook
   const { toast } = useToast();
   const [donationType, setDonationType] = useState('oneTime');
   const [amount, setAmount] = useState<number | string>(1000);
@@ -79,23 +78,17 @@ const DonationPage: React.FC = () => {
     }
   };
 
-  // Function to generate a random transaction ID
   const generateTransactionId = () => {
     return 'TXN' + Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
   };
 
-  // Function to submit donation to Supabase
-
-
-  // Function to handle donation form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validation
     if (!personalInfo.name || !personalInfo.email || !personalInfo.phone) {
       toast({
-        title: "Required Fields Missing",
-        description: "Please fill in all required fields.",
+        title: t('requiredFieldsMissing'),
+        description: t('pleaseFillRequiredFields'),
         variant: "destructive"
       });
       return;
@@ -103,36 +96,32 @@ const DonationPage: React.FC = () => {
     
     if (!agreeToTerms) {
       toast({
-        title: "Terms Agreement Required",
-        description: "Please agree to the terms and conditions.",
+        title: t('termsAgreementRequired'),
+        description: t('pleaseAgreeTerms'),
         variant: "destructive"
       });
       return;
     }
     
-    // Show processing toast
     toast({
-      title: "Processing Donation",
-      description: "Please wait while we process your donation...",
+      title: t('processingDonation'),
+      description: t('pleaseWaitProcessing'),
     });
 
     setIsSubmitting(true);
     
     try {
-      // In a real application, you would process the payment here
-      // For demo purposes, we'll assume payment is successful and store the donation
-
-      // Submit donation to Supabase
       const result = await submitDonationToSupabase();
       
-      // Success response
       toast({
-        title: "Donation Successful!",
-        description: `Thank you for your donation of ₹${typeof amount === 'string' ? amount : amount.toLocaleString()}. Transaction ID: ${result.transactionId}`,
+        title: t('donationSuccessful'),
+        description: t('thankYouDonation', { 
+          amount: typeof amount === 'string' ? amount : amount.toLocaleString(),
+          transactionId: result.transactionId 
+        }),
         variant: "default",
       });
       
-      // Reset form
       setAmount(1000);
       setCustomAmount(false);
       setDonationType('oneTime');
@@ -152,8 +141,8 @@ const DonationPage: React.FC = () => {
     } catch (error) {
       console.error('Donation processing error:', error);
       toast({
-        title: "Donation Failed",
-        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
+        title: t('donationFailed'),
+        description: error instanceof Error ? error.message : t('unexpectedError'),
         variant: "destructive",
       });
     } finally {
@@ -161,23 +150,21 @@ const DonationPage: React.FC = () => {
     }
   };
 
-   // Update the submitDonationToSupabase function to match the database schema
   const submitDonationToSupabase = async () => {
     try {
       const numericAmount = Number(amount);
       if (isNaN(numericAmount) || numericAmount <= 0) {
-        throw new Error('Invalid donation amount');
+        throw new Error(t('invalidDonationAmount'));
       }
 
       const transactionId = generateTransactionId();
       
-      // Prepare donation data with snake_case column names to match the DB schema
       const donationData = {
         amount: numericAmount,
         donation_type: donationType,
         donation_purpose: donationPurpose,
         payment_method: paymentMethod,
-        payment_status: 'completed', // You might want to change this based on actual payment processing
+        payment_status: 'completed',
         transaction_id: transactionId,
         donor_name: personalInfo.name,
         donor_email: personalInfo.email,
@@ -186,10 +173,8 @@ const DonationPage: React.FC = () => {
         pan_number: personalInfo.panNumber || null,
         donor_message: personalInfo.message || null,
         receive_updates: receiveUpdates,
-        // No need to set created_at and updated_at as they have default values in the schema
       };
 
-      // Insert donation into Supabase
       const { data, error } = await supabase
         .from('donation')
         .insert([donationData])
@@ -204,7 +189,6 @@ const DonationPage: React.FC = () => {
     }
   };
 
-  // Update the getDonationById function to match the database schema
   const getDonationById = async (id: string) => {
     try {
       const { data, error } = await supabase
@@ -221,14 +205,12 @@ const DonationPage: React.FC = () => {
     }
   };
 
-  // Update the updateDonationStatus function to match the database schema
   const updateDonationStatus = async (id: string, status: string) => {
     try {
       const { data, error } = await supabase
         .from('donation')
         .update({ 
           payment_status: status,
-          // No need to update updated_at as it should have a trigger in the database
         })
         .eq('id', id)
         .select();
@@ -241,7 +223,6 @@ const DonationPage: React.FC = () => {
     }
   };
 
-  // Update the getDonationsByEmail function to match the database schema
   const getDonationsByEmail = async (email: string) => {
     try {
       const { data, error } = await supabase
@@ -273,7 +254,6 @@ const DonationPage: React.FC = () => {
       <LandingHeader />
 
       <main className="flex-grow">
-        {/* Hero Section */}
         <section className="bg-primary/10 py-16">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto text-center">
@@ -283,7 +263,7 @@ const DonationPage: React.FC = () => {
                 transition={{ duration: 0.5 }}
                 className="text-3xl md:text-4xl font-bold mb-6 mt-16"
               >
-                Make a Donation to Samarthanam Trust
+                {t('donationTitle')}
               </motion.h1>
               <motion.p 
                 initial={{ opacity: 0, y: 20 }}
@@ -291,8 +271,7 @@ const DonationPage: React.FC = () => {
                 transition={{ duration: 0.5, delay: 0.1 }}
                 className="text-muted-foreground text-lg mb-8"
               >
-                Your contribution helps us empower persons with disabilities through education, 
-                skill development, and inclusive programs.
+                {t('donationSubtitle')}
               </motion.p>
               
               <motion.div
@@ -303,30 +282,25 @@ const DonationPage: React.FC = () => {
               >
                 <Info className="text-primary h-8 w-8 dark:text-white donate-tax-section-text" />
                 <p className="text-sm">
-                  All donations to Samarthanam Trust are eligible for tax exemption under Section 80G in India.
+                  {t('taxExemptionInfo')}
                 </p>
               </motion.div>
             </div>
           </div>
         </section>
 
-        {/* Donation Form Section */}
         <section className="py-16">
           <div className="container mx-auto px-4">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Main Donation Form */}
               <Card className="lg:col-span-2">
                 <CardHeader>
-                  <CardTitle>Your Donation Details</CardTitle>
-                  <CardDescription>
-                    Please fill in the details to complete your donation
-                  </CardDescription>
+                  <CardTitle>{t('donationDetails')}</CardTitle>
+                  <CardDescription>{t('donationDetailsDescription')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSubmit} className="space-y-8">
-                    {/* Donation Type */}
                     <div className="space-y-4">
-                      <Label>Donation Type</Label>
+                      <Label>{t('donationType')}</Label>
                       <Tabs 
                         defaultValue="oneTime" 
                         value={donationType}
@@ -334,25 +308,24 @@ const DonationPage: React.FC = () => {
                         className="w-full"
                       >
                         <TabsList className="grid grid-cols-2">
-                          <TabsTrigger value="oneTime">One-time Donation</TabsTrigger>
-                          <TabsTrigger value="monthly">Monthly Donation</TabsTrigger>
+                          <TabsTrigger value="oneTime">{t('oneTimeDonation')}</TabsTrigger>
+                          <TabsTrigger value="monthly">{t('monthlyDonation')}</TabsTrigger>
                         </TabsList>
                         <TabsContent value="oneTime" className="pt-4">
                           <p className="text-sm text-muted-foreground">
-                            Make a one-time donation to support our programs.
+                            {t('oneTimeDonationDescription')}
                           </p>
                         </TabsContent>
                         <TabsContent value="monthly" className="pt-4">
                           <p className="text-sm text-muted-foreground">
-                            Your monthly donation helps us plan and sustain our programs.
+                            {t('monthlyDonationDescription')}
                           </p>
                         </TabsContent>
                       </Tabs>
                     </div>
 
-                    {/* Donation Amount */}
                     <div className="space-y-4">
-                      <Label>Donation Amount (₹)</Label>
+                      <Label>{t('donationAmount')}</Label>
                       <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
                         {presetAmounts.map(preset => (
                           <Button
@@ -374,13 +347,13 @@ const DonationPage: React.FC = () => {
                           }}
                           className="h-12"
                         >
-                          Custom
+                          {t('custom')}
                         </Button>
                       </div>
                       
                       {customAmount && (
                         <div className="pt-2">
-                          <Label htmlFor="customAmount">Enter Amount</Label>
+                          <Label htmlFor="customAmount">{t('enterAmount')}</Label>
                           <div className="relative mt-1">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                               <DollarSign className="h-5 w-5 text-muted-foreground" />
@@ -391,16 +364,15 @@ const DonationPage: React.FC = () => {
                               value={amount}
                               onChange={handleCustomAmountChange}
                               className="pl-10"
-                              placeholder="Enter amount"
+                              placeholder={t('enterAmountPlaceholder')}
                             />
                           </div>
                         </div>
                       )}
                     </div>
 
-                    {/* Donation Purpose */}
                     <div className="space-y-4">
-                      <Label>Choose Donation Purpose</Label>
+                      <Label>{t('donationPurpose')}</Label>
                       <RadioGroup 
                         value={donationPurpose} 
                         onValueChange={setDonationPurpose}
@@ -409,15 +381,14 @@ const DonationPage: React.FC = () => {
                         {donationOptions.map(option => (
                           <div key={option.value} className="flex items-center space-x-2">
                             <RadioGroupItem value={option.value} id={option.value} />
-                            <Label htmlFor={option.value}>{option.label}</Label>
+                            <Label htmlFor={option.value}>{t(option.labelKey)}</Label>
                           </div>
                         ))}
                       </RadioGroup>
                     </div>
 
-                    {/* Payment Method */}
                     <div className="space-y-4">
-                      <Label>Payment Method</Label>
+                      <Label>{t('paymentMethod')}</Label>
                       <Tabs 
                         defaultValue="card" 
                         value={paymentMethod}
@@ -427,41 +398,39 @@ const DonationPage: React.FC = () => {
                         <TabsList className="grid grid-cols-3">
                           <TabsTrigger value="card">
                             <CreditCard className="h-4 w-4 mr-2" />
-                            Card
+                            {t('card')}
                           </TabsTrigger>
                           <TabsTrigger value="upi">
-                            <span className="mr-2">UPI</span>
+                            <span className="mr-2">{t('upi')}</span>
                           </TabsTrigger>
                           <TabsTrigger value="netbanking">
-                            <span className="mr-2">Netbanking</span>
+                            <span className="mr-2">{t('netbanking')}</span>
                           </TabsTrigger>
                         </TabsList>
                         <TabsContent value="card" className="pt-4">
-                          {/* Card details would go here in a real implementation */}
                           <p className="text-sm text-muted-foreground">
-                            Secure credit/debit card payment processing.
+                            {t('cardDescription')}
                           </p>
                         </TabsContent>
                         <TabsContent value="upi" className="pt-4">
                           <p className="text-sm text-muted-foreground">
-                            Pay using any UPI app like Google Pay, PhonePe, etc.
+                            {t('upiDescription')}
                           </p>
                         </TabsContent>
                         <TabsContent value="netbanking" className="pt-4">
                           <p className="text-sm text-muted-foreground">
-                            Pay directly from your bank account.
+                            {t('netbankingDescription')}
                           </p>
                         </TabsContent>
                       </Tabs>
                     </div>
 
-                    {/* Personal Information */}
                     <div className="space-y-4">
-                      <h3 className="text-lg font-medium">Personal Information</h3>
+                      <h3 className="text-lg font-medium">{t('personalInformation')}</h3>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="name">Full Name <span className="text-red-500">*</span></Label>
+                          <Label htmlFor="name">{t('fullName')} <span className="text-red-500">*</span></Label>
                           <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                               <User className="h-4 w-4 text-muted-foreground" />
@@ -472,14 +441,14 @@ const DonationPage: React.FC = () => {
                               value={personalInfo.name}
                               onChange={handlePersonalInfoChange}
                               className="pl-10"
-                              placeholder="Enter your full name"
+                              placeholder={t('enterFullName')}
                               required
                             />
                           </div>
                         </div>
                         
                         <div className="space-y-2">
-                          <Label htmlFor="email">Email Address <span className="text-red-500">*</span></Label>
+                          <Label htmlFor="email">{t('emailAddress')} <span className="text-red-500">*</span></Label>
                           <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                               <Mail className="h-4 w-4 text-muted-foreground" />
@@ -491,14 +460,14 @@ const DonationPage: React.FC = () => {
                               value={personalInfo.email}
                               onChange={handlePersonalInfoChange}
                               className="pl-10"
-                              placeholder="Enter your email"
+                              placeholder={t('enterEmail')}
                               required
                             />
                           </div>
                         </div>
                         
                         <div className="space-y-2">
-                          <Label htmlFor="phone">Phone Number <span className="text-red-500">*</span></Label>
+                          <Label htmlFor="phone">{t('phoneNumber')} <span className="text-red-500">*</span></Label>
                           <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                               <Phone className="h-4 w-4 text-muted-foreground" />
@@ -509,26 +478,26 @@ const DonationPage: React.FC = () => {
                               value={personalInfo.phone}
                               onChange={handlePersonalInfoChange}
                               className="pl-10"
-                              placeholder="Enter your phone number"
+                              placeholder={t('enterPhone')}
                               required
                             />
                           </div>
                         </div>
                         
                         <div className="space-y-2">
-                          <Label htmlFor="panNumber">PAN Number (for tax benefits)</Label>
+                          <Label htmlFor="panNumber">{t('panNumber')}</Label>
                           <Input
                             id="panNumber"
                             name="panNumber"
                             value={personalInfo.panNumber}
                             onChange={handlePersonalInfoChange}
-                            placeholder="Enter PAN number for 80G certificate"
+                            placeholder={t('enterPanNumber')}
                           />
                         </div>
                       </div>
                       
                       <div className="space-y-2">
-                        <Label htmlFor="address">Address</Label>
+                        <Label htmlFor="address">{t('address')}</Label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Home className="h-4 w-4 text-muted-foreground" />
@@ -539,25 +508,24 @@ const DonationPage: React.FC = () => {
                             value={personalInfo.address}
                             onChange={handlePersonalInfoChange}
                             className="pl-10"
-                            placeholder="Enter your address"
+                            placeholder={t('enterAddress')}
                           />
                         </div>
                       </div>
                       
                       <div className="space-y-2">
-                        <Label htmlFor="message">Message (Optional)</Label>
+                        <Label htmlFor="message">{t('messageOptional')}</Label>
                         <Textarea
                           id="message"
                           name="message"
                           value={personalInfo.message}
                           onChange={handlePersonalInfoChange}
-                          placeholder="Share why you're making this donation"
+                          placeholder={t('shareWhyDonate')}
                           rows={3}
                         />
                       </div>
                     </div>
 
-                    {/* Agreements and Consent */}
                     <div className="space-y-4">
                       <div className="flex items-center space-x-2">
                         <Checkbox 
@@ -567,7 +535,10 @@ const DonationPage: React.FC = () => {
                           required
                         />
                         <Label htmlFor="terms" className="text-sm">
-                          I agree to the <a href="/terms" className="text-primary hover:underline">terms and conditions</a> and <a href="/privacy" className="text-primary hover:underline">privacy policy</a>
+                          {t('agreeTerms', { 
+                            termsLink: <a href="/terms" className="text-primary hover:underline">{t('termsAndConditions')}</a>,
+                            privacyLink: <a href="/privacy" className="text-primary hover:underline">{t('privacyPolicy')}</a>
+                          })}
                         </Label>
                       </div>
                       
@@ -578,84 +549,79 @@ const DonationPage: React.FC = () => {
                           onCheckedChange={(checked) => setReceiveUpdates(checked as boolean)}
                         />
                         <Label htmlFor="updates" className="text-sm">
-                          Keep me updated about how my donation is making an impact
+                          {t('keepMeUpdated')}
                         </Label>
                       </div>
                     </div>
 
-                    {/* Submit Button */}
                     <Button 
                       type="submit" 
                       className="w-full"
                       disabled={!isFormValid() || isSubmitting}
                     >
-                      {isSubmitting ? 'Processing...' : `Donate ₹${typeof amount === 'string' ? amount || '0' : amount.toLocaleString()}`}
+                      {isSubmitting ? t('processing') : t('donateButton', { amount: typeof amount === 'string' ? amount || '0' : amount.toLocaleString() })}
                       {!isSubmitting && <Heart className="ml-2 h-4 w-4" />}
                     </Button>
                   </form>
                 </CardContent>
               </Card>
 
-              {/* Sidebar with Info */}
               <div className="space-y-6">
-                {/* Why Donate Card */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Why Donate to Samarthanam</CardTitle>
+                    <CardTitle>{t('whyDonate')}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex items-start gap-3">
                       <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
-                      <p className="text-sm">Support education for visually impaired students</p>
+                      <p className="text-sm">{t('whyDonateEducation')}</p>
                     </div>
                     <div className="flex items-start gap-3">
                       <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
-                      <p className="text-sm">Provide skill development training to persons with disabilities</p>
+                      <p className="text-sm">{t('whyDonateSkill')}</p>
                     </div>
                     <div className="flex items-start gap-3">
                       <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
-                      <p className="text-sm">Enable sports opportunities for para-athletes</p>
+                      <p className="text-sm">{t('whyDonateSports')}</p>
                     </div>
                     <div className="flex items-start gap-3">
                       <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
-                      <p className="text-sm">Create livelihood opportunities through our programs</p>
+                      <p className="text-sm">{t('whyDonateLivelihood')}</p>
                     </div>
                     <div className="flex items-start gap-3">
                       <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
-                      <p className="text-sm">Tax benefits under Section 80G</p>
+                      <p className="text-sm">{t('whyDonateTax')}</p>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Impact Stats Card */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Your Impact</CardTitle>
+                    <CardTitle>{t('yourImpact')}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="text-center py-2 bg-primary/10 rounded-lg">
-                      <p className="text-sm mb-1">₹1,000 can provide</p>
-                      <p className="font-semibold">One month of educational support for a child</p>
+                      <p className="text-sm mb-1">{t('impact1000Title')}</p>
+                      <p className="font-semibold">{t('impact1000')}</p>
                     </div>
                     <div className="text-center py-2 bg-primary/10 rounded-lg">
-                      <p className="text-sm mb-1">₹5,000 can provide</p>
-                      <p className="font-semibold">Training materials for skill development</p>
+                      <p className="text-sm mb-1">{t('impact5000Title')}</p>
+                      <p className="font-semibold">{t('impact5000')}</p>
                     </div>
                     <div className="text-center py-2 bg-primary/10 rounded-lg">
-                      <p className="text-sm mb-1">₹10,000 can provide</p>
-                      <p className="font-semibold">Assistive technology for multiple students</p>
+                      <p className="text-sm mb-1">{t('impact10000Title')}</p>
+                      <p className="font-semibold">{t('impact10000')}</p>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Need Help Card */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Need Help?</CardTitle>
+                    <CardTitle>{t('needHelp')}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm mb-4">
-                      For any assistance with your donation, please contact us:
+                      {t('needHelpDescription')}
                     </p>
                     <div className="space-y-2">
                       <p className="text-sm flex items-center">
@@ -674,22 +640,21 @@ const DonationPage: React.FC = () => {
           </div>
         </section>
 
-        {/* Our Supporters Section */}
         <section className="py-16 bg-secondary">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold mb-4">Our Supporters</h2>
+              <h2 className="text-2xl md:text-3xl font-bold mb-4">{t('ourSupporters')}</h2>
               <p className="text-muted-foreground max-w-2xl mx-auto">
-                Join these organizations in supporting our mission to create an inclusive world
+                {t('supportersDescription')}
               </p>
             </div>
             
             <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">
-              <img src="/oracle-thumb.png" alt="Supporter Logo" className="h-24 opacity-70 hover:opacity-100 transition-opacity" />
-              <img src="/nike.png" alt="Supporter Logo" className="h-16 opacity-70 hover:opacity-100 transition-opacity" />
-              <img src="/morgan_stanley.png" alt="Supporter Logo" className="h-16 opacity-70 hover:opacity-100 transition-opacity" />
-              <img src="/microsoft-logo.png" alt="Supporter Logo" className="h-20 opacity-70 hover:opacity-100 transition-opacity" />
-              <img src="/anz.png" alt="Supporter Logo" className="h-16 opacity-70 hover:opacity-100 transition-opacity" />
+              <img src="/oracle-thumb.png" alt={t('supporterLogo')} className="h-24 opacity-70 hover:opacity-100 transition-opacity" />
+              <img src="/nike.png" alt={t('supporterLogo')} className="h-16 opacity-70 hover:opacity-100 transition-opacity" />
+              <img src="/morgan_stanley.png" alt={t('supporterLogo')} className="h-16 opacity-70 hover:opacity-100 transition-opacity" />
+              <img src="/microsoft-logo.png" alt={t('supporterLogo')} className="h-20 opacity-70 hover:opacity-100 transition-opacity" />
+              <img src="/anz.png" alt={t('supporterLogo')} className="h-16 opacity-70 hover:opacity-100 transition-opacity" />
             </div>  
           </div>
         </section>
