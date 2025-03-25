@@ -9,11 +9,12 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { format } from 'date-fns';
-import { AlertTriangle, CheckCircle, Clock, Loader2, Trash2, User, UserCheck, UserX, Users, FileDown } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Clock, Loader2, Trash2, User, UserX } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Progress } from '@/components/ui/progress';
 import { convertTaskToBraille, downloadBraille } from '@/utils/braille';
 import { toast } from 'sonner';
+import { BraillePreviewModal } from './BraillePreviewModal';
 
 type Task = {
   id: string;
@@ -43,6 +44,7 @@ type AdminTaskTableProps = {
 
 const AdminTaskTable = ({ tasks, onStatusChange, onDelete }: AdminTaskTableProps) => {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [previewTask, setPreviewTask] = useState<Task | null>(null);
 
   // Handle status change
   const handleStatusChange = (taskId: string, newStatus: string) => {
@@ -129,24 +131,27 @@ const AdminTaskTable = ({ tasks, onStatusChange, onDelete }: AdminTaskTableProps
     return Math.round((completedCount / task.assignees.length) * 100);
   };
 
-  // Handle braille download
-  const handleBrailleDownload = (task: Task) => {
+  // Handle braille preview and download
+  const handleBrailleClick = (task: Task) => {
+    setPreviewTask(task);
+  };
+
+  const handleDownload = (type: 'pdf' | 'txt') => {
+    if (!previewTask) return;
+
     try {
       const taskData = {
-        title: task.title,
-        description: task.description,
-        status: task.status,
-        priority: task.priority || 'Medium',
-        due_date: task.due_date,
-        assignee: task.assignees?.[0] ? { name: task.assignees[0].name } : undefined,
-        event_name: task.event_name || 'Event'
+        title: previewTask.title,
+        description: previewTask.description,
+        status: previewTask.status,
+        priority: previewTask.priority || 'Medium',
+        due_date: previewTask.due_date,
+        assignee: previewTask.assignees?.[0] ? { name: previewTask.assignees[0].name } : undefined,
+        event_name: previewTask.event_name || 'Event'
       };
 
-      const brailleText = convertTaskToBraille(taskData);
-      if (brailleText.startsWith('Error')) {
-        throw new Error('Failed to convert task to braille');
-      }
-      downloadBraille(brailleText, `task-${task.id}-braille.txt`);
+      const content = convertTaskToBraille(taskData);
+      downloadBraille(content, `task-${previewTask.id}-braille`, type);
     } catch (error) {
       console.error('Error handling braille download:', error);
       toast.error("Failed to download task in braille format. Please try again.");
@@ -281,14 +286,28 @@ const AdminTaskTable = ({ tasks, onStatusChange, onDelete }: AdminTaskTableProps
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => handleBrailleDownload(task)}
-                            className="hover:bg-blue-50"
+                            onClick={() => handleBrailleClick(task)}
+                            className="relative group hover:bg-blue-50 border-blue-200"
                           >
-                            <FileDown className="h-4 w-4 text-blue-500" />
+                            <div className="flex items-center gap-1">
+                              <div className="relative">
+                                <div className="flex items-center justify-center w-5 h-5 rounded-sm">
+                                  <div className="grid grid-cols-2 gap-[2px]">
+                                    <div className="w-[3px] h-[3px] rounded-full bg-blue-500"></div>
+                                    <div className="w-[3px] h-[3px] rounded-full bg-blue-500"></div>
+                                    <div className="w-[3px] h-[3px] rounded-full bg-transparent"></div>
+                                    <div className="w-[3px] h-[3px] rounded-full bg-blue-500"></div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-xs font-semibold text-blue-500 group-hover:text-blue-600">
+                                ⠃⠗
+                              </div>
+                            </div>
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Download in Braille</p>
+                          <p>Preview & Download in Braille</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -307,6 +326,33 @@ const AdminTaskTable = ({ tasks, onStatusChange, onDelete }: AdminTaskTableProps
           ))}
         </tbody>
       </table>
+
+      {previewTask && (
+        <BraillePreviewModal
+          isOpen={!!previewTask}
+          onClose={() => setPreviewTask(null)}
+          brailleText={convertTaskToBraille({
+            title: previewTask.title,
+            description: previewTask.description,
+            status: previewTask.status,
+            priority: previewTask.priority || 'Medium',
+            due_date: previewTask.due_date,
+            assignee: previewTask.assignees?.[0] ? { name: previewTask.assignees[0].name } : undefined,
+            event_name: previewTask.event_name || 'Event'
+          }).braille}
+          originalText={convertTaskToBraille({
+            title: previewTask.title,
+            description: previewTask.description,
+            status: previewTask.status,
+            priority: previewTask.priority || 'Medium',
+            due_date: previewTask.due_date,
+            assignee: previewTask.assignees?.[0] ? { name: previewTask.assignees[0].name } : undefined,
+            event_name: previewTask.event_name || 'Event'
+          }).original}
+          onDownload={handleDownload}
+          taskTitle={previewTask.title}
+        />
+      )}
     </div>
   );
 };
