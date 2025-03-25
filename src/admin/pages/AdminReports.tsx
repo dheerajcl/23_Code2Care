@@ -20,6 +20,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import AccessibilityMenu from '@/components/AccessibilityMenu';
+
 
 const AdminReports = () => {
   const { user, logout } = useAuth();
@@ -659,6 +661,7 @@ const AdminReports = () => {
           </Card>
         </main>
       </div>
+      <AccessibilityMenu/>
     </div>
   );
 };

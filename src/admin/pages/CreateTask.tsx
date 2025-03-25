@@ -45,6 +45,7 @@ import { createTaskAssignment, Task } from '@/services/database.service';
 import { emailService } from '@/services/email.service';
 import { notificationService } from '@/services/notification.service';
 
+
 const CreateTask = () => {
   const navigate = useNavigate();
   const auth = useAuth();
@@ -711,7 +712,7 @@ const formatDate = (dateString) => {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="maxVolunteers">Maximum Volunteers</Label>
                         <Input
@@ -729,24 +730,6 @@ const formatDate = (dateString) => {
                             }
                           }}
                         />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="status">Status</Label>
-                        <Select value={status} onValueChange={setStatus}>
-                          <SelectTrigger id="status">
-                            <SelectValue placeholder="Select a status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              {statusOptions.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
                       </div>
 
                       <div className="space-y-2">

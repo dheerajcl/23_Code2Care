@@ -46,6 +46,10 @@ import ParticipantRegistration from "./pages/ParticipantRegistration";
 import ParticipantRegistrationSuccess from "./pages/ParticipantRegistrationSuccess";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import VolunteerDataMigration from './admin/pages/VolunteerDataMigration.tsx';
+import DonationUpload from './admin/pages/DonationDataMigration.tsx';
+import MigratePage from './admin/pages/MigratePage.tsx';
+// Pages
 
 function App() {
   const queryClient = new QueryClient();
@@ -163,6 +167,29 @@ function App() {
                             </ProtectedRoute>
                           }
                         />
+                        <Route
+                  path="/admin/migration"
+                  element={
+                    <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                      <MigratePage/>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/migration/volunteerdata"
+                  element={
+                    <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                      <VolunteerDataMigration/>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/migration/donationdata"
+                  element={
+                    <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                      <DonationUpload/>
+                    </ProtectedRoute>
+                  }/>
                         
                         {/* Volunteer routes */}
                         <Route

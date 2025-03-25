@@ -18,6 +18,8 @@ import { getVolunteerLeaderboard } from '@/services/database.service';
 import { useQuery } from '@tanstack/react-query';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
+import AccessibilityMenu from '@/components/AccessibilityMenu';
+
 
 const AdminVolunteers = () => {
   // State for volunteers data
@@ -1125,6 +1127,7 @@ const AdminVolunteers = () => {
           {renderEventHistoryModal()}
         </main>
       </div>
+      <AccessibilityMenu/>
     </div>
   );
 };
