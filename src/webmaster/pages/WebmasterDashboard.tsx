@@ -52,9 +52,13 @@ export const WebmasterDashboard: React.FC = () => {
         const stats = await getDashboardStats();
         if (stats.error) throw stats.error;
         
-        // Format volunteer hours (placeholder - no direct API for this yet)
-        const volunteerHours = 854; // This should be replaced with actual data when available
+        // Fetch volunteers and their hours
+        const { data: volunteers, error: volunteersError } = await getVolunteers();
+        if (volunteersError) throw volunteersError;
         
+        // Calculate total volunteer hours
+        const volunteerHours = volunteers.reduce((sum, vol) => sum + (vol.hours || 0), 0)
+        console.log(volunteerHours);
         setDashboardStats({ 
           ...stats, 
           volunteerHours 
@@ -63,11 +67,6 @@ export const WebmasterDashboard: React.FC = () => {
         // Fetch events for chart data
         const { data: events, error: eventsError } = await getEvents();
         if (eventsError) throw eventsError;
-        
-        // Fetch volunteers
-        const { data: volunteers, error: volunteersError } = await getVolunteers();
-        if (volunteersError) throw volunteersError;
-        
         // Prepare events chart data
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const eventCounts = {};
@@ -124,9 +123,12 @@ export const WebmasterDashboard: React.FC = () => {
         });
         
         const formattedSkills = Object.entries(skills)
-          .map(([name, value]) => ({ name, value }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 5);
+        .map(([name, value]) => ({ 
+          name, 
+          value: typeof value === 'number' ? value : Number(value) || 0 
+        }))
+        .sort((a, b) => (b.value as number) - (a.value as number))
+        .slice(0, 5);
         
         setSkillDistribution(formattedSkills);
         
@@ -416,8 +418,6 @@ export const WebmasterDashboard: React.FC = () => {
                               <h4 className="text-base font-semibold">{event.title}</h4>
                               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                                 <span>{event.location}</span>
-                                <span className="inline-block h-1 w-1 rounded-full bg-gray-400"></span>
-                                <span>{event.volunteers} / {event.volunteerNeeded} volunteers</span>
                               </div>
                             </div>
                           </div>
