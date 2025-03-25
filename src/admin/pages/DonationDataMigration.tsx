@@ -11,25 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useNavigate } from 'react-router-dom';
 import AdminHeader from '../components/AdminHeader';
 import AdminSidebar from '../components/AdminSidebar';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
-// Donation table columns
-const DONATION_COLUMNS = [
-  'amount', 
-  'donation_type', 
-  'donation_purpose', 
-  'payment_method', 
-  'payment_status', 
-  'transaction_id',
-  'donor_name', 
-  'donor_email', 
-  'donor_phone', 
-  'donor_address', 
-  'pan_number', 
-  'donor_message', 
-  'receive_updates'
-] as const;
-
-// Donation table schema interface
+// Donation schema interface
 interface Donation {
   id?: string;
   amount: number;
@@ -45,85 +29,105 @@ interface Donation {
   pan_number?: string;
   donor_message?: string;
   receive_updates: boolean;
-  created_at?: Date;
-  updated_at?: Date;
+  created_at?: string;
+  updated_at?: string;
   organization_id?: string;
 }
 
-// Explicitly type the column mapping
-type DonationColumn = typeof DONATION_COLUMNS[number];
-
-const DonationDataMigration: React.FC = () => {
+const DonationDataMigration = () => {
   const { user } = useAuth();
   const [file, setFile] = useState<File | null>(null);
-  const [fileColumns, setFileColumns] = useState<string[]>([]);
-  const [columnMapping, setColumnMapping] = useState<Record<string, DonationColumn | 'skip'>>({});
-  const [previewData, setPreviewData] = useState<Array<Record<string, any>>>([]);
+  const [previewData, setPreviewData] = useState<any[]>([]);
+  const [headers, setHeaders] = useState<string[]>([]);
+  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isFileProcessing, setIsFileProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<{ success: number; failed: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { adminUser, logout } = useAuth();
   const auth = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await auth.logout();
+    await logout();
     navigate('/admin/login');
   };
+
+  // All donation table columns with default no-value
+  const donationColumns = [
+    'amount', 'donation_type', 'donation_purpose', 'payment_method', 
+    'payment_status', 'transaction_id', 'donor_name', 'donor_email', 
+    'donor_phone', 'donor_address', 'pan_number', 'donor_message', 
+    'receive_updates'
+  ];
 
   // Required fields for validation
   const requiredFields = ['amount', 'donor_name', 'donor_email'];
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError(null);
     setResult(null);
     
-    const uploadedFile = event.target.files?.[0];
+    const uploadedFile = e.target.files?.[0];
     if (!uploadedFile) return;
     
     setFile(uploadedFile);
+    setIsFileProcessing(true);
     
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = (event) => {
       try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
+        const data = event.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
         
-        // Get columns from first row
-        const columns = XLSX.utils.sheet_to_json(worksheet, { header: 1 })[0] as string[];
-        setFileColumns(columns);
-
-        // Reset column mapping with default options
-        const initialMapping: Record<string, DonationColumn | 'skip'> = {};
-        columns.forEach(col => {
-          const normalizedCol = col.toLowerCase().replace(/[^a-z0-9]/g, '_');
-          const matchedColumn = DONATION_COLUMNS.find(dc => dc.includes(normalizedCol)) || 'skip';
-          initialMapping[col] = matchedColumn;
+        if (jsonData.length === 0) {
+          setError("The file appears to be empty or invalid.");
+          setIsFileProcessing(false);
+          return;
+        }
+        
+        // Get headers from the first row
+        const fileHeaders = Object.keys(jsonData[0]);
+        setHeaders(fileHeaders);
+        
+        // Set default mapping if column names match
+        const initialMapping: Record<string, string> = {};
+        fileHeaders.forEach(header => {
+          const normalizedHeader = header.toLowerCase().replace(/[^a-z0-9]/g, '_');
+          if (donationColumns.includes(normalizedHeader)) {
+            initialMapping[header] = normalizedHeader;
+          }
         });
         setColumnMapping(initialMapping);
-
-        // Get preview data
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
-        setPreviewData(jsonData.slice(0, 5)); // Preview first 5 rows
+        
+        // Show preview of first 5 rows
+        setPreviewData(jsonData.slice(0, 5));
+        setIsFileProcessing(false);
       } catch (err) {
         console.error("Error parsing file:", err);
         setError("Failed to parse the file. Please make sure it's a valid Excel or CSV file.");
+        setIsFileProcessing(false);
       }
     };
-    reader.readAsArrayBuffer(uploadedFile);
+    
+    reader.readAsBinaryString(uploadedFile);
   };
 
-  const handleColumnMappingChange = (fileColumn: string, donationColumn: DonationColumn | 'skip') => {
+  const handleColumnMappingChange = (fileColumn: string, dbColumn: string) => {
     setColumnMapping(prev => ({
       ...prev,
-      [fileColumn]: donationColumn
+      [fileColumn]: dbColumn || 'skip'
     }));
   };
 
   const handleMigration = async () => {
-    // Validate required fields are mapped
+    if (!file || !user) return;
+    
+    // Check if required fields are mapped
     const mappedRequiredFields = requiredFields.filter(
       field => Object.values(columnMapping).includes(field)
     );
@@ -134,73 +138,84 @@ const DonationDataMigration: React.FC = () => {
         .join(', ')}`);
       return;
     }
-
+    
     setIsLoading(true);
     setProgress(0);
     setError(null);
-
+    
     try {
-      const donations: Donation[] = previewData.map(row => {
-        const donation: Partial<Donation> = {
-          amount: 0,
-          donation_type: 'Online',
-          donation_purpose: '',
-          payment_method: 'Online',
-          payment_status: 'Completed',
-          donor_name: '',
-          donor_email: '',
-          donor_phone: '',
-          donor_address: '',
-          receive_updates: false,
-          created_at: new Date(),
-          updated_at: new Date()
-        };
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const data = event.target?.result;
+          const workbook = XLSX.read(data, { type: 'binary' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, any>[];
+          
+          let successCount = 0;
+          let failCount = 0;
+          
+          // Process in batches to improve performance
+          const batchSize = 20;
+          const totalBatches = Math.ceil(jsonData.length / batchSize);
+          
+          for (let i = 0; i < jsonData.length; i += batchSize) {
+            const batch = jsonData.slice(i, i + batchSize);
+            
+            const donations: Donation[] = batch.map(row => {
+              const donation: Partial<Donation> = {
+                donation_type: 'Online',
+                payment_method: 'Online',
+                payment_status: 'Completed',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              };
+              
+              // Map columns based on user configuration
+              Object.entries(columnMapping).forEach(([fileCol, dbCol]) => {
+                if (dbCol === 'skip') return;
+              
+                const value = row[fileCol];
+              
+                if (dbCol === 'amount') {
+                  donation[dbCol] = Number(value) || 0;
+                } else if (dbCol === 'receive_updates') {
+                  donation[dbCol] = value === 'Yes' || false;
+                } else {
+                  donation[dbCol as keyof Donation] = value;
+                }
+              });
+              
+              return donation as Donation;
+            });
+            
+            // Insert donations into the database
+            const { data: insertedData, error: insertError } = await supabase
+              .from('donation')
+              .insert(donations);
 
-        // Map columns based on user selection
-        Object.entries(columnMapping).forEach(([fileCol, donationCol]) => {
-          if (donationCol && donationCol !== 'skip') {
-            switch (donationCol) {
-              case 'amount':
-                donation.amount = parseFloat(row[fileCol]) || 0;
-                break;
-              case 'receive_updates':
-                donation.receive_updates = row[fileCol] === 'Yes' || false;
-                break;
-              default:
-                (donation as any)[donationCol] = row[fileCol] || '';
+            if (insertError) {
+              console.error("Detailed Supabase Error:", insertError);
+              failCount += batch.length;
+            } else {
+              successCount += batch.length;
             }
+            
+            // Update progress
+            setProgress(Math.round(((i + batch.length) / jsonData.length) * 100));
           }
-        });
-
-        return donation as Donation;
-      });
-
-      // Process in batches
-      const batchSize = 20;
-      const totalBatches = Math.ceil(donations.length / batchSize);
-      let successCount = 0;
-      let failCount = 0;
-
-      for (let i = 0; i < donations.length; i += batchSize) {
-        const batch = donations.slice(i, i + batchSize);
-        
-        const { data, error: insertError } = await supabase
-          .from('donation')
-          .insert(batch);
-
-        if (insertError) {
-          console.error("Batch insert error:", insertError);
-          failCount += batch.length;
-        } else {
-          successCount += batch.length;
+          
+          setResult({ success: successCount, failed: failCount });
+          setIsLoading(false);
+        } catch (err) {
+          console.error("Error processing data:", err);
+          setError("An error occurred while processing the data.");
+          setIsLoading(false);
         }
-
-        // Update progress
-        setProgress(Math.round(((i + batch.length) / donations.length) * 100));
-      }
-
-      setResult({ success: successCount, failed: failCount });
-      setIsLoading(false);
+      };
+      
+      reader.readAsBinaryString(file);
     } catch (err) {
       console.error("Migration error:", err);
       setError("An error occurred during migration.");
@@ -216,12 +231,12 @@ const DonationDataMigration: React.FC = () => {
         <AdminSidebar />
         
         <main className="flex-1 overflow-y-auto p-4">
-          <Card className="w-full max-w-4xl mx-auto mt-4">
+          <Card className="w-full max-w-6xl mx-auto mt-4">
             <CardHeader>
               <div className="flex justify-between items-center">
                 <div>
                   <CardTitle>Donation Data Migration</CardTitle>
-                  <CardDescription>
+                  <CardDescription className='mt-2'>
                     Upload an Excel or CSV file to import donation data into the database.
                   </CardDescription>
                 </div>
@@ -259,7 +274,13 @@ const DonationDataMigration: React.FC = () => {
                 </div>
               )}
               
-              {file && fileColumns.length > 0 && (
+              {isFileProcessing && (
+                <div className="flex items-center justify-center py-8">
+                  <LoadingSpinner />
+                </div>
+              )}
+              
+              {file && !isFileProcessing && headers.length > 0 && (
                 <>
                   <div className="mb-6">
                     <h3 className="text-lg font-medium mb-2">File Preview</h3>
@@ -267,7 +288,7 @@ const DonationDataMigration: React.FC = () => {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            {Object.keys(previewData[0]).map(header => (
+                            {headers.map(header => (
                               <TableHead key={header}>{header}</TableHead>
                             ))}
                           </TableRow>
@@ -275,8 +296,10 @@ const DonationDataMigration: React.FC = () => {
                         <TableBody>
                           {previewData.map((row, index) => (
                             <TableRow key={index}>
-                              {Object.values(row).map((value, colIndex) => (
-                                <TableCell key={colIndex}>{value?.toString() || ''}</TableCell>
+                              {headers.map(header => (
+                                <TableCell key={`${index}-${header}`}>
+                                  {row[header]?.toString() || ''}
+                                </TableCell>
                               ))}
                             </TableRow>
                           ))}
@@ -293,19 +316,19 @@ const DonationDataMigration: React.FC = () => {
                     </p>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {fileColumns.map(header => (
+                      {headers.map(header => (
                         <div key={header} className="flex items-center gap-2">
                           <span className="min-w-32 font-medium">{header}:</span>
                           <Select
                             value={columnMapping[header] || 'skip'}
-                            onValueChange={(value: DonationColumn | 'skip') => handleColumnMappingChange(header, value)}
+                            onValueChange={(value) => handleColumnMappingChange(header, value)}
                           >
                             <SelectTrigger className="w-full">
                               <SelectValue placeholder="Select field" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="skip">Skip this column</SelectItem>
-                              {DONATION_COLUMNS.map(col => (
+                              {donationColumns.map(col => (
                                 <SelectItem key={col} value={col}>
                                   {col} {requiredFields.includes(col) ? '(required)' : ''}
                                 </SelectItem>
@@ -349,9 +372,9 @@ const DonationDataMigration: React.FC = () => {
                     variant="outline" 
                     onClick={() => {
                       setFile(null);
-                      setFileColumns([]);
-                      setColumnMapping({});
                       setPreviewData([]);
+                      setHeaders([]);
+                      setColumnMapping({});
                       setResult(null);
                       setError(null);
                     }}
@@ -360,7 +383,7 @@ const DonationDataMigration: React.FC = () => {
                   </Button>
                 )}
                 
-                {file && fileColumns.length > 0 && (
+                {file && headers.length > 0 && (
                   <Button 
                     onClick={handleMigration}
                     disabled={isLoading}
