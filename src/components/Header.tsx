@@ -224,28 +224,7 @@ const Header: React.FC = () => {
               )}
             </Button>
 
-            {/* Accessibility Options */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Accessibility options">
-                  <Settings className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem 
-                  onSelect={() => document.documentElement.classList.toggle('high-contrast')}
-                >
-                  {t('toggleHighContrast')}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() => document.body.style.fontSize = 
-                    document.body.style.fontSize === '110%' ? '100%' : '110%'
-                  }
-                >
-                  {t('toggleLargerText')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+
 
             {/* Mobile Menu Button */}
             <Button 

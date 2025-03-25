@@ -326,11 +326,11 @@ export const VolunteerDashboard = () => {
                           <Badge variant={event.status === 'registered' ? 'default' : 'outline'}>
                             {event.status === 'Active' ? 'Upcoming' : event.status}
                           </Badge>
-                          <Button variant="ghost" size="sm" asChild>
+                          {/* <Button variant="ghost" size="sm" asChild>
                             <Link to={`/volunteer/events/${event.id}`}>
                             Details
                             </Link>
-                          </Button>
+                          </Button> */}
                         </CardFooter>
                       </Card>
                     ))}

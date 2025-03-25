@@ -252,42 +252,8 @@ const AdminEventForm = ({ initialData, isEditing = false }: EventFormProps) => {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Start Date <span className="text-red-500">*</span></Label>
-            <div className="flex flex-col space-y-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "justify-start text-left font-normal w-full",
-                      !startDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {startDate ? format(startDate, "PPP") : "Select date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={startDate}
-                    onSelect={setStartDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-
-              <div className="flex items-center space-x-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <TimePicker setTime={setStartTime} time={startTime} />
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>End Date <span className="text-red-500">*</span></Label>
+        <div className="space-y-2">
+            <Label>Set Registration Deadline<span className="text-red-500">*</span></Label>
             <div className="flex flex-col space-y-2">
               <Popover>
                 <PopoverTrigger asChild>
@@ -313,7 +279,71 @@ const AdminEventForm = ({ initialData, isEditing = false }: EventFormProps) => {
               </Popover>
 
               <div className="flex items-center space-x-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
+                <TimePicker setTime={setStartTime} time={startTime} />
+              </div>
+            </div>
+          </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Start Date and Time<span className="text-red-500">*</span></Label>
+            <div className="flex flex-col space-y-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "justify-start text-left font-normal w-full",
+                      !startDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, "PPP") : "Select date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={setStartDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+
+              <div className="flex items-center space-x-2">
+                <TimePicker setTime={setStartTime} time={startTime} />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>End Date and Time<span className="text-red-500">*</span></Label>
+            <div className="flex flex-col space-y-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "justify-start text-left font-normal w-full",
+                      !endDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {endDate ? format(endDate, "PPP") : "Select date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={setEndDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+
+              <div className="flex items-center space-x-2">
                 <TimePicker setTime={setEndTime} time={endTime} />
               </div>
             </div>
