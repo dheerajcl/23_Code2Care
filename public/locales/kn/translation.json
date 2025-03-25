@@ -1,0 +1,19 @@
+{
+  "home": "ಮುಖಪುಟ",
+  "events": "ಈವೆಂಟ್ಸ್",
+  "about": "ಬಗ್ಗೆ",
+  "donate": "ದಾನ ಮಾಡಿ",
+  "dashboard": "ಡ್ಯಾಶ್ಬೋರ್ಡ್",
+  "volunteer": "ಸ್ವಯಂಸೇವಕ",
+  "language": "ಭಾಷೆ",
+  "english": "ಇಂಗ್ಲಿಷ್",
+  "hindi": "ಹಿಂದಿ",
+  "kannada": "ಕನ್ನಡ",
+  "logout": "ಲಾಗ್ ಔಟ್",
+  "login": "ಲಾಗಿನ್",
+  "switchToLightMode": "ಲೈಟ್ ಮೋಡ್ ಗೆ ಸ್ವಿಚ್ ಮಾಡಿ",
+  "switchToDarkMode": "ಡಾರ್ಕ್ ಮೋಡ್ ಗೆ ಸ್ವಿಚ್ ಮಾಡಿ",
+  "openMenu": "ಮೆನು ತೆರೆಯಿರಿ",
+  "closeMenu": "ಮೆನು ಮುಚ್ಚಿ",
+  "userMenu": "ಬಳಕೆದಾರ ಮೆನು"
+}

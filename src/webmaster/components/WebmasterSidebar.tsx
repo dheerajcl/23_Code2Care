@@ -30,17 +30,23 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
   const navigate = useNavigate();
 
   return (
-    <Button
+     <Button
       variant="ghost"
       className={cn(
-        'w-full justify-start gap-3 font-normal px-3 py-2 h-auto',
-        active ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800' : 'hover:bg-gray-100'
+        'w-full justify-start gap-3 font-normal px-3 py-2 h-auto transition-colors',
+        active ? 'bg-red-700 text-white' : 'hover:bg-red-700 hover:text-white'
       )}
       onClick={() => navigate(href)}
     >
-      <Icon className={cn('h-5 w-5', active ? 'text-blue-700' : 'text-gray-500')} />
-      <span>{label}</span>
+      {/* Icon - Default Black, Turns White on Hover/Active */}
+      <Icon className={cn('h-5 w-5 transition-colors', active ? 'text-white' : 'text-black', 'hover:bg-red-700 hover:text-white')} />
+
+      {/* Label - Default Black, Turns White on Hover/Active */}
+      <span className={cn(active ? 'text-white' : 'text-black', 'hover:bg-red-700 hover:text-white')}>
+        {label}
+      </span>
     </Button>
+
   );
 };
 
@@ -89,12 +95,12 @@ export const WebmasterSidebar = () => {
   ];
 
   return (
-    <div className="h-screen w-64 border-r border-gray-200 bg-white hidden md:block">
+    <div className="h-screen w-64 border-r border-gray-200 bg-muted/40 hidden md:block">
       <ScrollArea className="h-[calc(100vh-4rem)]">
         <div className="px-3 py-4">
           <div className="mb-8">
-            <h2 className="px-4 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Main
+            <h2 className="text-xs font-medium uppercase text-muted-foreground pl-4 mb-2">
+              Navigation
             </h2>
             <div className="space-y-1">
               {sidebarItems.map((item, index) => (

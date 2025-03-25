@@ -218,7 +218,7 @@ export const WebmasterDashboard: React.FC = () => {
           <WebmasterSidebar />
           <main className="flex-1 overflow-auto p-8 flex items-center justify-center">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mx-auto mb-4"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-700 mx-auto mb-4"></div>
               <h2 className="text-xl">Loading dashboard data...</h2>
               <p className="text-muted-foreground mt-2">Please wait while we fetch the latest information.</p>
             </div>
@@ -355,7 +355,7 @@ export const WebmasterDashboard: React.FC = () => {
                           <XAxis dataKey="name" />
                           <YAxis />
                           <Tooltip />
-                          <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="count" fill="#22c55e" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -375,8 +375,8 @@ export const WebmasterDashboard: React.FC = () => {
                           <XAxis dataKey="name" />
                           <YAxis />
                           <Tooltip />
-                          <Line type="monotone" dataKey="active" stroke="#3b82f6" strokeWidth={2} />
-                          <Line type="monotone" dataKey="new" stroke="#10b981" strokeWidth={2} />
+                          <Line type="monotone" dataKey="active" stroke="#0ea5e9" strokeWidth={2} />
+                          <Line type="monotone" dataKey="new" stroke="#22c55e" strokeWidth={2} />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
@@ -385,6 +385,7 @@ export const WebmasterDashboard: React.FC = () => {
               </div>
 
               {/* Upcoming Events */}
+              
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
