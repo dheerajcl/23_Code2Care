@@ -17,7 +17,8 @@ import {
   Check,
   Mail,
   User,
-  MessageSquare
+  MessageSquare,
+  CheckCircle
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getEventById, getTasksByEventId, createTask, updateTask, deleteTask, getEventRegistrations, registerVolunteerForEvent, updateEventRegistration, deleteEventRegistration, getAdminEventTasks } from '@/services/database.service';
@@ -36,13 +37,15 @@ import {
 import { format } from 'date-fns';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Task View Components
 import TaskTable from '../components/AdminTaskTable';
 import TaskKanban from '../components/AdminTaskKanban';
 import AdminSidebar from '../components/AdminSidebar';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
-
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 
 const AdminEventDetails = () => {
   const [activeView, setActiveView] = useState('table');
@@ -77,7 +80,11 @@ const AdminEventDetails = () => {
   const [activeTab, setActiveTab] = useState('details');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  const [selectedVolunteers, setSelectedVolunteers] = useState<string[]>([]);
+  const [messageTitle, setMessageTitle] = useState("");
+  const [messageBody, setMessageBody] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [isSent, setIsSent] = useState(false);
   // Task form state
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [taskForm, setTaskForm] = useState({
@@ -257,7 +264,50 @@ const AdminEventDetails = () => {
       return "Date not specified";
     }
   };
+  const handleCheckboxChange = (id: string) => {
+    setSelectedVolunteers((prev) =>
+      prev.includes(id) ? prev.filter((vid) => vid !== id) : [...prev, id]
+    );
+  };
+  const handleSelectAll = () => {
+    if (selectedVolunteers.length === volunteers.length) {
+      setSelectedVolunteers([]);
+    } else {
+      setSelectedVolunteers(volunteers.map((v) => v.id));
+    }
+  };
 
+  const sendMessage = async () => {
+    if (selectedVolunteers.length === 0) {
+      alert("Please select at least one volunteer.");
+      return;
+    }
+  
+    setIsSending(true);
+    try {
+      // Bulk insert notifications for selected volunteers
+      const { error } = await supabase.from("internal_noti").insert(
+        selectedVolunteers.map((volunteer_id) => ({
+          volunteer_id,
+          message: messageBody,
+          title_noti: messageTitle,
+          sent_at: new Date().toISOString()
+        }))
+      );
+  
+      if (error) {
+        throw error;
+      }
+  
+      setIsSent(true);
+      setTimeout(() => setIsSent(false), 2000);
+    } catch (error) {
+      console.error("Error sending message", error);
+      alert("Failed to send message.");
+    } finally {
+      setIsSending(false);
+    }
+  };
   // Format time for display
   const formatTime = (dateString) => {
     try {
@@ -967,14 +1017,39 @@ const AdminEventDetails = () => {
                       </p>
                     </div>
 
-                    <Button
-                      onClick={() => setShowRegistrationForm(true)}
-                      className="bg-purple-600 hover:bg-purple-700"
-                      disabled={event.max_volunteers && registrations.length >= event.max_volunteers}
-                    >
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Register Volunteer
-                    </Button>
+                    <div className="flex items-center gap-4 py-2">
+            <Checkbox checked={selectedVolunteers.length === volunteers.length} onCheckedChange={handleSelectAll} />
+            <span>Select All</span>
+          </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline">
+                <MessageSquare className="w-5 h-5 mr-2" />
+                Send Message
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-4">
+              <h3 className="text-lg font-semibold mb-2">Send Notification</h3>
+              <Input
+                placeholder="Enter Title"
+                value={messageTitle}
+                onChange={(e) => setMessageTitle(e.target.value)}
+                className="mb-2"
+                disabled={isSending}
+              />
+              <Textarea
+                placeholder="Enter Message"
+                value={messageBody}
+                onChange={(e) => setMessageBody(e.target.value)}
+                className="mb-2"
+                disabled={isSending}
+              />
+              <Button onClick={sendMessage} className="w-full" disabled={isSending && isSent}>
+                {isSent ? <CheckCircle className="w-5 h-5 mr-2" /> : null}
+                {isSent ? 'Sent!' : isSending ? 'Sending...' : 'Send'}
+              </Button>
+            </PopoverContent>
+          </Popover>
                   </div>
 
 
@@ -990,6 +1065,9 @@ const AdminEventDetails = () => {
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Select
+                            </th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Volunteer
                             </th>
@@ -1012,6 +1090,18 @@ const AdminEventDetails = () => {
                             <tr key={registration.id} className="hover:bg-gray-50">
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="flex items-center">
+                                  <div className="ml-4">
+                                    <div className="text-sm font-medium text-gray-900">
+                                    <Checkbox
+                checked={selectedVolunteers.includes(registration.volunteer.id)}
+                onCheckedChange={() => handleCheckboxChange(registration.volunteer.id)}
+              />
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
                                   <div className="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
                                     <User className="h-5 w-5 text-gray-500" />
                                   </div>
@@ -1030,7 +1120,7 @@ const AdminEventDetails = () => {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <Badge className={`
-                                  ${registration.status === 'Registered' ? 'bg-green-100 text-green-800' : ''}
+                                  ${registration.status === 'successful' ? 'bg-green-100 text-green-800' : ''}
                                   ${registration.status === 'Cancelled' ? 'bg-red-100 text-red-800' : ''}
                                   ${registration.status === 'Waitlisted' ? 'bg-yellow-100 text-yellow-800' : ''}
                                 `}>
@@ -1053,18 +1143,11 @@ const AdminEventDetails = () => {
                                     onClick={() => handleUpdateHours(registration.id, registration.hours || 0)}
                                     className="h-8 w-8 p-0"
                                   >
-                                    <Check className="h-4 w-4" />
                                   </Button>
                                 </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                                 <div className="flex gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                  >
-                                    <Mail className="h-4 w-4" />
-                                  </Button>
                                   <Button
                                     size="sm"
                                     variant="outline"
