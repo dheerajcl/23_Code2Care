@@ -68,13 +68,13 @@ export const WebmasterFeedback: React.FC = () => {
             volunteerId: item.volunteer_id,
             volunteerName: item.volunteer ? `${item.volunteer.first_name || ''} ${item.volunteer.last_name || ''}`.trim() : 'Unknown Volunteer',
             volunteerEmail: item.volunteer?.email || '',
-            rating: item.event_experience || 0,
-            organizationRating: item.event_organization || 0,
-            volunteerAgain: item.volunteer_again || 0,
+            rating: item.event_experience/2 || 0,
+            organizationRating: item.event_organization/2 || 0,
+            volunteerAgain: item.volunteer_again/2 || 0,
             tasksClear: item.tasks_clear,
             organizerSupport: item.organizer_support,
-            improvementSuggestions: item.improvement_suggestions || '',
-            impactfulMoment: item.impactful_moment || '',
+            improvementSuggestions: item.improvement_suggestions || 'N/A',
+            impactfulMoment: item.impactful_moment || 'N/A',
             createdAt: item.created_at || new Date().toISOString()
           }));
           

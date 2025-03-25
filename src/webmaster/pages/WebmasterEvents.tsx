@@ -310,14 +310,7 @@ export const WebmasterEvents: React.FC = () => {
                       <MapPin className="h-4 w-4 text-gray-500 mt-1 flex-shrink-0" />
                       <p className="text-sm text-gray-600 line-clamp-1">{event.location}</p>
                     </div>
-
-                    <div className="flex items-start gap-2 mb-4">
-                      <Users className="h-4 w-4 text-gray-500 mt-1 flex-shrink-0" />
-                      <p className="text-sm text-gray-600">
-                        {event.registered_count || 0} / {event.max_volunteers || 'unlimited'} volunteers
-                      </p>
-                    </div>
-
+                    <h4 className="text-sm font-semibold">Event Description</h4>
                     <p className="text-sm text-gray-500 mb-4 line-clamp-2">{event.description}</p>
 
                     <div className="flex justify-between pt-2 border-t border-gray-100">
