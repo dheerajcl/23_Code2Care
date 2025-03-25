@@ -386,12 +386,6 @@ export const VolunteerDashboard = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-bold">Upcoming Events</h2>
-                  <Button variant="outline" asChild>
-                    <Link to="/volunteer/events">
-                      View All Events
-                      <ExternalLink className="h-4 w-4 ml-2" />
-                    </Link>
-                  </Button>
                 </div>
                 
                 {loading ? (
