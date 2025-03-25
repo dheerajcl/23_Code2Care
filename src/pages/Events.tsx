@@ -135,9 +135,9 @@ const { data, error } = await supabase
 
   return (
     <div className="flex flex-col min-h-screen">
-      <Header showBack={false} title="Volunteering Events" />
+      <Header />
       
-      <main className="flex-1 container mx-auto p-4 md:p-6">
+      <main className="flex-1 container mx-auto p-4 md:p-6 mt-32">
         {/* Search and Filters */}
         <div className="mb-6 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -232,7 +232,7 @@ const { data, error } = await supabase
         {/* Events Grid */}
         {loading ? (
           <div className="flex justify-center items-center py-20">
-            <LoadingSpinner size="lg" />
+            <LoadingSpinner size="large" />
           </div>
         ) : filteredEvents.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -251,7 +251,7 @@ const { data, error } = await supabase
                   isRegistered={registeredEvents && registeredEvents[event.id]} 
                   isRecommended={false}
                   loading={false}
-                  handleVolunteerSignup={handleVolunteerSignup}
+                  handleVolunteerSignup={() => handleVolunteerSignup(event.id)}
                 />
               </div>
             ))}

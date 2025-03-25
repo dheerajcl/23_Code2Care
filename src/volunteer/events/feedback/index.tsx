@@ -138,11 +138,11 @@ const EventFeedback = () => {
     rightLabel: string; 
   }) => (
     <div className="space-y-4">
-      <div className="flex justify-between text-sm text-muted-foreground px-2">
-        <div className="w-8 text-center">{leftLabel}</div>
-        <div className="w-8 text-center">{rightLabel}</div>
+      <div className="flex justify-between text-sm text-muted-foreground">
+        <div>{leftLabel}</div>
+        <div>{rightLabel}</div>
       </div>
-      <div className="flex gap-2">
+      <div className="flex justify-between">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((rating) => (
           <button
             key={rating}
