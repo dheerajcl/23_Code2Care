@@ -1,5 +1,5 @@
-import React from 'react';
-import { AlertCircle, CheckCircle, Clock, Edit, MoreHorizontal } from 'lucide-react';
+import React, { useState } from 'react';
+import { AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -8,8 +8,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from './ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { convertTaskToBraille, downloadBraille } from '@/utils/braille';
+import { BraillePreviewModal } from '@/admin/components/BraillePreviewModal';
+import { toast } from 'sonner';
 
 const TaskTable = ({ tasks, onUpdateStatus }) => {
+  const [previewTask, setPreviewTask] = useState(null);
+
   // Function to render status badge with appropriate colors
   const renderStatusBadge = (status) => {
     let bgColor = 'bg-gray-100';
@@ -59,6 +65,33 @@ const TaskTable = ({ tasks, onUpdateStatus }) => {
     onUpdateStatus(taskId, newStatus);
   };
 
+  // Handle braille preview and download
+  const handleBrailleClick = (task) => {
+    setPreviewTask(task);
+  };
+
+  const handleDownload = (type) => {
+    if (!previewTask) return;
+
+    try {
+      const taskData = {
+        title: previewTask.name,
+        description: previewTask.description,
+        status: previewTask.status,
+        priority: previewTask.priority || 'Medium',
+        due_date: previewTask.dueDate,
+        assignee: previewTask.assignee,
+        event_name: previewTask.eventTitle || 'Event'
+      };
+
+      const content = convertTaskToBraille(taskData);
+      downloadBraille(content, `task-${previewTask.id}-braille`, type);
+    } catch (error) {
+      console.error('Error handling braille download:', error);
+      toast.error("Failed to download task in braille format. Please try again.");
+    }
+  };
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
@@ -98,15 +131,72 @@ const TaskTable = ({ tasks, onUpdateStatus }) => {
                   </Select>
                 </div>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap pr-12 text-right text-sm font-medium">
-                <button aria-label='edit' className="text-rose-700 hover:text-rose-900">
-                  <Edit size={20} />
-                </button>
+              <td className="px-6 py-4 whitespace-nowrap pr-3 text-right text-sm font-medium">
+                <div className="flex justify-end items-center mr-0">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleBrailleClick(task)}
+                          className="relative group hover:bg-blue-50 border-blue-200 ml-auto mr-1"
+                        >
+                          <div className="flex items-center gap-1">
+                            <div className="relative">
+                              <div className="flex items-center justify-center w-5 h-5 rounded-sm">
+                                <div className="grid grid-cols-2 gap-[2px]">
+                                  <div className="w-[3px] h-[3px] rounded-full bg-blue-500"></div>
+                                  <div className="w-[3px] h-[3px] rounded-full bg-blue-500"></div>
+                                  <div className="w-[3px] h-[3px] rounded-full bg-transparent"></div>
+                                  <div className="w-[3px] h-[3px] rounded-full bg-blue-500"></div>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-xs font-semibold text-blue-500 group-hover:text-blue-600">
+                              ⠃⠗
+                            </div>
+                          </div>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Preview & Download in Braille</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+
+      {previewTask && (
+        <BraillePreviewModal
+          isOpen={!!previewTask}
+          onClose={() => setPreviewTask(null)}
+          brailleText={convertTaskToBraille({
+            title: previewTask.name,
+            description: previewTask.description,
+            status: previewTask.status,
+            priority: previewTask.priority || 'Medium',
+            due_date: previewTask.dueDate,
+            assignee: previewTask.assignee,
+            event_name: previewTask.eventTitle || 'Event'
+          }).braille}
+          originalText={convertTaskToBraille({
+            title: previewTask.name,
+            description: previewTask.description,
+            status: previewTask.status,
+            priority: previewTask.priority || 'Medium',
+            due_date: previewTask.dueDate,
+            assignee: previewTask.assignee,
+            event_name: previewTask.eventTitle || 'Event'
+          }).original}
+          onDownload={handleDownload}
+          taskTitle={previewTask.name}
+        />
+      )}
     </div>
   );
 };
