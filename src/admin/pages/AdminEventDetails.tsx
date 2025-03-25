@@ -616,10 +616,10 @@ const AdminEventDetails = () => {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="mb-4">
-                <TabsTrigger value="details">Event Details</TabsTrigger>
-                <TabsTrigger value="tasks">Tasks</TabsTrigger>
-                <TabsTrigger value="volunteers">Volunteers</TabsTrigger>
+              <TabsList className="mb-4 flex">
+                <TabsTrigger value="details" className="flex-1">Event Details</TabsTrigger>
+                <TabsTrigger value="tasks" className="flex-1">Tasks</TabsTrigger>
+                <TabsTrigger value="volunteers" className="flex-1">Volunteers</TabsTrigger>
               </TabsList>
 
               <TabsContent value="details" className="space-y-6">
