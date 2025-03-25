@@ -286,6 +286,7 @@ const AdminNotificationDashboard = () => {
           </div>
         </main>
       </div>
+      <AccessibilityMenu/>
     </div>
   );
 };

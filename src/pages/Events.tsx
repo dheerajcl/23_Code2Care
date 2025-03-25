@@ -19,6 +19,8 @@ import { toast } from 'react-hot-toast';
 import { useVolunteerAuth } from '@/lib/authContext';
 import { checkIfEventIsUpcoming, checkIfEventIsLive } from '@/lib/utils';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import AccessibilityMenu from '@/components/AccessibilityMenu';
+
 
 const Events = () => {
   const navigate = useNavigate();
@@ -276,6 +278,8 @@ const Events = () => {
           </motion.div>
         )}
       </main>
+
+      <AccessibilityMenu/>
     </div>
   );
 };

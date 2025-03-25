@@ -11,6 +11,8 @@ import { pointsService } from '@/services/points.service';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
+import AccessibilityMenu from '@/components/AccessibilityMenu';
+
 
 export const VolunteerTasks = () => {
   const { user } = useVolunteerAuth();
@@ -416,6 +418,8 @@ export const VolunteerTasks = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        <AccessibilityMenu/>
       </div>
     </VolunteerLayout>
   );
