@@ -6,16 +6,16 @@ import { Button } from './ui/button';
 import { 
   Card, 
   CardContent, 
-  CardDescription, 
-  CardFooter, 
   CardHeader, 
-  CardTitle 
+  CardTitle,
+  CardDescription,
+  CardFooter 
 } from './ui/card';
 import { Badge } from './ui/badge';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/lib/authContext';
-import EventDetailsModal from './EventDetailsModal';
 import { useVolunteerAuth } from '@/lib/authContext';
+import EventDetailsModal from './EventDetailsModal';
+import { useLanguage } from './LanguageContext'; // Add language context import
 
 interface EventCardProps {
   id: string;
@@ -53,12 +53,12 @@ const EventCard: React.FC<EventCardProps> = ({
   const { user, registerForEvent } = useVolunteerAuth();
   const navigate = useNavigate();
   const currentLocation = useLocation();
+  const { t } = useLanguage(); // Get translation function
   const [localIsRegistered, setLocalIsRegistered] = useState(isRegistered);
   const [localLoading, setLocalLoading] = useState(loading);
   const [localIsRecommended, setLocalIsRecommended] = useState(isRecommended);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Update local state when props change
   useEffect(() => {
     setLocalIsRegistered(isRegistered);
   }, [isRegistered]);
@@ -71,7 +71,6 @@ const EventCard: React.FC<EventCardProps> = ({
     setLocalIsRecommended(isRecommended);
   }, [isRecommended]);
 
-  // Only check interests on the main events page
   useEffect(() => {
     const fetchUserInterests = async () => {
       if (!user || localIsRecommended || currentLocation.pathname !== '/events') return;
@@ -90,7 +89,6 @@ const EventCard: React.FC<EventCardProps> = ({
   
         if (data?.interests) {
           const userInterests = data.interests.map((interest: string) => interest.toLowerCase());
-  
           if (userInterests.includes(category.toLowerCase())) {
             setLocalIsRecommended(true);
           }
@@ -103,7 +101,6 @@ const EventCard: React.FC<EventCardProps> = ({
     fetchUserInterests();
   }, [user, category, localIsRecommended, currentLocation.pathname]);
 
-  // Handle volunteer signup
   const onVolunteerSignup = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -113,7 +110,6 @@ const EventCard: React.FC<EventCardProps> = ({
     }
     
     if (!user) {
-      // User is not logged in, redirect to login
       navigate('/login');
       return;
     }
@@ -123,18 +119,14 @@ const EventCard: React.FC<EventCardProps> = ({
       
       let success = false;
       
-      // Use registerForEvent from context if available, otherwise use prop
       if (registerForEvent) {
         success = await registerForEvent(id);
       } else if (handleVolunteerSignup) {
         success = await handleVolunteerSignup(id);
       } else {
-        // Fallback to default behavior
         const { error } = await supabase
           .from('event_signup')
-          .insert([
-            { event_id: id, volunteer_id: user.id }
-          ]);
+          .insert([{ event_id: id, volunteer_id: user.id }]);
           
         if (error) throw error;
         success = true;
@@ -182,7 +174,7 @@ const EventCard: React.FC<EventCardProps> = ({
             {currentLocation.pathname === '/events' && localIsRecommended && (
               <div className="absolute top-3 left-3">
                 <Badge variant="outline" className="font-medium bg-green-200 text-green-700">
-                  Recommended
+                  {t('recommended')}
                 </Badge>
               </div>
             )}
@@ -218,11 +210,11 @@ const EventCard: React.FC<EventCardProps> = ({
                   disabled={localIsRegistered || localLoading} 
                   onClick={onVolunteerSignup}
                 >
-                  {localIsRegistered ? "Already Signed Up" : localLoading ? "Signing Up..." : "Volunteer for Event"}
+                  {localIsRegistered ? t('alreadySignedUp') : localLoading ? t('signingUp') : t('volunteerForEvent')}
                 </Button>
                 <Link to={`/events/${id}/participant`} className="w-full">
                   <Button className="w-full" variant="secondary">
-                    Register as Participant
+                    {t('registerAsParticipant')}
                   </Button>
                 </Link>
               </>
@@ -232,7 +224,7 @@ const EventCard: React.FC<EventCardProps> = ({
       </motion.div>
 
       <EventDetailsModal
-        event={{
+        eventData={{
           id,
           title,
           description,
