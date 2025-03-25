@@ -24,6 +24,7 @@ type Task = {
   priority: string;
   due_date?: string;
   assignee_id?: string;
+  event_name?: string;
   assignees?: Array<{
     id: string;
     name: string;
@@ -137,7 +138,8 @@ const AdminTaskTable = ({ tasks, onStatusChange, onDelete }: AdminTaskTableProps
         status: task.status,
         priority: task.priority || 'Medium',
         due_date: task.due_date,
-        assignee: task.assignees?.[0] ? { name: task.assignees[0].name } : undefined
+        assignee: task.assignees?.[0] ? { name: task.assignees[0].name } : undefined,
+        event_name: task.event_name || 'Event'
       };
 
       const brailleText = convertTaskToBraille(taskData);
