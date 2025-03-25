@@ -4,6 +4,8 @@ import EventFeedbackView from '@/admin/components/EventFeedbackView';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useAuth } from '@/lib/authContext';
 import { supabase } from '@/lib/supabase';
+import AccessibilityMenu from '@/components/AccessibilityMenu';
+
 
 interface FeedbackItem {
   created_at: string;
@@ -177,6 +179,7 @@ try {
         eventName={eventName}
         feedbackData={feedbackData}
       />
+      <AccessibilityMenu/>
     </AdminLayout>
   );
 };

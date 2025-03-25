@@ -7,6 +7,8 @@ import { loginAdmin } from '@/services/auth.service';
 import { useAdminAuth } from '@/lib/authContext';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
+import AccessibilityMenu from '@/components/AccessibilityMenu';
+
 
 type LoginFormValues = {
   email: string;
@@ -192,6 +194,7 @@ const AdminLogin: React.FC = () => {
           </form>
         </div>
       </div>
+      <AccessibilityMenu/>
     </div>
   );
 };

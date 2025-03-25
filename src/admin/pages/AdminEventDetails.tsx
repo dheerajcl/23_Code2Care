@@ -41,6 +41,8 @@ import { toast } from 'sonner';
 import TaskTable from '../components/AdminTaskTable';
 import TaskKanban from '../components/AdminTaskKanban';
 import AdminSidebar from '../components/AdminSidebar';
+import AccessibilityMenu from '@/components/AccessibilityMenu';
+
 
 const AdminEventDetails = () => {
   const [activeView, setActiveView] = useState('table');
@@ -1148,6 +1150,7 @@ const AdminEventDetails = () => {
           </div>
         </div>
       </div>
+      <AccessibilityMenu/>
     </div>
   );
 };
