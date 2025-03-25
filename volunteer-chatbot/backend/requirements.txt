@@ -7,5 +7,4 @@ sentence-transformers
 numpy
 python-dotenv
 transformers 
-torch 
 sentencepiece
