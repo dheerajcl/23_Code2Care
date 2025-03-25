@@ -34,11 +34,11 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
       variant="ghost"
       className={cn(
         'w-full justify-start gap-3 font-normal px-3 py-2 h-auto',
-        active ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800' : 'hover:bg-gray-100'
+        active ? 'bg-red-700 text-white-700 hover:bg-red-500 hover:text-white-800' : 'hover:bg-red-700'
       )}
       onClick={() => navigate(href)}
     >
-      <Icon className={cn('h-5 w-5', active ? 'text-blue-700' : 'text-gray-500')} />
+      <Icon className={cn('h-5 w-5', active ? 'text-red-700' : 'text-red-500')} />
       <span>{label}</span>
     </Button>
   );
@@ -93,8 +93,8 @@ export const WebmasterSidebar = () => {
       <ScrollArea className="h-[calc(100vh-4rem)]">
         <div className="px-3 py-4">
           <div className="mb-8">
-            <h2 className="px-4 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Main
+            <h2 className="text-xs font-medium uppercase text-muted-foreground pl-4 mb-2">
+              Navigation
             </h2>
             <div className="space-y-1">
               {sidebarItems.map((item, index) => (

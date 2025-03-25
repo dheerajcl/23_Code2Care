@@ -663,7 +663,7 @@ export const WebmasterTasks: React.FC = () => {
   return (
     <div className="h-screen bg-gray-100 flex flex-col">
       <WebmasterHeader />
-      <div className="flex h-screen bg-gray-100 overflow-hidden pt-16">
+      <div className="flex bg-gray-100 overflow-hidden">
         <WebmasterSidebar />
         <main className="flex-1 overflow-y-auto p-6">
           <div className="mb-6">
