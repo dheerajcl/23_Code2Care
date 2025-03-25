@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, Moon, Sun, Settings, User, LogOut } from 'lucide-react';
+import { Menu, X, Moon, Sun, Settings, User, LogOut, Languages } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu,
@@ -12,24 +12,23 @@ import {
 } from '@/components/ui/dropdown-menu';
 import Logo from "../assets/logo.png";
 import { useAuth, useAdminAuth, useVolunteerAuth } from '@/lib/authContext';
+import { useLanguage } from './LanguageContext';
 
 const LandingHeader: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   
-  // Check all authentication contexts for logged in state
   const { user: sharedUser, logout: sharedLogout } = useAuth();
   const { user: adminUser, logout: adminLogout } = useAdminAuth();
   const { user: volunteerUser, logout: volunteerLogout } = useVolunteerAuth();
+  const { language, setLanguage, t } = useLanguage();
   
-  // Determine which user to display (if any)
   const user = adminUser || volunteerUser || sharedUser;
   const navigate = useNavigate();
 
   const handleLogout = async () => {
     try {
-      // Use the appropriate logout function based on user type
       if (adminUser) {
         await adminLogout();
       } else if (volunteerUser) {
@@ -54,11 +53,15 @@ const LandingHeader: React.FC = () => {
       }
     };
 
-    // Check for saved theme preference
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark') {
       setIsDarkMode(true);
       document.documentElement.classList.add('dark');
+    }
+
+    const savedLang = localStorage.getItem('language') as 'en' | 'hi' | 'kn' | null;
+    if (savedLang && ['en', 'hi', 'kn'].includes(savedLang)) {
+      setLanguage(savedLang);
     }
 
     window.addEventListener('scroll', handleScroll);
@@ -68,7 +71,7 @@ const LandingHeader: React.FC = () => {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleResize);
     };
-  }, []);
+  }, [setLanguage]);
 
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
@@ -85,7 +88,11 @@ const LandingHeader: React.FC = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
-  // Function to get the dashboard URL based on user role
+  const changeLanguage = (lang: 'en' | 'hi' | 'kn') => {
+    setLanguage(lang);
+    localStorage.setItem('language', lang);
+  };
+
   const getDashboardUrl = () => {
     if (!user) return '/login';
     return user.role === 'admin' ? '/admin/dashboard' : '/volunteer/dashboard';
@@ -99,7 +106,6 @@ const LandingHeader: React.FC = () => {
     >
       <div className="container mx-auto px-4 md:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
-          {/* Logo */}
           <Link 
             to="/" 
             className="flex items-center space-x-2"
@@ -109,52 +115,70 @@ const LandingHeader: React.FC = () => {
             <span className="font-semibold text-xl hidden md:block">Samarth Connect</span>
           </Link>
 
-          {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
             <Link 
               to="/" 
               className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
             >
-              Home
+              {t('home')}
             </Link>
             <Link 
               to="/events" 
               className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
             >
-              Events
+              {t('events')}
             </Link>
             <Link 
               to="/about" 
               className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
             >
-              About
+              {t('about')}
             </Link>
             <Link 
               to="/donate" 
               className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
             >
-              Donate
+              {t('donate')}
             </Link>
             {user ? (
               <Link 
                 to={getDashboardUrl()}
                 className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
               >
-                Dashboard
+                {t('dashboard')}
               </Link>
             ) : (
               <Link 
                 to="/join-us" 
                 className="px-3 py-2 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
               >
-                Volunteer
+                {t('volunteer')}
               </Link>
             )}
           </nav>
 
-          {/* User Menu & Controls */}
           <div className="flex items-center space-x-4">
-            {/* Login or User Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Language selector">
+                  <Languages className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{t('language')}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => changeLanguage('en')}>
+                  {t('english')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => changeLanguage('hi')}>
+                  {t('hindi')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => changeLanguage('kn')}>
+                  {t('kannada')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {user ? (
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
@@ -175,22 +199,21 @@ const LandingHeader: React.FC = () => {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate(getDashboardUrl())}>
-                    Dashboard
+                    {t('dashboard')}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
+                    <span>{t('logout')}</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
               <Button asChild variant="ghost" size="sm">
-                <Link to="/login">Login</Link>
+                <Link to="/login">{t('login')}</Link>
               </Button>
             )}
 
-            {/* Theme Toggle */}
             <Button 
               variant="ghost" 
               size="icon" 
@@ -204,9 +227,6 @@ const LandingHeader: React.FC = () => {
               )}
             </Button>
 
-            {/* Accessibility Options */}
-
-            {/* Mobile Menu Button */}
             <Button 
               variant="ghost" 
               size="icon" 
@@ -224,7 +244,6 @@ const LandingHeader: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Navigation Menu */}
       <div
         className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
           isMenuOpen 
@@ -238,28 +257,28 @@ const LandingHeader: React.FC = () => {
             className="block px-3 py-2 rounded-md hover:bg-secondary transition-colors"
             onClick={() => setIsMenuOpen(false)}
           >
-            Home
+            {t('home')}
           </Link>
           <Link 
             to="/events" 
             className="block px-3 py-2 rounded-md hover:bg-secondary transition-colors"
             onClick={() => setIsMenuOpen(false)}
           >
-            Events
+            {t('events')}
           </Link>
           <Link 
             to="/about" 
             className="block px-3 py-2 rounded-md hover:bg-secondary transition-colors"
             onClick={() => setIsMenuOpen(false)}
           >
-            About
+            {t('about')}
           </Link>
           <Link 
             to="/donate" 
             className="block px-3 py-2 rounded-md hover:bg-secondary transition-colors"
             onClick={() => setIsMenuOpen(false)}
           >
-            Donate
+            {t('donate')}
           </Link>
           {user ? (
             <>
@@ -268,7 +287,7 @@ const LandingHeader: React.FC = () => {
                 className="block px-3 py-2 rounded-md hover:bg-secondary transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Dashboard
+                {t('dashboard')}
               </Link>
               <button
                 onClick={() => {
@@ -277,7 +296,7 @@ const LandingHeader: React.FC = () => {
                 }}
                 className="w-full text-left block px-3 py-2 rounded-md hover:bg-secondary transition-colors"
               >
-                Logout
+                {t('logout')}
               </button>
             </>
           ) : (
@@ -287,14 +306,14 @@ const LandingHeader: React.FC = () => {
                 className="block px-3 py-2 rounded-md hover:bg-secondary transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Volunteer
+                {t('volunteer')}
               </Link>
               <Link 
                 to="/login" 
                 className="block px-3 py-2 rounded-md hover:bg-secondary transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Login
+                {t('login')}
               </Link>
             </>
           )}
