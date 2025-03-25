@@ -126,6 +126,7 @@ const AdminEventDetails = () => {
             due_date: task.deadline,
             assignee_id: task.assignee_id,
             event_id: task.event_id,
+            event_name: eventData.title || 'Event',
             assignees: task.assignments?.map(assignment => ({
               id: assignment.volunteer?.id,
               name: `${assignment.volunteer?.first_name || ''} ${assignment.volunteer?.last_name || ''}`.trim(),
@@ -218,6 +219,7 @@ const AdminEventDetails = () => {
           due_date: task.deadline,
           assignee_id: task.assignee_id,
           event_id: task.event_id,
+          event_name: event?.title || 'Event',
           assignees: task.assignments?.map(assignment => ({
             id: assignment.volunteer?.id,
             name: `${assignment.volunteer?.first_name || ''} ${assignment.volunteer?.last_name || ''}`.trim(),

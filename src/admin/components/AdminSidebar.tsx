@@ -7,7 +7,7 @@ const menuItems = [
   { name: 'Events', icon: <Calendar size={20} />, path: '/admin/events' },
   { name: 'Volunteers', icon: <Users size={20} />, path: '/admin/volunteers' },
   { name: 'Reports', icon: <BarChart2 size={20} />, path: '/admin/reports' },
-  { name: 'Migrate', icon: <HardDriveUpload size={20} />, path: '/admin/migration' },
+  { name: 'Import', icon: <HardDriveUpload size={20} />, path: '/admin/migration' },
 ];
 
 const AdminSidebar = () => {
