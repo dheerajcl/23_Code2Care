@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { useLanguage } from './LanguageContext'; // Add language context import
 
 interface HeroProps {
   title?: string;
@@ -11,12 +12,17 @@ interface HeroProps {
 }
 
 const Hero: React.FC<HeroProps> = ({
-  title = "Empowering Lives Through Inclusive Technology",
-  subtitle = "Join Samarthanam Trust in our mission to support visually impaired, disabled, and underprivileged individuals through accessibility, education, and community.",
+  title,
+  subtitle,
   showCta = true
 }) => {
+  const { t } = useLanguage(); // Get translation function
+
+  // Use translated defaults if props aren't provided
+  const defaultTitle = t('heroTitle');
+  const defaultSubtitle = t('heroSubtitle');
+
   const scrollToContent = () => {
-    // Scroll to the content section below the hero
     const contentSection = document.getElementById('content-section');
     if (contentSection) {
       contentSection.scrollIntoView({ behavior: 'smooth' });
@@ -40,22 +46,22 @@ const Hero: React.FC<HeroProps> = ({
           className="max-w-3xl mx-auto text-center"
         >
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6 text-balance">
-            {title}
+            {title || defaultTitle}
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground mb-8 text-balance max-w-2xl mx-auto">
-            {subtitle}
+            {subtitle || defaultSubtitle}
           </p>
           
           {showCta && (
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button asChild size="lg" className="w-full sm:w-auto">
                 <Link to="/join-us">
-                  Become a Volunteer
+                  {t('becomeVolunteer')}
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
                 <Link to="/events">
-                  Browse Events
+                  {t('browseEvents')}
                 </Link>
               </Button>
             </div>
@@ -67,7 +73,7 @@ const Hero: React.FC<HeroProps> = ({
       <motion.button
         onClick={scrollToContent}
         className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20"
-        aria-label="Scroll down"
+        aria-label={t('scrollDown')} // Add translated aria-label
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ 
