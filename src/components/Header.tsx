@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, Moon, Sun, Settings, User, LogOut, Languages } from 'lucide-react';
+import { Menu, X, Moon, Sun, Settings, User, LogOut, Languages,Bell,XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu,
@@ -14,14 +14,24 @@ import {
 import Logo from "../assets/logo.png";
 import { useAuth, useVolunteerAuth } from '@/lib/authContext';
 import { useLanguage } from './LanguageContext'; // Adjust the import path as needed
-
+import { supabase } from '@/lib/supabase';
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 // Define the Language type to match what's used in the language context
 type Language = 'en' | 'hi' | 'kn';
+type Notification = {
+  id: string;
+  volunteer_id: string;
+  message: string;
+  sent_at: string;
+  title_noti: string;
+};
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const { user: legacyUser } = useAuth();
   const { user: volunteerUser, logout: volunteerLogout } = useVolunteerAuth();
   const { language, setLanguage, t } = useLanguage();
@@ -52,6 +62,8 @@ const Header: React.FC = () => {
       setIsDarkMode(true);
       document.documentElement.classList.add('dark');
     }
+    
+// Fetch notifications when the popover is opened
 
     // Check for saved language preference
     const savedLang = localStorage.getItem('language') as Language | null;
@@ -93,7 +105,28 @@ const Header: React.FC = () => {
     if (!user) return '/login';
     return '/volunteer/dashboard';
   };
+  const fetchNotifications = async () => {
+    if (user && isNotificationOpen) {
+      try {
+        const { data, error } = await supabase
+          .from('internal_noti')
+          .select('*')
+          .eq('volunteer_id', user.id)
+          .order('sent_at', { ascending: false });
+        if (error) {
+          throw error;
+        }
 
+        setNotifications(data || []);
+      } catch (error) {
+        console.error('Failed to fetch notifications:', error);
+      }
+    }
+  };useEffect(() => {
+    if (isNotificationOpen) {
+      fetchNotifications();
+    }
+  }, [isNotificationOpen, user]);
   return (
     <header 
       className='fixed top-0 left-0 w-full bg-white shadow-sm z-50 vol-dashboard-header'
@@ -176,7 +209,59 @@ const Header: React.FC = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-
+            {user && (
+              <Popover open={isNotificationOpen} onOpenChange={setIsNotificationOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label="Notifications" onClick={() => setIsNotificationOpen(true)}>
+                    <Bell className="h-5 w-5" />
+                    {notifications.length > 0 && (
+                      <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full animate-pulse"></span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent 
+                  align="end" 
+                  className="w-96 max-h-96 overflow-y-auto"
+                >
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold">{t('notifications')}</h3>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => setIsNotificationOpen(false)}
+                    >
+                      <XIcon className="h-5 w-5" />
+                    </Button>
+                  </div>
+                  {notifications.length === 0 ? (
+                    <p className="text-center text-muted-foreground">
+                      {t('No Notifications')}
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {notifications.map((notification) => (
+                        <div 
+                          key={notification.id} 
+                          className="p-3 bg-secondary/50 rounded-md"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-medium">{notification.title_noti}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {notification.message}
+                              </p>
+                              <span className="text-xs text-muted-foreground mt-1">
+                                {new Date(notification.sent_at).toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+            )}
             {/* Login or User Menu */}
             {user ? (
               <DropdownMenu>
