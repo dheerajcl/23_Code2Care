@@ -1,5 +1,17 @@
 {
     "rewrites": [
       { "source": "/(.*)", "destination": "/index.html" }
-    ]
-  }
+    ],
+      "builds": [
+    {
+      "src": "volunteer-chatbot/backend/retriever.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/chat",
+      "dest": "volunteer-chatbot/backend/retriever.py"
+    }
+  ]
+}
