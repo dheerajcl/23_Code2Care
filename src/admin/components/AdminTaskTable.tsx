@@ -9,10 +9,9 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { format } from 'date-fns';
-import { AlertTriangle, CheckCircle, Clock, Loader2, Trash2, User, UserCheck, UserX, Users, FileDown } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Clock, Loader2, Trash2, User, UserCheck, UserX, Users } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Progress } from '@/components/ui/progress';
-import { convertTaskToBraille, downloadBraille } from '@/utils/braille';
 
 type Task = {
   id: string;
@@ -127,21 +126,6 @@ const AdminTaskTable = ({ tasks, onStatusChange, onDelete }: AdminTaskTableProps
     return Math.round((completedCount / task.assignees.length) * 100);
   };
 
-  // Handle braille download
-  const handleBrailleDownload = (task: Task) => {
-    const taskData = {
-      title: task.title,
-      description: task.description,
-      status: task.status,
-      priority: task.priority,
-      due_date: task.due_date,
-      assignee: task.assignees?.[0] ? { name: task.assignees[0].name } : undefined
-    };
-
-    const brailleText = convertTaskToBraille(taskData);
-    downloadBraille(brailleText, `task-${task.id}-braille.txt`);
-  };
-
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
@@ -170,14 +154,16 @@ const AdminTaskTable = ({ tasks, onStatusChange, onDelete }: AdminTaskTableProps
                 <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
               </td>
               <td className="px-4 py-4">
-                <Badge className={`
-                  ${task.status === 'Todo' ? 'bg-gray-100 text-gray-800' : ''}
-                  ${task.status === 'In Progress' ? 'bg-blue-100 text-blue-800' : ''}
-                  ${task.status === 'Review' ? 'bg-yellow-100 text-yellow-800' : ''}
-                  ${task.status === 'Done' ? 'bg-green-100 text-green-800' : ''}
-                `}>
-                  {task.status}
-                </Badge>
+              <td className="px-6 py-4 whitespace-nowrap">
+  <Badge className={`
+    ${task.status === 'Todo' ? 'bg-gray-100 text-gray-800' : ''}
+    ${task.status === 'In Progress' ? 'bg-blue-100 text-blue-800' : ''}
+    ${task.status === 'Review' ? 'bg-yellow-100 text-yellow-800' : ''}
+    ${task.status === 'Done' ? 'bg-green-100 text-green-800' : ''}
+  `}>
+    {task.status}
+  </Badge>
+</td>
               </td>
               <td className="px-4 py-4">
                 <div className="flex flex-col gap-1">
@@ -226,52 +212,33 @@ const AdminTaskTable = ({ tasks, onStatusChange, onDelete }: AdminTaskTableProps
                   )}
                 </div>
               </td>
-              <td className="px-4 py-4">
-                <div className="flex justify-end items-center gap-2">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleBrailleDownload(task)}
-                          className="hover:bg-blue-50"
-                        >
-                          <FileDown className="h-4 w-4 text-blue-500" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Download in Braille</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  {confirmDelete === task.id ? (
-                    <div className="flex justify-end items-center gap-2">
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        onClick={() => confirmDeleteTask(task.id)}
-                      >
-                        Confirm
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={cancelDelete}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
+              <td className="px-4 py-4 text-right">
+                {confirmDelete === task.id ? (
+                  <div className="flex justify-end items-center gap-2">
                     <Button 
-                      variant="ghost" 
+                      variant="destructive" 
                       size="sm" 
-                      onClick={() => handleDeleteClick(task.id)}
+                      onClick={() => confirmDeleteTask(task.id)}
                     >
-                      <Trash2 className="h-4 w-4 text-red-500" />
+                      Confirm
                     </Button>
-                  )}
-                </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={cancelDelete}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleDeleteClick(task.id)}
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
+                )}
               </td>
             </tr>
           ))}
