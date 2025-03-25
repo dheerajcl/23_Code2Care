@@ -10,37 +10,69 @@ import AccessibilityMenu from '@/components/AccessibilityMenu';
 import { useAuth } from '@/lib/authContext';
 import { supabase } from '@/lib/supabase';
 import LandingHeader from '@/components/LandingHeader';
-import { useLanguage } from '../components/LanguageContext'; // Add language context import
+import { useLanguage } from '../components/LanguageContext';
 
 // Events component to show upcoming events
 const Events: React.FC = () => {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { t } = useLanguage(); // Add translation function
+  const { t } = useLanguage();
 
   useEffect(() => {
     const fetchEvents = async () => {
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase
+      // Fetch events with max_volunteers
+      const { data: eventData, error: eventError } = await supabase
         .from('event')
-        .select('*')
+        .select('*, max_volunteers')
         .gt('close_date', new Date().toISOString())
+        .order('start_date', { ascending: true })
         .limit(3);
 
-      if (error) {
-        console.error('Error fetching events:', error.message);
-        setError(t('failedToLoadEvents')); // Use translated error message
-      } else {
-        setEvents(data);
+      if (eventError) {
+        console.error('Error fetching events:', eventError.message);
+        setError(t('failedToLoadEvents'));
+        setLoading(false);
+        return;
       }
+
+      // Fetch signup counts for these events
+      const eventIds = eventData.map(event => event.id);
+      const { data: signupData, error: signupError } = await supabase
+        .from('event_signup')
+        .select('event_id')
+        .in('event_id', eventIds)
+        .then(res => {
+          const counts = res.data.reduce((acc, signup) => {
+            acc[signup.event_id] = (acc[signup.event_id] || 0) + 1;
+            return acc;
+          }, {});
+          return { data: counts, error: res.error };
+        });
+
+      if (signupError) {
+        console.error('Error fetching signup counts:', signupError);
+        setError(t('failedToLoadEvents'));
+        setLoading(false);
+        return;
+      }
+
+      // Merge events with signup counts and calculate remaining spots
+      const eventsWithCounts = eventData.map(event => ({
+        ...event,
+        registered_count: signupData[event.id] || 0,
+        remainingSpots: event.max_volunteers ? event.max_volunteers - (signupData[event.id] || 0) : null
+      }));
+
+      setEvents(eventsWithCounts);
       setLoading(false);
     };
 
     fetchEvents();
-  }, [t]); // Add t to dependencies
+  }, [t]);
 
   return (
     <div>
@@ -55,7 +87,19 @@ const Events: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {events.map(event => (
-              <EventCard key={event.id} {...event} />
+              <EventCard
+                key={event.id}
+                id={event.id.toString()}
+                title={event.title}
+                description={event.description}
+                start_date={event.start_date}
+                end_date={event.end_date}
+                location={event.location}
+                category={event.category}
+                volunteersNeeded={event.max_volunteers}
+                remainingSpots={event.remainingSpots}
+                image_url={event.image_url}
+              />
             ))}
           </div>
         )}
@@ -73,9 +117,8 @@ const Events: React.FC = () => {
 };
 
 const Index: React.FC = () => {
-  const { t } = useLanguage(); // Add translation function
+  const { t } = useLanguage();
 
-  // Update impactStats with translated labels
   const impactStats = [
     { icon: <Users className="h-12 w-12 text-primary" />, value: "20,000+", label: t('livesImpacted') },
     { icon: <Calendar className="h-12 w-12 text-primary" />, value: "500+", label: t('eventsOrganized') },
