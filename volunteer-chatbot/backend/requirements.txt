@@ -6,5 +6,4 @@ faiss-cpu
 sentence-transformers
 numpy
 python-dotenv
-transformers 
 sentencepiece
