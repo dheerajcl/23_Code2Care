@@ -4,6 +4,8 @@ import { useAuth } from '@/lib/authContext';
 // import AdminHeader from '../components/AdminHeader';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminEventForm from '../components/AdminEventForm';
+import AccessibilityMenu from '@/components/AccessibilityMenu';
+
 
 const CreateEvent = () => {
   const navigate = useNavigate();
@@ -29,6 +31,7 @@ const CreateEvent = () => {
           </div>
         </main>
       </div>
+      <AccessibilityMenu/>
     </div>
   );
 };

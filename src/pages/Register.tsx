@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check, ChevronRight, HelpCircle, Loader2 } from 'lucide-react';
+import { CalendarIcon, Check, ChevronDownIcon, ChevronRight, HelpCircle, Loader2 } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Hero from '@/components/Hero';
@@ -30,6 +30,10 @@ import { toast } from '@/components/ui/use-toast';
 import { registerVolunteer } from '@/services/auth.service';
 import { useAuth } from '@/lib/authContext';
 import LandingHeader from '@/components/LandingHeader';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { Dropdown } from 'react-day-picker';
 
 
 const stateCityMap: { [key: string]: string[] } = {
@@ -847,10 +851,12 @@ const stateCityMap: { [key: string]: string[] } = {
 
 const Register: React.FC = () => {
   const [step, setStep] = useState(1);
+  const [dob, setDob] = useState<Date | undefined>(undefined);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
+    dob: '',
     password: '',
     phone: '',
     address: '',
@@ -869,6 +875,19 @@ const Register: React.FC = () => {
   
   const updateFormData = (field: string, value: unknown) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const [date, setDate] = useState(null);
+
+  // Custom month names to match the exact styling
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June', 
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const formatDate = (date) => {
+    if (!date) return 'Select date';
+    return `${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
   };
   
   const handleSkillToggle = (skill: string) => {
@@ -1080,6 +1099,69 @@ const Register: React.FC = () => {
                         </div>
                       </div>
 
+                      <div className="w-full">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className="w-full justify-between text-left font-normal bg-white border-gray-300 hover:bg-gray-50"
+          >
+            <div className="flex items-center">
+              <CalendarIcon className="mr-2 h-4 w-4 text-gray-500" />
+              <span className={!date ? 'text-gray-400' : ''}>
+                {formatDate(date)}
+              </span>
+            </div>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0 bg-white shadow-lg rounded-md">
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={setDate}
+            disabled={(date) => date > new Date()}
+            fromYear={1900}
+            toYear={new Date().getFullYear()}
+            captionLayout="dropdown-buttons"
+            className="border-0 min-w-[300px]"
+            components={{
+              Dropdown: ({ ...props }) => (
+                <select 
+                  {...props}
+                  className="bg-white hover:bg-gray-50 border border-gray-200 rounded-md px-2 py-1 text-sm mx-1"
+                />
+              ),
+              IconLeft: () => null, // Remove left arrow
+              IconRight: () => null, // Remove right arrow
+            }}
+            styles={{
+              caption: { 
+                display: 'flex', 
+                justifyContent: 'center',
+                padding: '0.5rem 0.75rem',
+              },
+              caption_dropdowns: { 
+                display: 'flex', 
+                gap: '0.5rem',
+                alignItems: 'center',
+              },
+              nav: {
+                display: 'none', // Hide the entire nav container
+              },
+              head_cell: {
+                width: '2.5rem',
+                padding: '0.5rem 0',
+              },
+              cell: {
+                width: '2.5rem',
+                backgroundColor: 'transparent',
+              },
+            }}
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+
                       <div className="space-y-2">
                         <Label htmlFor="password" className="required">Password</Label>
                         <Input
@@ -1169,12 +1251,12 @@ const Register: React.FC = () => {
                       
                       <div className="space-y-4">
                         <div className="flex items-start justify-between">
-                          <Label className="required">Skills</Label>
+                          <Label className="required text-md">Skills</Label>
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button variant="ghost" size="icon" type="button">
-                                  <HelpCircle className="h-4 w-4" />
+                                  <HelpCircle className="h-1 w-1" />
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent className="max-w-sm">
@@ -1200,7 +1282,7 @@ const Register: React.FC = () => {
                       
                       <div className="space-y-4">
                         <div className="flex items-start justify-between">
-                          <Label className="required">Areas of Interest</Label>
+                          <Label className="required text-md">Areas of Interest</Label>
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -1216,7 +1298,7 @@ const Register: React.FC = () => {
                         </div>
                         
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {['Education', 'Healthcare', 'Technology', 'Arts & Culture', 'Sports', 'Career Development', 'Community Outreach', 'Fundraising'].map((interest) => (
+                          {['Education', 'Blog', 'Rehabilitation', 'Culture', 'Sports', 'Environment', 'Audio Recording', 'Field Work', 'Other'].map((interest) => (
                             <div key={interest} className="flex items-center space-x-2">
                               <Checkbox
                                 id={`interest-${interest}`}
@@ -1230,7 +1312,7 @@ const Register: React.FC = () => {
                       </div>
                       
                       <div className="space-y-4">
-                        <Label htmlFor="availability" className="required">Availability</Label>
+                        <Label htmlFor="availability" className="required text-md">Availability</Label>
                         <RadioGroup 
                           id="availability" 
                           value={formData.availability}

@@ -8,6 +8,7 @@ import { getEventById } from '@/services/database.service';
 import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
+import AccessibilityMenu from '@/components/AccessibilityMenu';
 
 const EditEvent = () => {
   const navigate = useNavigate();
@@ -105,6 +106,7 @@ const EditEvent = () => {
           </div>
         </main>
       </div>
+      <AccessibilityMenu/>
     </div>
   );
 };

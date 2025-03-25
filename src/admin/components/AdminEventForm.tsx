@@ -21,17 +21,7 @@ type EventFormProps = {
   isEditing?: boolean;
 };
 
-const eventCategories = [
-  'Education',
-  'Sports',
-  'Technology',
-  'Cultural',
-  'Health',
-  'Fundraising',
-  'Community Service',
-  'Workshop',
-  'Other'
-];
+const eventCategories = ['Education', 'Blog', 'Rehabilitation', 'Culture', 'Sports', 'Environment', 'Audio Recording', 'Field Work', 'Other'];
 
 const AdminEventForm = ({ initialData, isEditing = false }: EventFormProps) => {
   const navigate = useNavigate();
