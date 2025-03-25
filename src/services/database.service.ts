@@ -3183,3 +3183,254 @@ export const getAllTasks = async () => {
     return { data: [], error };
   }
 };
+
+// Volunteer progress data services
+export const getVolunteerHours = async (volunteerId: string) => {
+  try {
+    console.log('Fetching volunteer hours for volunteer:', volunteerId);
+    
+    // Get event signups for the volunteer with hours
+    const { data: eventSignups, error } = await supabase
+      .from('event_signup')
+      .select(`
+        id,
+        hours,
+        created_at,
+        event:event_id (
+          title,
+          start_date
+        )
+      `)
+      .eq('volunteer_id', volunteerId)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching volunteer hours:', error);
+      return { success: false, error: error.message };
+    }
+    
+    // Group hours by month for the chart
+    const monthlyHours: Record<string, number> = {};
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    // Initialize all months with zero hours
+    months.forEach(month => {
+      monthlyHours[month] = 0;
+    });
+    
+    // Add hours from events
+    eventSignups?.forEach(signup => {
+      if (signup.hours) {
+        const date = new Date(signup.event?.start_date || signup.created_at);
+        const month = months[date.getMonth()];
+        monthlyHours[month] = (monthlyHours[month] || 0) + signup.hours;
+      }
+    });
+    
+    // Convert to array format for the chart
+    const chartData = months.map(month => ({
+      name: month,
+      hours: monthlyHours[month] || 0
+    }));
+    
+    // Calculate total hours
+    const totalHours = eventSignups?.reduce((sum, signup) => sum + (signup.hours || 0), 0) || 0;
+    
+    return { 
+      success: true, 
+      data: {
+        chartData,
+        totalHours,
+        events: eventSignups
+      }
+    };
+  } catch (error) {
+    console.error('Error in getVolunteerHours:', error);
+    return { success: false, error: 'Failed to fetch volunteer hours' };
+  }
+};
+
+export const getVolunteerSkills = async (volunteerId: string) => {
+  try {
+    console.log('Fetching volunteer skills for volunteer:', volunteerId);
+    
+    // Get volunteer skills
+    const { data: volunteerData, error } = await supabase
+      .from('volunteer')
+      .select('skills')
+      .eq('id', volunteerId)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching volunteer skills:', error);
+      return { success: false, error: error.message };
+    }
+    
+    // Get completed tasks to determine skill development
+    const { data: completedTasks, error: tasksError } = await supabase
+      .from('task_assignment')
+      .select(`
+        id,
+        task:task_id (
+          id,
+          title, 
+          description,
+          skills
+        )
+      `)
+      .eq('volunteer_id', volunteerId)
+      .eq('status', 'completed');
+    
+    if (tasksError) {
+      console.error('Error fetching completed tasks:', tasksError);
+      return { success: false, error: tasksError.message };
+    }
+    
+    // Extract skills from tasks and calculate progress
+    const skillProgress: Record<string, { count: number, level: string, progress: number }> = {};
+    
+    // Initialize with volunteer's registered skills
+    const volunteerSkills = volunteerData?.skills as string[] || [];
+    volunteerSkills.forEach(skill => {
+      skillProgress[skill] = { count: 0, level: 'Beginner', progress: 10 };
+    });
+    
+    // Update skills based on completed tasks
+    completedTasks?.forEach(assignment => {
+      const taskSkills = assignment.task?.skills as string[] || [];
+      taskSkills.forEach(skill => {
+        if (!skillProgress[skill]) {
+          skillProgress[skill] = { count: 0, level: 'Beginner', progress: 10 };
+        }
+        
+        skillProgress[skill].count += 1;
+        
+        // Update progress and level based on count
+        if (skillProgress[skill].count >= 10) {
+          skillProgress[skill].level = 'Expert';
+          skillProgress[skill].progress = 90 + Math.min(10, (skillProgress[skill].count - 10));
+        } else if (skillProgress[skill].count >= 5) {
+          skillProgress[skill].level = 'Advanced';
+          skillProgress[skill].progress = 70 + ((skillProgress[skill].count - 5) * 4);
+        } else if (skillProgress[skill].count >= 2) {
+          skillProgress[skill].level = 'Intermediate';
+          skillProgress[skill].progress = 40 + ((skillProgress[skill].count - 2) * 10);
+        } else {
+          skillProgress[skill].progress = 20 + (skillProgress[skill].count * 10);
+        }
+      });
+    });
+    
+    // Convert to array for easier consumption
+    const skillsArray = Object.entries(skillProgress).map(([name, data]) => ({
+      name,
+      count: data.count,
+      level: data.level,
+      progress: data.progress
+    }));
+    
+    // Sort by progress (highest first)
+    skillsArray.sort((a, b) => b.progress - a.progress);
+    
+    return { 
+      success: true, 
+      data: {
+        skills: skillsArray,
+        // Suggested skills that the volunteer doesn't have yet
+        suggestedSkills: [
+          'Event Management',
+          'Sports Coaching',
+          'Content Creation',
+          'Public Speaking'
+        ].filter(skill => !skillProgress[skill])
+      }
+    };
+  } catch (error) {
+    console.error('Error in getVolunteerSkills:', error);
+    return { success: false, error: 'Failed to fetch volunteer skills' };
+  }
+};
+
+export const getVolunteerFeedback = async (volunteerId: string) => {
+  try {
+    console.log('Fetching feedback for volunteer:', volunteerId);
+    
+    // Get feedback for events the volunteer participated in
+    const { data: feedbackData, error } = await supabase
+      .from('feedback')
+      .select(`
+        event_id,
+        event_experience,
+        event_organization,
+        volunteer_again,
+        tasks_clear,
+        organizer_support,
+        improvement_suggestions,
+        impactful_moment,
+        created_at,
+        event:event_id (
+          title,
+          start_date
+        )
+      `)
+      .eq('volunteer_id', volunteerId)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching volunteer feedback:', error);
+      return { success: false, error: error.message };
+    }
+    
+    // Format feedback data
+    const formattedFeedback = feedbackData?.map(feedback => {
+      // Calculate average rating from different feedback metrics
+      const ratings = [
+        feedback.event_experience || 0,
+        feedback.event_organization || 0,
+        feedback.volunteer_again || 0
+      ].filter(rating => rating > 0);
+      
+      const averageRating = ratings.length > 0 
+        ? Math.round(ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length) 
+        : 0;
+      
+      const date = new Date(feedback.event?.start_date || feedback.created_at);
+      const formattedDate = date.toLocaleDateString('en-US', { 
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+      
+      return {
+        id: feedback.event_id,
+        eventTitle: feedback.event?.title || 'Unknown Event',
+        date: formattedDate,
+        rating: averageRating,
+        comment: feedback.impactful_moment || feedback.improvement_suggestions || 'No detailed feedback provided.',
+        metrics: {
+          experience: feedback.event_experience,
+          organization: feedback.event_organization,
+          volunteerAgain: feedback.volunteer_again,
+          tasksClear: feedback.tasks_clear,
+          organizerSupport: feedback.organizer_support
+        }
+      };
+    }) || [];
+    
+    return { 
+      success: true, 
+      data: formattedFeedback
+    };
+  } catch (error) {
+    console.error('Error in getVolunteerFeedback:', error);
+    return { success: false, error: 'Failed to fetch volunteer feedback' };
+  }
+};
+
+// At the bottom of the file, find the export const databaseService = { ... } and add our new functions
+export const databaseService = {
+  // ... existing exports ...
+  getVolunteerHours,
+  getVolunteerSkills,
+  getVolunteerFeedback
+};
