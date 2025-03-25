@@ -254,7 +254,9 @@ const translations = {
     disableVoiceInput: 'Disable Voice Input',
     increaseTextSize: 'Increase Text Size',
     decreaseTextSize: 'Decrease Text Size',
-    resetTextSize: 'Reset Text Size'
+    resetTextSize: 'Reset Text Size',
+    error : 'Error',
+    success : 'Success'
   },
   hi: {
     home: 'होम',
@@ -497,7 +499,9 @@ const translations = {
     disableVoiceInput: 'आवाज इनपुट अक्षम करें',
     increaseTextSize: 'पाठ का आकार बढ़ाएं',
     decreaseTextSize: 'पाठ का आकार घटाएं',
-    resetTextSize: 'पाठ का आकार रीसेट करें'
+    resetTextSize: 'पाठ का आकार रीसेट करें',
+    error : 'असफलता',
+    success : 'सफलता'
   },
   kn: {
     home: 'ಮುಖಪುಟ',
@@ -740,7 +744,9 @@ const translations = {
     disableVoiceInput: 'ಧ್ವನಿ ಇನ್‌ಪುಟ್ ನಿಷ್ಕ್ರಿಯಗೊಳಿಸಿ',
     increaseTextSize: 'ಪಠ್ಯದ ಗಾತ್ರವನ್ನು ಹೆಚ್ಚಿಸಿ',
     decreaseTextSize: 'ಪಠ್ಯದ ಗಾತ್ರವನ್ನು ಕಡಿಮೆ ಮಾಡಿ',
-    resetTextSize: 'ಪಠ್ಯದ ಗಾತ್ರವನ್ನು ಮರುಹೊಂದಿಸಿ'
+    resetTextSize: 'ಪಠ್ಯದ ಗಾತ್ರವನ್ನು ಮರುಹೊಂದಿಸಿ',
+    error : 'ವೈಫಲ್ಯ',
+    success : 'ಯಶಸ್ಸು'
   }
 };
 

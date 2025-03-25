@@ -15,7 +15,8 @@ import { Badge } from './ui/badge';
 import { supabase } from '@/lib/supabase';
 import { useVolunteerAuth } from '@/lib/authContext';
 import EventDetailsModal from './EventDetailsModal';
-import { useLanguage } from './LanguageContext'; // Add language context import
+import { useLanguage } from './LanguageContext';
+import { toast } from './ui/use-toast';
 
 interface EventCardProps {
   id: string;
@@ -53,7 +54,7 @@ const EventCard: React.FC<EventCardProps> = ({
   const { user, registerForEvent } = useVolunteerAuth();
   const navigate = useNavigate();
   const currentLocation = useLocation();
-  const { t } = useLanguage(); // Get translation function
+  const { t } = useLanguage();
   const [localIsRegistered, setLocalIsRegistered] = useState(isRegistered);
   const [localLoading, setLocalLoading] = useState(loading);
   const [localIsRecommended, setLocalIsRecommended] = useState(isRecommended);
@@ -117,26 +118,49 @@ const EventCard: React.FC<EventCardProps> = ({
     try {
       setLocalLoading(true);
       
-      let success = false;
+      let result;
       
       if (registerForEvent) {
-        success = await registerForEvent(id);
+        result = await registerForEvent(id); // Now returns { success, message }
       } else if (handleVolunteerSignup) {
-        success = await handleVolunteerSignup(id);
+        const success = await handleVolunteerSignup(id);
+        result = { success, message: success ? `Successfully registered for "${title}"!` : `Failed to register for "${title}".` };
       } else {
         const { error } = await supabase
           .from('event_signup')
           .insert([{ event_id: id, volunteer_id: user.id }]);
           
         if (error) throw error;
-        success = true;
+        result = { success: true, message: `Successfully registered for "${title}"!` };
       }
       
-      if (success) {
+      if (result.success) {
         setLocalIsRegistered(true);
+        toast({
+          title: t('success'),
+          description: result.message,
+          variant: "default",
+          className: "bg-green-100 border-green-400 text-green-700",
+          duration: 3000,
+        });
+      } else {
+        toast({
+          title: t('error'),
+          description: result.message,
+          variant: "destructive",
+          className: "bg-red-100 border-red-400 text-red-700",
+          duration: 5000,
+        });
       }
     } catch (error) {
       console.error('Error signing up for event:', error);
+      toast({
+        title: t('error'),
+        description: `An unexpected error occurred: ${error.message}`,
+        variant: "destructive",
+        className: "bg-red-100 border-red-400 text-red-700",
+        duration: 5000,
+      });
     } finally {
       setLocalLoading(false);
     }
