@@ -14,85 +14,56 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   roles = [], 
   redirectTo = '/login'
 }) => {
+  const location = useLocation();
+  const [loading, setLoading] = useState(true);
+  
   // Use the appropriate auth context based on roles
   const { user: contextUser, loading: contextLoading } = useAuth();
   const { user: adminUser, loading: adminLoading } = useAdminAuth();
   const { user: volunteerUser, loading: volunteerLoading } = useVolunteerAuth();
   
-  const location = useLocation();
-  const [localUser, setLocalUser] = useState<any>(null);
-  const [initialized, setInitialized] = useState(false);
-
   // Determine if this is an admin or volunteer route
   const isAdminRoute = roles.includes('admin') && !roles.includes('volunteer');
   const isVolunteerRoute = roles.includes('volunteer') && !roles.includes('admin');
   
-  // Select the appropriate user and loading state
+  // Select the appropriate user and loading state based on route type
   const user = isAdminRoute ? adminUser : (isVolunteerRoute ? volunteerUser : contextUser);
-  const loading = isAdminRoute ? adminLoading : (isVolunteerRoute ? volunteerLoading : contextLoading);
-
-  // Check localStorage as fallback
+  const isLoading = isAdminRoute ? adminLoading : (isVolunteerRoute ? volunteerLoading : contextLoading);
+  
+  // Update loading state once contexts have finished loading
   useEffect(() => {
-    if (!user) {
-      // Try to get user from localStorage based on expected roles
-      let storedUser = null;
-      
-      if (roles.includes('admin')) {
-        const adminJson = localStorage.getItem('adminUser');
-        if (adminJson) {
-          try {
-            const adminUser = JSON.parse(adminJson);
-            if (adminUser?.role === 'admin') {
-              storedUser = adminUser;
-            }
-          } catch (e) {
-            // Invalid JSON
-          }
-        }
-      }
-      
-      if (!storedUser && roles.includes('volunteer')) {
-        const volunteerJson = localStorage.getItem('volunteerUser');
-        if (volunteerJson) {
-          try {
-            const volunteerUser = JSON.parse(volunteerJson);
-            if (volunteerUser?.role === 'volunteer') {
-              storedUser = volunteerUser;
-            }
-          } catch (e) {
-            // Invalid JSON
-          }
-        }
-      }
-      
-      setLocalUser(storedUser);
+    if (!isLoading) {
+      setLoading(false);
     }
-    
-    setInitialized(true);
-  }, [user, roles]);
-
+  }, [isLoading]);
+  
   // Show loader while checking authentication
-  if (loading || !initialized) {
+  if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <LoadingSpinner size="large" text="Loading..." color="primary" />
+        <LoadingSpinner size="large" text="Verifying authentication..." color="primary" />
       </div>
     );
   }
-
-  // Use either context user or localStorage user
-  const authenticatedUser = user || localUser;
-
+  
   // If not authenticated, redirect to login
-  if (!authenticatedUser) {
+  if (!user) {
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
-
+  
   // If roles are specified and user's role is not included, redirect
-  if (roles.length > 0 && !roles.includes(authenticatedUser.role as any)) {
+  if (roles.length > 0 && !roles.includes(user.role as any)) {
+    // If the user is authenticated but has the wrong role, redirect to the appropriate dashboard
+    if (user.role === 'admin') {
+      return <Navigate to="/admin/dashboard" replace />;
+    } else if (user.role === 'volunteer') {
+      return <Navigate to="/volunteer/dashboard" replace />;
+    }
+    
+    // Default fallback
     return <Navigate to="/" replace />;
   }
-
+  
   // User is authenticated and authorized
   return <>{children}</>;
 };

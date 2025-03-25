@@ -10,8 +10,8 @@ import AccessibilityMenu from '@/components/AccessibilityMenu';
 import { useAuth } from '@/lib/authContext';
 import { supabase } from '@/lib/supabase';
 import LandingHeader from '@/components/LandingHeader';
-import { clearAllAuthData, checkAuthStorage } from '@/lib/utils';
 
+// Events component to show upcoming events
 const Events: React.FC = () => {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,10 +23,10 @@ const Events: React.FC = () => {
       setError(null);
 
       const { data, error } = await supabase
-  .from('event')
-  .select('*')
-  .gt('close_date', new Date().toISOString())
-  .limit(3);
+        .from('event')
+        .select('*')
+        .gt('close_date', new Date().toISOString())
+        .limit(3);
 
       if (error) {
         console.error('Error fetching events:', error.message);
@@ -78,18 +78,6 @@ const impactStats = [
 ];
 
 const Index: React.FC = () => {
-  useEffect(() => {
-    // Check if we have any auth data stored that shouldn't be there
-    const auth = checkAuthStorage();
-    
-    // On the landing page, we shouldn't have any auth data unless we're
-    // explicitly trying to stay logged in
-    if (auth.hasAdminUser || auth.hasVolunteerUser || auth.hasUser) {
-      console.log('Found auth data on landing page - clearing for security');
-      clearAllAuthData();
-    }
-  }, []);
-
   return (
     <div className="min-h-screen flex flex-col">
       <LandingHeader />

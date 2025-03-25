@@ -24,7 +24,7 @@ import EventDetailsModal from '@/components/EventDetailsModal';
 
 const VolunteerEvents = () => {
   const navigate = useNavigate();
-  const { user, logout } = useVolunteerAuth();
+  const { user, logout, registeredEvents } = useVolunteerAuth();
   const [events, setEvents] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('all');
@@ -36,68 +36,59 @@ const VolunteerEvents = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    const fetchEvents = async () => {
-      if (!user) return;
-
-      try {
-        setLoading(true);
-        // Fetch registered events
-        // const { data: registeredEvents, error: eventsError } = await supabase
-        //   .from('event')
-        //   .select('*')
-        //   .eq('status', 'scheduled');
-        // First, get all event_ids the user is registered for
-        const { data: registrations, error: registrationsError } = await supabase
-          .from('event_signup')
-          .select('event_id')
-          .eq('volunteer_id', user.id);
-
-        if (registrationsError) {
-          console.error('Error fetching registrations:', registrationsError);
-          return;
-        }
-
-        // Extract just the event_ids from the result
-        const eventIds = registrations.map(reg => reg.event_id);
-
-        // Now fetch the events with those IDs
-        const { data: registeredEvents, error: eventsError } = await supabase
-          .from('event')
-          .select('*')
-          .in('id', eventIds);
-
-        if (eventsError) throw eventsError;
-
-        // Fetch feedback status for all events
-        const { data: feedbackData, error: feedbackError } = await supabase
-          .from('feedback')
-          .select('event_id')
-          .eq('volunteer_id', user.id);
-
-        if (feedbackError) throw feedbackError;
-
-        // Create a map of event_id to feedback status
-        const feedbackMap = {};
-        feedbackData?.forEach(feedback => {
-          feedbackMap[feedback.event_id] = true;
-        });
-
-        setFeedbackStatus(feedbackMap);
-        setEvents(registeredEvents || []);
-
-        // Extract unique event types
-        const types = [...new Set(events.map(event => event.category))];
-        setEventTypes(types);
-      } catch (error) {
-        console.error('Error:', error);
-        toast.error('Failed to load events');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchEvents();
+    // Fetch events when user is available
+    if (user) {
+      fetchEvents();
+    }
   }, [user]);
+
+  const fetchEvents = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      
+      // First, get all events
+      const { data: allEvents, error: eventsError } = await supabase
+        .from('event')
+        .select('*');
+        
+      if (eventsError) {
+        console.error('Error fetching events:', eventsError);
+        toast.error('Failed to load events. Please try again.');
+        setLoading(false);
+        return;
+      }
+      
+      // Filter to only include events that the user is registered for
+      const userEvents = allEvents.filter(event => registeredEvents[event.id]);
+      setEvents(userEvents);
+      
+      // Load feedback status for each registered event
+      const feedbackStatusObj = {};
+      for (const event of userEvents) {
+        const { data: feedbackData } = await supabase
+          .from('event_feedback')
+          .select('*')
+          .eq('volunteer_id', user.id)
+          .eq('event_id', event.id)
+          .maybeSingle();
+          
+        feedbackStatusObj[event.id] = !!feedbackData;
+      }
+      setFeedbackStatus(feedbackStatusObj);
+
+      // Extract unique event types for filtering
+      const types = [...new Set(userEvents.map(event => event.category))];
+      setEventTypes(types);
+      
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching events:', error);
+      toast.error('Failed to load events. Please try again.');
+      setLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();

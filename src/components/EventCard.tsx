@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom'; // Import useLocation
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Calendar, Clock, MapPin, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from './ui/button';
@@ -15,6 +15,7 @@ import { Badge } from './ui/badge';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/authContext';
 import EventDetailsModal from './EventDetailsModal';
+import { useVolunteerAuth } from '@/lib/authContext';
 
 interface EventCardProps {
   id: string;
@@ -22,7 +23,7 @@ interface EventCardProps {
   description: string;
   start_date: string;
   end_date: string;
-  location: string; // This is the prop, not the variable
+  location: string;
   category: string;
   volunteersNeeded: number;
   image_url?: string;
@@ -39,7 +40,7 @@ const EventCard: React.FC<EventCardProps> = ({
   description,
   start_date,
   end_date,
-  location: eventLocation, // Rename the prop to avoid conflict
+  location: eventLocation,
   category,
   volunteersNeeded,
   image_url = "https://source.unsplash.com/random/800x600/?volunteer",
@@ -49,14 +50,15 @@ const EventCard: React.FC<EventCardProps> = ({
   handleVolunteerSignup,
   customButtons
 }) => {
-  const { user } = useAuth();  // Get user from auth context
+  const { user, registerForEvent } = useVolunteerAuth();
   const navigate = useNavigate();
-  const currentLocation = useLocation(); // Rename to avoid conflict with the prop
+  const currentLocation = useLocation();
   const [localIsRegistered, setLocalIsRegistered] = useState(isRegistered);
   const [localLoading, setLocalLoading] = useState(loading);
   const [localIsRecommended, setLocalIsRecommended] = useState(isRecommended);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Update local state when props change
   useEffect(() => {
     setLocalIsRegistered(isRegistered);
   }, [isRegistered]);
@@ -69,9 +71,10 @@ const EventCard: React.FC<EventCardProps> = ({
     setLocalIsRecommended(isRecommended);
   }, [isRecommended]);
 
+  // Only check interests on the main events page
   useEffect(() => {
     const fetchUserInterests = async () => {
-      if (!user || localIsRecommended) return; // Skip if user isn't logged in or already set
+      if (!user || localIsRecommended || currentLocation.pathname !== '/events') return;
   
       try {
         const { data, error } = await supabase
@@ -97,53 +100,57 @@ const EventCard: React.FC<EventCardProps> = ({
       }
     };
 
-    const checkRegistration = async () => {
-      if (!user || localIsRegistered) return; // Skip if user isn't logged in or already set
-
-      try {
-        const { data } = await supabase
-          .from("event_signup")
-          .select("*")
-          .eq("volunteer_id", user.id)
-          .eq("event_id", id)
-          .single();
-
-        if (data) setLocalIsRegistered(true);
-      } catch (err) {
-        console.error("Error checking registration:", err);
-      }
-    };
-
     fetchUserInterests();
-    checkRegistration();
-  }, [id, user, category, localIsRegistered, localIsRecommended]);
+  }, [user, category, localIsRecommended, currentLocation.pathname]);
 
-  const defaultHandleVolunteerSignup = async () => {
-    if (!user) {
-      navigate('/join-us');  // Redirect if user isn't logged in
+  // Handle volunteer signup
+  const onVolunteerSignup = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (localIsRegistered) {
       return;
     }
-
+    
+    if (!user) {
+      // User is not logged in, redirect to login
+      navigate('/login');
+      return;
+    }
+    
     try {
       setLocalLoading(true);
-      const { error: insertError } = await supabase
-        .from("event_signup")
-        .insert([{ volunteer_id: user.id, event_id: id, status: "successful" }]);
-
-      if (insertError) throw insertError;
-
-      alert("Successfully signed up as a volunteer!");
-      setLocalIsRegistered(true);
-    } catch (err) {
-      console.error("Error signing up:", err);
-      alert("Failed to register. Please try again.");
+      
+      let success = false;
+      
+      // Use registerForEvent from context if available, otherwise use prop
+      if (registerForEvent) {
+        success = await registerForEvent(id);
+      } else if (handleVolunteerSignup) {
+        success = await handleVolunteerSignup(id);
+      } else {
+        // Fallback to default behavior
+        const { error } = await supabase
+          .from('event_signup')
+          .insert([
+            { event_id: id, volunteer_id: user.id }
+          ]);
+          
+        if (error) throw error;
+        success = true;
+      }
+      
+      if (success) {
+        setLocalIsRegistered(true);
+      }
+    } catch (error) {
+      console.error('Error signing up for event:', error);
     } finally {
       setLocalLoading(false);
     }
   };
 
   const handleCardClick = (e: React.MouseEvent) => {
-    // Prevent modal from opening if clicking on buttons
     if ((e.target as HTMLElement).closest('button')) {
       return;
     }
@@ -172,7 +179,6 @@ const EventCard: React.FC<EventCardProps> = ({
                 {category}
               </Badge>
             </div>
-            {/* Conditionally render the "Recommended" tag only on the /events route */}
             {currentLocation.pathname === '/events' && localIsRecommended && (
               <div className="absolute top-3 left-3">
                 <Badge variant="outline" className="font-medium bg-green-200 text-green-700">
@@ -198,12 +204,11 @@ const EventCard: React.FC<EventCardProps> = ({
             </div>
             <div className="flex items-start text-sm text-muted-foreground">
               <MapPin className="h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
-              <span className="line-clamp-1">{eventLocation}</span> {/* Use the renamed prop */}
+              <span className="line-clamp-1">{eventLocation}</span>
             </div>
           </CardContent>
 
           <CardFooter className="flex flex-col space-y-2">
-            {/* Render custom buttons if provided, otherwise default buttons */}
             {customButtons ? (
               customButtons
             ) : (
@@ -211,7 +216,7 @@ const EventCard: React.FC<EventCardProps> = ({
                 <Button 
                   className="w-full" 
                   disabled={localIsRegistered || localLoading} 
-                  onClick={handleVolunteerSignup || defaultHandleVolunteerSignup}
+                  onClick={onVolunteerSignup}
                 >
                   {localIsRegistered ? "Already Signed Up" : localLoading ? "Signing Up..." : "Volunteer for Event"}
                 </Button>
@@ -233,7 +238,7 @@ const EventCard: React.FC<EventCardProps> = ({
           description,
           start_date,
           end_date,
-          location: eventLocation, // Use the renamed prop
+          location: eventLocation,
           category,
           volunteersNeeded,
           image_url
