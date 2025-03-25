@@ -1,0 +1,19 @@
+{
+  "home": "Home",
+  "events": "Events",
+  "about": "About",
+  "donate": "Donate",
+  "dashboard": "Dashboard",
+  "volunteer": "Volunteer",
+  "language": "Language",
+  "english": "English",
+  "hindi": "हिन्दी",
+  "kannada": "ಕನ್ನಡ",
+  "logout": "Logout",
+  "login": "Login",
+  "switchToLightMode": "Switch to light mode",
+  "switchToDarkMode": "Switch to dark mode",
+  "openMenu": "Open menu",
+  "closeMenu": "Close menu",
+  "userMenu": "User menu"
+}

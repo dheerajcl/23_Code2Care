@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
+import Logo from '../../assets/logo.png';
 
 type LoginFormValues = {
   email: string;
@@ -82,8 +83,12 @@ export const WebmasterLogin: React.FC = () => {
   return (
     <div className="h-screen flex bg-gray-50">
       {/* Left side with brand info */}
-      <div className="hidden md:flex md:w-1/2 bg-blue-600 text-white flex-col justify-center p-12">
+      <div className="hidden md:flex md:w-1/2 bg-red-600 text-white flex-col justify-center p-12">
         <div className="mb-8">
+        <div className="absolute top-7 left-16 flex items-center">
+        <img className="h-10 w-auto mr-2" src={Logo} alt="Samarthanam logo" />
+        <span className="font-semibold text-2xl text-gray-900 ml-2">Samarth Connect</span>
+      </div>
           <h1 className="text-5xl font-bold mb-4">Samarth Connect</h1>
           <p className="text-xl font-light">Webmaster Portal</p>
         </div>
@@ -93,7 +98,7 @@ export const WebmasterLogin: React.FC = () => {
         </p>
         <div className="mt-10">
           <div className="flex items-center space-x-4 mb-4">
-            <div className="h-12 w-12 rounded-full bg-blue-500 flex items-center justify-center">
+            <div className="h-12 w-12 rounded-full bg-red-500 flex items-center justify-center">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
                 <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
                 <path fillRule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.762 1.762 0 010-1.113zM17.25 12a5.25 5.25 0 11-10.5 0 5.25 5.25 0 0110.5 0z" clipRule="evenodd" />
@@ -112,7 +117,7 @@ export const WebmasterLogin: React.FC = () => {
             </div>
             <div>
               <h3 className="font-medium">Data Visualization</h3>
-              <p className="text-sm text-blue-200">View meaningful insights and reports</p>
+              <p className="text-sm text-red-200">View meaningful insights and reports</p>
             </div>
           </div>
         </div>

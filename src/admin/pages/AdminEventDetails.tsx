@@ -269,13 +269,16 @@ const AdminEventDetails = () => {
       prev.includes(id) ? prev.filter((vid) => vid !== id) : [...prev, id]
     );
   };
-  const handleSelectAll = () => {
-    if (selectedVolunteers.length === volunteers.length) {
-      setSelectedVolunteers([]);
-    } else {
-      setSelectedVolunteers(volunteers.map((v) => v.id));
-    }
-  };
+const handleSelectAll = () => {
+  // If all currently registered volunteers are already selected, deselect them
+  if (selectedVolunteers.length === registrations.length) {
+    setSelectedVolunteers([]);
+  } else {
+    // Otherwise, select all registered volunteer IDs
+    const registeredVolunteerIds = registrations.map(reg => reg.volunteer.id);
+    setSelectedVolunteers(registeredVolunteerIds);
+  }
+};
 
   const sendMessage = async () => {
     if (selectedVolunteers.length === 0) {
@@ -284,14 +287,19 @@ const AdminEventDetails = () => {
     }
   
     setIsSending(true);
+  
     try {
-      // Bulk insert notifications for selected volunteers
+      // Generate a single UUID for the message
+      const messageId = crypto.randomUUID(); // Ensuring the same ID for all volunteers
+  
+      // Bulk insert notifications with the same message ID
       const { error } = await supabase.from("internal_noti").insert(
         selectedVolunteers.map((volunteer_id) => ({
+          id: messageId, // Same ID for all volunteers
           volunteer_id,
           message: messageBody,
           title_noti: messageTitle,
-          sent_at: new Date().toISOString()
+          sent_at: new Date().toISOString(),
         }))
       );
   
@@ -308,6 +316,7 @@ const AdminEventDetails = () => {
       setIsSending(false);
     }
   };
+  
   // Format time for display
   const formatTime = (dateString) => {
     try {
@@ -1018,7 +1027,7 @@ const AdminEventDetails = () => {
                     </div>
 
                     <div className="flex items-center gap-4 py-2">
-            <Checkbox checked={selectedVolunteers.length === volunteers.length} onCheckedChange={handleSelectAll} />
+            <Checkbox checked={selectedVolunteers.length === registrations.length} onCheckedChange={handleSelectAll} />
             <span>Select All</span>
           </div>
           <Popover>

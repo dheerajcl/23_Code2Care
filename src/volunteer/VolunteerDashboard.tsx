@@ -15,7 +15,8 @@ import {
   Home,
   Users,
   BookOpen,
-  ExternalLink
+  ExternalLink,
+  Edit2
 } from 'lucide-react';
 import { useVolunteerAuth } from '@/lib/authContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,6 +48,18 @@ import { toast } from 'sonner';
 import Chatbot from "@/components/chatbot";
 import { ErrorBoundary } from 'react-error-boundary';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { updateVolunteer } from '@/services/database.service';
 
 export const assignedTasks = [
   {
@@ -159,11 +172,23 @@ const feedbackData = [
 ];
 
 export const VolunteerDashboard = () => {
-  const { user, logout } = useVolunteerAuth();
+  const { user, logout, setUser } = useVolunteerAuth();
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
   const location = useLocation();
+  
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [firstName, setFirstName] = useState(user?.firstName || '');
+  const [lastName, setLastName] = useState(user?.lastName || '');
+  const [isSaving, setIsSaving] = useState(false);
+  
+  useEffect(() => {
+    if (user) {
+      setFirstName(user.firstName || '');
+      setLastName(user.lastName || '');
+    }
+  }, [user]);
   
   useEffect(() => {
     if (user) {
@@ -197,10 +222,51 @@ export const VolunteerDashboard = () => {
     }
   };
   
-    const handleLogout = async () => {
-      await logout();
-      // Redirect is handled by the auth context
-    };
+  const handleLogout = async () => {
+    await logout();
+    // Redirect is handled by the auth context
+  };
+  
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    
+    if (!user?.id) return;
+    
+    try {
+      setIsSaving(true);
+      
+      // Update the volunteer in the database
+      const { data, error } = await updateVolunteer(user.id, {
+        first_name: firstName,
+        last_name: lastName
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Update the user in context and localStorage
+      if (data) {
+        const updatedUser = {
+          ...user,
+          firstName: firstName,
+          lastName: lastName,
+          first_name: firstName,
+          last_name: lastName
+        };
+        
+        setUser(updatedUser);
+        
+        toast.success('Profile updated successfully');
+        setIsEditProfileOpen(false);
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error('Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
+  };
   
   return (
     <div className="h-screen bg-gray-100 flex flex-col vol-dashboard">
@@ -211,11 +277,69 @@ export const VolunteerDashboard = () => {
           <div className="container mx-auto px-4 lg:px-2">
           <div className="flex flex-col gap-6">
               {/* Welcome */}
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold">Welcome, {user?.firstName}!</h1>
-                <p className="text-muted-foreground">
-                  Your volunteering dashboard at Samarthanam Trust.
-                </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold">Welcome, {user?.firstName}!</h1>
+                  <p className="text-muted-foreground">
+                    Your volunteering dashboard at Samarthanam Trust.
+                  </p>
+                </div>
+                
+                <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="flex gap-2">
+                      <Edit2 className="h-4 w-4" />
+                      <span className="hidden md:inline">Edit Profile</span>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <form onSubmit={handleUpdateProfile}>
+                      <DialogHeader>
+                        <DialogTitle>Edit Profile</DialogTitle>
+                        <DialogDescription>
+                          Update your profile information below.
+                        </DialogDescription>
+                      </DialogHeader>
+                      
+                      <div className="py-4 space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="firstName">First Name</Label>
+                          <Input 
+                            id="firstName" 
+                            value={firstName} 
+                            onChange={(e) => setFirstName(e.target.value)}
+                            placeholder="First Name"
+                            required
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="lastName">Last Name</Label>
+                          <Input 
+                            id="lastName" 
+                            value={lastName} 
+                            onChange={(e) => setLastName(e.target.value)}
+                            placeholder="Last Name"
+                            required
+                          />
+                        </div>
+                      </div>
+                      
+                      <DialogFooter>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => setIsEditProfileOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button type="submit" disabled={isSaving}>
+                          {isSaving ? 'Saving...' : 'Save Changes'}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
               </div>
 
               {/* Stats Overview */}

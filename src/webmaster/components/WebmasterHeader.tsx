@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { Menu, User, LogOut, Bell } from 'lucide-react';
 import { useWebmasterAuth } from '@/lib/authContext';
+import Logo from '../../assets/logo.png';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,29 +44,19 @@ export const WebmasterHeader = () => {
             <Menu className="h-5 w-5" />
             <span className="sr-only">Toggle Menu</span>
           </Button>
+          
           <div className="flex items-center">
-            <img
-              src="/logo.png"
-              alt="Samarthanam Logo"
-              className="h-8 w-auto mr-2"
-            />
+          <img className="h-10 w-auto mr-2" src={Logo} alt="Samarthanam logo" />
+    
             <div>
-              <h1 className="text-lg font-bold text-gray-900">Samarthanam</h1>
+              <h1 className="text-lg font-bold text-gray-900">Samarth Connect</h1>
               <p className="text-xs text-gray-500">Webmaster Portal</p>
             </div>
           </div>
         </div>
 
         <div className="flex items-center space-x-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative"
-          >
-            <Bell className="h-5 w-5" />
-            <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
-            <span className="sr-only">Notifications</span>
-          </Button>
+          
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

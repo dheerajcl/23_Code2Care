@@ -14,6 +14,7 @@ import {
 import Logo from "../assets/logo.png";
 import { useAuth, useVolunteerAuth } from '@/lib/authContext';
 import { useLanguage } from './LanguageContext'; // Adjust the import path as needed
+import { useTranslation } from 'react-i18next';
 
 // Define the Language type to match what's used in the language context
 type Language = 'en' | 'hi' | 'kn';
@@ -24,8 +25,12 @@ const Header: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const { user: legacyUser } = useAuth();
   const { user: volunteerUser, logout: volunteerLogout } = useVolunteerAuth();
-  const { language, setLanguage, t } = useLanguage();
+  // const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation('translation'); // Namespace is 'translation'
+  const changeLanguage = (lng: SupportedLanguages) => {
+    i18n.changeLanguage(lng);
+  };
   
   // Use the volunteer user if available, otherwise fallback to the legacy user
   const user = volunteerUser || legacyUser;
@@ -54,10 +59,10 @@ const Header: React.FC = () => {
     }
 
     // Check for saved language preference
-    const savedLang = localStorage.getItem('language') as Language | null;
-    if (savedLang && ['en', 'hi', 'kn'].includes(savedLang)) {
-      setLanguage(savedLang);
-    }
+    // const savedLang = localStorage.getItem('language') as Language | null;
+    // if (savedLang && ['en', 'hi', 'kn'].includes(savedLang)) {
+    //   setLanguage(savedLang);
+    // }
 
     window.addEventListener('scroll', handleScroll);
     window.addEventListener('resize', handleResize);
@@ -66,7 +71,7 @@ const Header: React.FC = () => {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleResize);
     };
-  }, [setLanguage]);
+  });
 
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
@@ -83,10 +88,10 @@ const Header: React.FC = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
-  const changeLanguage = (lang: Language) => {
-    setLanguage(lang);
-    localStorage.setItem('language', lang);
-  };
+  // const changeLanguage = (lang: Language) => {
+  //   setLanguage(lang);
+  //   localStorage.setItem('language', lang);
+  // };
 
   // Function to get the dashboard URL based on user role
   const getDashboardUrl = () => {
@@ -183,7 +188,7 @@ const Header: React.FC = () => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative">
                     <User className="h-5 w-5" />
-                    <span className="sr-only">User menu</span>
+                    <span className="sr-only">{t('userMenu')}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
@@ -211,35 +216,27 @@ const Header: React.FC = () => {
             )}
 
             {/* Theme Toggle */}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-              onClick={toggleTheme}
-            >
-              {isDarkMode ? (
-                <Sun className="h-5 w-5" />
-              ) : (
-                <Moon className="h-5 w-5" />
-              )}
-            </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            aria-label={isDarkMode ? t("switchToLightMode") : t("switchToDarkMode")}
+            onClick={toggleTheme}
+          >
+            {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </Button>
 
 
 
             {/* Mobile Menu Button */}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="md:hidden"
-              aria-label={isMenuOpen ? "Close menu" : "Open menu"}
-              onClick={toggleMenu}
-            >
-              {isMenuOpen ? (
-                <X className="h-5 w-5" />
-              ) : (
-                <Menu className="h-5 w-5" />
-              )}
-            </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="md:hidden"
+            aria-label={isMenuOpen ? t("closeMenu") : t("openMenu")}
+            onClick={toggleMenu}
+          >
+            {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
           </div>
         </div>
       </div>
