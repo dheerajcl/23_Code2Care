@@ -15,7 +15,7 @@ const Chatbot: React.FC = () => {
   
     try {
       // POST request with conversation history
-      const API_BASE_URL = "https://your-backend.vercel.app"; // Replace with your actual backend URL
+      const API_BASE_URL = "https://samarthanam.vercel.app"; // Replace with your actual backend URL
       const res = await fetch(`${API_BASE_URL}/chat/`, {
 
         method: "POST",
