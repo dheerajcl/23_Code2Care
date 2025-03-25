@@ -49,6 +49,7 @@ import ResetPassword from "./pages/ResetPassword";
 import VolunteerDataMigration from './admin/pages/VolunteerDataMigration.tsx';
 import DonationUpload from './admin/pages/DonationDataMigration.tsx';
 import MigratePage from './admin/pages/MigratePage.tsx';
+import { CertificatePage } from './pages/Certificate.tsx';
 import { WebmasterLogin } from '@/webmaster/pages/WebmasterLogin';
 import { WebmasterDashboard } from '@/webmaster/pages/WebmasterDashboard';
 import { WebmasterEvents } from '@/webmaster/pages/WebmasterEvents';
@@ -299,6 +300,14 @@ function App() {
                             element={
                               <ProtectedRoute roles={['volunteer']} redirectTo="/login">
                                 <EventFeedback />
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route
+                            path="/volunteer/events/:id/certificate"
+                            element={
+                              <ProtectedRoute roles={['volunteer']} redirectTo="/login">
+                                <CertificatePage />
                               </ProtectedRoute>
                             }
                           />
