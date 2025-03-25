@@ -685,11 +685,11 @@ const DonationPage: React.FC = () => {
             </div>
             
             <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">
-              <img src="/public/oracle-thumb.png" alt="Supporter Logo" className="h-24 opacity-70 hover:opacity-100 transition-opacity" />
-              <img src="/public/nike.png" alt="Supporter Logo" className="h-16 opacity-70 hover:opacity-100 transition-opacity" />
-              <img src="/public/morgan_stanley.png" alt="Supporter Logo" className="h-16 opacity-70 hover:opacity-100 transition-opacity" />
-              <img src="/public/microsoft-logo.png" alt="Supporter Logo" className="h-20 opacity-70 hover:opacity-100 transition-opacity" />
-              <img src="/public/anz.png" alt="Supporter Logo" className="h-16 opacity-70 hover:opacity-100 transition-opacity" />
+              <img src="/oracle-thumb.png" alt="Supporter Logo" className="h-24 opacity-70 hover:opacity-100 transition-opacity" />
+              <img src="/nike.png" alt="Supporter Logo" className="h-16 opacity-70 hover:opacity-100 transition-opacity" />
+              <img src="/morgan_stanley.png" alt="Supporter Logo" className="h-16 opacity-70 hover:opacity-100 transition-opacity" />
+              <img src="/microsoft-logo.png" alt="Supporter Logo" className="h-20 opacity-70 hover:opacity-100 transition-opacity" />
+              <img src="/anz.png" alt="Supporter Logo" className="h-16 opacity-70 hover:opacity-100 transition-opacity" />
             </div>  
           </div>
         </section>
