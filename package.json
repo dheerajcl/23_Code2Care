@@ -48,6 +48,7 @@
     "@types/bcryptjs": "^3.0.0",
     "axios": "^1.8.4",
     "bcryptjs": "^3.0.2",
+    "braille": "^1.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
