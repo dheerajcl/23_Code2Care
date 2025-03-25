@@ -1,0 +1,19 @@
+{
+  "home": "होम",
+  "events": "इवेंट्स",
+  "about": "के बारे में",
+  "donate": "दान करें",
+  "dashboard": "डैशबोर्ड",
+  "volunteer": "स्वयंसेवक",
+  "language": "भाषा",
+  "english": "अंग्रेज़ी",
+  "hindi": "हिन्दी",
+  "kannada": "कन्नड़",
+  "logout": "लॉगआउट",
+  "login": "लॉगिन",
+  "switchToLightMode": "लाइट मोड पर स्विच करें",
+  "switchToDarkMode": "डार्क मोड पर स्विच करें",
+  "openMenu": "मेनू खोलें",
+  "closeMenu": "मेनू बंद करें",
+  "userMenu": "यूज़र मेनू"
+}
