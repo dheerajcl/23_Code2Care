@@ -244,6 +244,9 @@ const AdminEventsPage = () => {
     return 'https://placehold.co/300x200/e2e8f0/1e293b?text=No+Image';
   };
 
+
+
+
   return (
     <div className="h-screen bg-gray-100 flex flex-col">
       <AdminHeader title="Events Management" user={auth.user} onLogout={handleLogout} />

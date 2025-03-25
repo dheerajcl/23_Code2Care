@@ -221,6 +221,44 @@ export const VolunteerAuthProvider: React.FC<{ children: ReactNode }> = ({ child
 
   const registerForEvent = async (eventId: string) => {
     try {
+      // Step 1: Fetch event details to get max_volunteers
+      const { data: eventData, error: eventError } = await supabase
+        .from('event')
+        .select('max_volunteers, title') // Include title for better messages
+        .eq('id', eventId)
+        .single();
+
+      if (eventError) {
+        console.error('Error fetching event details:', eventError);
+        return { success: false, message: `Failed to fetch event details: ${eventError.message}` };
+      }
+
+      const maxVolunteers = eventData?.max_volunteers || null; // null means unlimited
+      const eventTitle = eventData?.title || 'this event'; // Fallback title
+
+      // Step 2: Count current registered volunteers
+      const { data: signupData, error: signupError } = await supabase
+        .from('event_signup')
+        .select('id', { count: 'exact' })
+        .eq('event_id', eventId);
+
+      if (signupError) {
+        console.error('Error counting registered volunteers:', signupError);
+        return { success: false, message: `Failed to count registered volunteers: ${signupError.message}` };
+      }
+
+      const currentVolunteers = signupData.length;
+
+      // Step 3: Check if max_volunteers is exceeded
+      if (maxVolunteers !== null && currentVolunteers >= maxVolunteers) {
+        console.log(`Event ${eventId} has reached its maximum volunteer capacity of ${maxVolunteers}`);
+        return { 
+          success: false, 
+          message: `Registration failed: "${eventTitle}" has reached its maximum volunteer capacity of ${maxVolunteers}.` 
+        };
+      }
+
+      // Step 4: Proceed with registration if limit not reached
       const { data, error } = await supabase
         .from('event_signup')
         .insert([{ event_id: eventId, volunteer_id: user?.id }])
@@ -228,18 +266,21 @@ export const VolunteerAuthProvider: React.FC<{ children: ReactNode }> = ({ child
 
       if (error) {
         console.error('Error registering for event:', error);
-        return false;
+        return { success: false, message: `Failed to register for "${eventTitle}": ${error.message}` };
       }
 
       if (data && data.length > 0) {
         setRegisteredEvents({ ...registeredEvents, [eventId]: true });
-        return true;
+        return { 
+          success: true, 
+          message: `Successfully registered as a volunteer for "${eventTitle}"!` 
+        };
       }
 
-      return false;
+      return { success: false, message: `Registration failed for "${eventTitle}": No data returned.` };
     } catch (error) {
       console.error('Error in registerForEvent:', error);
-      return false;
+      return { success: false, message: `An unexpected error occurred while registering for "${eventTitle}": ${error.message}` };
     }
   };
 

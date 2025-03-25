@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import LandingHeader from '@/components/LandingHeader';
+import { useLanguage } from '../components/LanguageContext'; // Add language context import
 
 type LoginFormValues = {
   email: string;
@@ -26,6 +27,7 @@ const Login: React.FC = () => {
   const { user, setUser } = useVolunteerAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useLanguage(); // Add translation hook
   
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -35,7 +37,6 @@ const Login: React.FC = () => {
     },
   });
   
-  // If already logged in as volunteer, redirect to volunteer dashboard
   useEffect(() => {
     if (user && user.role === 'volunteer') {
       navigate('/volunteer/dashboard', { replace: true });
@@ -53,21 +54,18 @@ const Login: React.FC = () => {
       if (result.success && result.user) {
         console.log('Login successful');
         
-        // Set user in volunteer context
         setUser(result.user);
         
-        // Show success toast
         toast({
-          title: 'Login successful',
-          description: 'Welcome back!',
+          title: t('loginSuccessTitle'),
+          description: t('loginSuccessDescription'),
         });
         
-        // Navigate to dashboard
         navigate('/volunteer/dashboard', { replace: true });
       } else {
         console.log('Login failed:', result.message);
         toast({
-          title: 'Login failed',
+          title: t('loginFailedTitle'),
           description: result.message,
           variant: 'destructive',
         });
@@ -75,8 +73,8 @@ const Login: React.FC = () => {
     } catch (error: unknown) {
       console.error('Login error:', error);
       toast({
-        title: 'Login failed',
-        description: error instanceof Error ? error.message : 'Something went wrong',
+        title: t('loginFailedTitle'),
+        description: error instanceof Error ? error.message : t('somethingWentWrong'),
         variant: 'destructive',
       });
     } finally {
@@ -93,19 +91,19 @@ const Login: React.FC = () => {
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold">Volunteer Login</h1>
+              <h1 className="text-3xl font-bold">{t('volunteerLogin')}</h1>
               <p className="text-muted-foreground mt-2">
-                Sign in to access your volunteer dashboard
+                {t('loginSubtitle')}
               </p>
             </div>
             
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t('email')}</Label>
                 <Input 
                   id="email"
                   type="email"
-                  placeholder="volunteer@example.com"
+                  placeholder={t('emailPlaceholder')}
                   {...register('email')}
                   className={errors.email ? 'border-red-500' : ''}
                 />
@@ -115,11 +113,11 @@ const Login: React.FC = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t('password')}</Label>
                 <Input 
                   id="password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder={t('passwordPlaceholder')}
                   {...register('password')}
                   className={errors.password ? 'border-red-500' : ''}
                 />
@@ -131,7 +129,7 @@ const Login: React.FC = () => {
                     to="/forgot-password" 
                     className="text-sm text-primary hover:underline"
                   >
-                    Forgot Password?
+                    {t('forgotPassword')}
                   </Link>
                 </div>
               </div>
@@ -144,26 +142,26 @@ const Login: React.FC = () => {
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
+                    {t('signingIn')}
                   </>
                 ) : (
-                  'Sign In'
+                  t('signIn')
                 )}
               </Button>
               
               <div className="text-center space-y-2">
                 <p>
-                  Don't have an account?{' '}
+                  {t('noAccount')}{' '}
                   <Link to="/register" className="text-primary hover:underline">
-                    Register here
+                    {t('registerHere')}
                   </Link>
                 </p>
                 <p className="text-sm text-muted-foreground">
                   <Link to="/admin/login" className="hover:underline">
-                    Admin Login
+                    {t('adminLogin')}
                   </Link>
                   <span className="block mt-1 text-xs">
-                    Administrators must log in separately through the Admin Login page
+                    {t('adminLoginNote')}
                   </span>
                 </p>
               </div>
@@ -178,4 +176,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login; 
+export default Login;

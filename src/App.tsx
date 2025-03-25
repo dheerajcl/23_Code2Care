@@ -59,6 +59,7 @@ import { WebmasterVolunteers } from '@/webmaster/pages/WebmasterVolunteers';
 import { WebmasterReports } from '@/webmaster/pages/WebmasterReports';
 import { WebmasterTasks } from '@/webmaster/pages/WebmasterTasks';
 import { WebmasterFeedback } from '@/webmaster/pages/WebmasterFeedback';
+import AdminNotificationHistory from './admin/components/AdminNotificationHistory.tsx';
 // Pages
 
 function App() {
@@ -175,6 +176,14 @@ function App() {
                             element={
                               <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
                                 <AdminNotificationDashboard />
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route
+                            path="/admin/notifications/history"
+                            element={
+                              <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                                <AdminNotificationHistory />
                               </ProtectedRoute>
                             }
                           />

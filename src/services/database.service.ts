@@ -143,16 +143,40 @@ const ensureAuthenticated = async () => {
 // Event CRUD functions
 export const getEvents = async () => {
   try {
-    const { data, error } = await supabase
+    // Fetch all events
+    const { data: events, error: eventsError } = await supabase
       .from('event')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return { data, error: null };
+      .select('*');
+
+    if (eventsError) throw eventsError;
+
+    // Fetch signup counts for all event IDs
+    const eventIds = events.map(event => event.id);
+    const { data: signupCounts, error: signupError } = await supabase
+      .from('event_signup')
+      .select('event_id')
+      .in('event_id', eventIds)
+      .then(async (res) => {
+        // Group and count manually after fetching
+        const counts = res.data.reduce((acc, signup) => {
+          acc[signup.event_id] = (acc[signup.event_id] || 0) + 1;
+          return acc;
+        }, {});
+        return { data: counts, error: res.error };
+      });
+
+    if (signupError) throw signupError;
+
+    // Merge events with their signup counts
+    const eventsWithCounts = events.map(event => ({
+      ...event,
+      registered_count: signupCounts[event.id] || 0
+    }));
+
+    return { data: eventsWithCounts, error: null };
   } catch (error) {
-    console.error('Error fetching events:', error);
-    return { data: [], error };
+    console.error('Error fetching events with signup counts:', error);
+    return { data: null, error };
   }
 };
 
@@ -3434,3 +3458,4 @@ export const databaseService = {
   getVolunteerSkills,
   getVolunteerFeedback
 };
+
