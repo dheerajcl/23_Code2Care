@@ -11,9 +11,25 @@ import {
   CardHeader, 
   CardTitle 
 } from '@/components/ui/card';
+import {
+  format,
+  subMonths,
+  startOfMonth,
+  endOfMonth,
+  eachMonthOfInterval,
+  startOfWeek,
+  endOfWeek,
+  addWeeks,
+  startOfDay,
+  endOfDay,
+  addDays,
+  min,
+} from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from '@/components/ui/progress';
+import { supabase } from '@/lib/supabase';
 import { 
   Bar, 
   BarChart, 
@@ -26,7 +42,7 @@ import {
   PieChart, 
   Pie, 
   Cell, 
-  Legend 
+  Legend
 } from 'recharts';
 import {
   CalendarIcon,
@@ -35,10 +51,17 @@ import {
   ArrowUpRight,
   Download
 } from 'lucide-react';
-import { getEvents, getVolunteers, getDashboardStats } from '@/services/database.service';
-import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
+import { getEvents, getVolunteers, getDashboardStats,getAllTasks,  getTaskAssignmentsWithDetails, getEventRegistrations, getTasksByEventId } from '@/services/database.service';
+// import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
 import { toast } from '@/components/ui/use-toast';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Label } from '@/components/ui/label';
 
 export const WebmasterReports: React.FC = () => {
   const navigate = useNavigate();
@@ -63,7 +86,20 @@ export const WebmasterReports: React.FC = () => {
   const [categoryDistribution, setCategoryDistribution] = useState([]);
   const [skillsDistribution, setSkillsDistribution] = useState([]);
   const [locationDistribution, setLocationDistribution] = useState([]);
-  
+  const [timeFrame, setTimeFrame] = useState<'12m' | '6m' | '3m' | 'custom'>('12m');
+const [customRange, setCustomRange] = useState<{
+  start: Date | null;
+  end: Date | null;
+}>({ start: null, end: null });
+const [interval, setInterval] = useState<'monthly' | 'weekly' | 'daily'>('monthly');
+const [eventsData, setEventsData] = useState([]); // Add state to store events data
+const [volunteersData, setVolunteersData] = useState([]); // Add state to store volunteers data
+const [ageHistogramData, setAgeHistogramData] = useState([]); // State for age histogram data
+const [ageInterval, setAgeInterval] = useState(5); // State for histogram interval
+const [averageTasksAssigned, setAverageTasksAssigned] = useState(0);
+const [averageEventsParticipated, setAverageEventsParticipated] = useState(0);
+const [averageTasksCompleted, setAverageTasksCompleted] = useState(0);
+const [averageEventCompletionRate, setAverageEventCompletionRate] = useState(0);
   // Constants for charts
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82ca9d', '#ffc658'];
   
@@ -79,10 +115,12 @@ export const WebmasterReports: React.FC = () => {
         // Fetch events data
         const { data: events, error: eventsError } = await getEvents();
         if (eventsError) throw eventsError;
+        setEventsData(events); // Store events data in state
         
         // Fetch volunteers data
         const { data: volunteers, error: volunteersError } = await getVolunteers();
         if (volunteersError) throw volunteersError;
+        setVolunteersData(volunteers); // Store volunteers data in state
         
         // Process stats
         const completedEvents = events.filter(event => 
@@ -126,46 +164,164 @@ export const WebmasterReports: React.FC = () => {
     fetchReportData();
   }, []);
   
-  const processMonthlyEventData = (events) => {
-    // Get last 12 months
-    const endDate = new Date();
-    const startDate = subMonths(endDate, 11);
+  useEffect(() => {
+    const fetchVolunteerMetrics = async () => {
+      try {
+        // Fetch task assignments to calculate average tasks assigned
+        const { data: taskAssignments } = await getTaskAssignmentsWithDetails();
+        const uniqueVolunteersAssigned = new Set(
+          taskAssignments.map((assignment) => assignment.volunteer_id)
+        ).size;
+        const avgTasksAssigned =
+          uniqueVolunteersAssigned > 0
+            ? taskAssignments.length / uniqueVolunteersAssigned
+            : 0;
+
+        // Fetch event signups to calculate average events participated
+        const { data: eventSignups } = await supabase
+          .from('event_signup')
+          .select('volunteer_id, event_id');
+        const uniqueVolunteersRegistered = new Set(
+          eventSignups.map((signup) => signup.volunteer_id)
+        ).size;
+        const avgEventsParticipated =
+          uniqueVolunteersRegistered > 0
+            ? eventSignups.length / uniqueVolunteersRegistered
+            : 0;
+
+        // Fetch task assignments to calculate average tasks completed
+        const completedTasks = taskAssignments.filter(
+          (assignment) => assignment.status === 'completed'
+        ).length;
+        const avgTasksCompleted =
+          uniqueVolunteersAssigned > 0
+            ? completedTasks / uniqueVolunteersAssigned
+            : 0;
+
+        // Calculate average event completion rate
+        const { data: events } = await getEvents();
+        const completedEvents = events.filter(
+          (event) => event.status === 'Completed'
+        ).length;
+        const avgEventCompletionRate =
+          events.length > 0
+            ? (completedEvents / events.length) * 100
+            : 0;
+
+        setAverageTasksAssigned(avgTasksAssigned);
+        setAverageEventsParticipated(avgEventsParticipated);
+        setAverageTasksCompleted(avgTasksCompleted);
+        setAverageEventCompletionRate(avgEventCompletionRate);
+      } catch (error) {
+        console.error('Error fetching volunteer metrics:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load volunteer metrics',
+          variant: 'destructive',
+        });
+      }
+    };
+
+    fetchVolunteerMetrics();
+  }, []);
+
+  const processMonthlyEventData = (
+    events,
+    timeFrame = '12m',
+    interval = 'monthly',
+    customStart = null,
+    customEnd = null
+  ) => {
+    let startDate, endDate;
     
-    // Create array of months
-    const months = eachMonthOfInterval({ start: startDate, end: endDate });
+    // Determine date range based on time frame
+    endDate = new Date();
     
-    // Initialize data with all months
-    const monthlyData = months.map(month => {
+    switch (timeFrame) {
+      case '3m':
+        startDate = subMonths(endDate, 3);
+        break;
+      case '6m':
+        startDate = subMonths(endDate, 6);
+        break;
+      case 'custom':
+        startDate = customStart || subMonths(endDate, 12);
+        endDate = customEnd || endDate;
+        break;
+      case '12m':
+      default:
+        startDate = subMonths(endDate, 12);
+        break;
+    }
+    
+    // Create array of time periods based on interval
+    let periods = [];
+    
+    if (interval === 'monthly') {
+      periods = eachMonthOfInterval({ start: startDate, end: endDate }).map(date => ({
+        date,
+        label: format(date, 'MMM yy'),
+        start: startOfMonth(date),
+        end: endOfMonth(date),
+      }));
+    } else if (interval === 'weekly') {
+      // Create weekly periods
+      let current = startOfWeek(startDate);
+      while (current <= endDate) {
+        const weekEnd = endOfWeek(current);
+        periods.push({
+          date: current,
+          label: `${format(current, 'MMM d')} - ${format(min([weekEnd, endDate]), 'MMM d')}`,
+          start: current,
+          end: weekEnd,
+        });
+        current = addWeeks(current, 1);
+      }
+    } else if (interval === 'daily') {
+      // Create daily periods (for small date ranges)
+      let current = startDate;
+      while (current <= endDate) {
+        periods.push({
+          date: current,
+          label: format(current, 'MMM d'),
+          start: startOfDay(current),
+          end: endOfDay(current),
+        });
+        current = addDays(current, 1);
+      }
+    }
+    
+    // Initialize data with all periods
+    const processedData = periods.map(period => {
       return {
-        name: format(month, 'MMM yy'),
-        month: month,
+        name: period.label,
+        date: period.date,
+        start: period.start,
+        end: period.end,
         created: 0,
-        completed: 0
+        completed: 0,
       };
     });
     
-    // Count events per month
+    // Count events per period
     events.forEach(event => {
       const eventStartDate = new Date(event.start_date);
       const eventEndDate = new Date(event.end_date);
       const eventCreatedDate = new Date(event.created_at);
       
-      monthlyData.forEach(item => {
-        const monthStart = startOfMonth(item.month);
-        const monthEnd = endOfMonth(item.month);
-        
-        // Count events created in this month
+      processedData.forEach(item => {
+        // Count events created in this period
         if (
-          eventCreatedDate >= monthStart &&
-          eventCreatedDate <= monthEnd
+          eventCreatedDate >= item.start &&
+          eventCreatedDate <= item.end
         ) {
           item.created += 1;
         }
         
-        // Count events completed in this month
+        // Count events completed in this period
         if (
-          eventEndDate >= monthStart &&
-          eventEndDate <= monthEnd &&
+          eventEndDate >= item.start &&
+          eventEndDate <= item.end &&
           eventEndDate < new Date() // Only count past events
         ) {
           item.completed += 1;
@@ -173,67 +329,111 @@ export const WebmasterReports: React.FC = () => {
       });
     });
     
-    setMonthlyEventData(monthlyData);
+    setMonthlyEventData(processedData);
   };
   
-  const processMonthlyVolunteerData = (volunteers) => {
-    // Get last 12 months
-    const endDate = new Date();
-    const startDate = subMonths(endDate, 11);
+  const processMonthlyVolunteerData = (
+    volunteers,
+    timeFrame = '12m',
+    interval = 'monthly',
+    customStart = null,
+    customEnd = null
+  ) => {
+    let startDate, endDate;
     
-    // Create array of months
-    const months = eachMonthOfInterval({ start: startDate, end: endDate });
+    // Determine date range based on time frame
+    endDate = new Date();
     
-    // Initialize data with all months
-    const monthlyData = months.map(month => {
+    switch (timeFrame) {
+      case '3m':
+        startDate = subMonths(endDate, 3);
+        break;
+      case '6m':
+        startDate = subMonths(endDate, 6);
+        break;
+      case 'custom':
+        startDate = customStart || subMonths(endDate, 12);
+        endDate = customEnd || endDate;
+        break;
+      case '12m':
+      default:
+        startDate = subMonths(endDate, 12);
+        break;
+    }
+    
+    // Create array of time periods based on interval
+    let periods = [];
+    
+    if (interval === 'monthly') {
+      periods = eachMonthOfInterval({ start: startDate, end: endDate }).map(date => ({
+        date,
+        label: format(date, 'MMM yy'),
+        start: startOfMonth(date),
+        end: endOfMonth(date),
+      }));
+    } else if (interval === 'weekly') {
+      // Create weekly periods
+      let current = startOfWeek(startDate);
+      while (current <= endDate) {
+        const weekEnd = endOfWeek(current);
+        periods.push({
+          date: current,
+          label: `${format(current, 'MMM d')} - ${format(min([weekEnd, endDate]), 'MMM d')}`,
+          start: current,
+          end: weekEnd,
+        });
+        current = addWeeks(current, 1);
+      }
+    } else if (interval === 'daily') {
+      // Create daily periods (for small date ranges)
+      let current = startDate;
+      while (current <= endDate) {
+        periods.push({
+          date: current,
+          label: format(current, 'MMM d'),
+          start: startOfDay(current),
+          end: endOfDay(current),
+        });
+        current = addDays(current, 1);
+      }
+    }
+    
+    // Initialize data with all periods
+    const processedData = periods.map(period => {
       return {
-        name: format(month, 'MMM yy'),
-        month: month,
+        name: period.label,
+        date: period.date,
+        start: period.start,
+        end: period.end,
         newVolunteers: 0,
-        cumulativeVolunteers: 0
+        cumulativeVolunteers: 0,
       };
     });
     
-    // Count new volunteers per month
-    let runningTotal = 0;
+    // Count volunteers per period
+    let cumulativeCount = 0;
     
-    // First count volunteers registered before the start date
     volunteers.forEach(volunteer => {
-      const registeredDate = new Date(volunteer.created_at);
-      if (registeredDate < startDate) {
-        runningTotal += 1;
-      }
-    });
-    
-    // Then process monthly data
-    monthlyData.forEach((item, index) => {
-      const monthStart = startOfMonth(item.month);
-      const monthEnd = endOfMonth(item.month);
+      const volunteerCreatedDate = new Date(volunteer.created_at);
       
-      volunteers.forEach(volunteer => {
-        const registeredDate = new Date(volunteer.created_at);
-        
+      processedData.forEach(item => {
+        // Count new volunteers in this period
         if (
-          registeredDate >= monthStart &&
-          registeredDate <= monthEnd
+          volunteerCreatedDate >= item.start &&
+          volunteerCreatedDate <= item.end
         ) {
           item.newVolunteers += 1;
-          runningTotal += 1;
         }
       });
-      
-      item.cumulativeVolunteers = runningTotal;
-      
-      // If it's not the first month, ensure the cumulative count doesn't decrease
-      if (index > 0) {
-        const prevMonth = monthlyData[index - 1];
-        if (item.cumulativeVolunteers < prevMonth.cumulativeVolunteers) {
-          item.cumulativeVolunteers = prevMonth.cumulativeVolunteers;
-        }
-      }
     });
     
-    setMonthlyVolunteerData(monthlyData);
+    // Calculate cumulative volunteers
+    processedData.forEach(item => {
+      cumulativeCount += item.newVolunteers;
+      item.cumulativeVolunteers = cumulativeCount;
+    });
+    
+    setMonthlyVolunteerData(processedData);
   };
   
   const processCategoryDistribution = (events) => {
@@ -293,6 +493,33 @@ export const WebmasterReports: React.FC = () => {
     
     setLocationDistribution(locationData);
   };
+  
+  const processAgeHistogramData = (volunteers, interval = 5) => {
+    const currentYear = new Date().getFullYear();
+    const ageCounts = {};
+  
+    volunteers.forEach((volunteer) => {
+      if (volunteer.dob) {
+        const birthYear = new Date(volunteer.dob).getFullYear();
+        const age = currentYear - birthYear;
+        const rangeStart = Math.floor(age / interval) * interval;
+        const rangeLabel = `${rangeStart}-${rangeStart + interval - 1}`;
+        ageCounts[rangeLabel] = (ageCounts[rangeLabel] || 0) + 1;
+      }
+    });
+  
+    const histogramData = Object.entries(ageCounts)
+      .map(([range, count]) => ({ range, count }))
+      .sort((a, b) => parseInt(a.range.split('-')[0]) - parseInt(b.range.split('-')[0]));
+  
+    setAgeHistogramData(histogramData);
+  };
+  
+  useEffect(() => {
+    if (volunteersData.length > 0) {
+      processAgeHistogramData(volunteersData, ageInterval);
+    }
+  }, [volunteersData, ageInterval]);
   
   if (loading) {
     return (
@@ -432,12 +659,115 @@ export const WebmasterReports: React.FC = () => {
                   {/* Monthly Event Trend */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>Monthly Event Trend</CardTitle>
+                      <CardTitle>Event Trend</CardTitle>
                       <CardDescription>
-                        Events created and completed over the past 12 months
+                        Events created and completed over the past {timeFrame}onths and {interval} intervals
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-2">
+                    <div className="flex flex-wrap items-center gap-4 mb-4">
+  <div className="flex items-center space-x-2">
+    <Label htmlFor="time-frame">Time Frame:</Label>
+    <Select
+      value={timeFrame}
+      onValueChange={(value) => {
+        setTimeFrame(value as any);
+
+          processMonthlyEventData(eventsData, value as any, interval);
+      }}
+    >
+      <SelectTrigger className="w-[120px]">
+        <SelectValue placeholder="Select time frame" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="12m">Last 12 Months</SelectItem>
+        <SelectItem value="6m">Last 6 Months</SelectItem>
+        <SelectItem value="3m">Last 3 Months</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+
+  {timeFrame === 'custom' && (
+    <div className="flex items-center space-x-2">
+      <Label>Custom Range:</Label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className="w-[240px] justify-start text-left font-normal"
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {customRange.start ? (
+              customRange.end ? (
+                <>
+                  {format(customRange.start, 'MMM dd, yyyy')} -{' '}
+                  {format(customRange.end, 'MMM dd, yyyy')}
+                </>
+              ) : (
+                format(customRange.start, 'MMM dd, yyyy')
+              )
+            ) : (
+              <span>Pick a date range</span>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="range"
+            selected={{
+              from: customRange.start || undefined,
+              to: customRange.end || undefined,
+            }}
+            onSelect={(range) => {
+              if (range?.from && range?.to) {
+                setCustomRange({
+                  start: range.from,
+                  end: range.to,
+                });
+                // Trigger data refresh with custom range
+                processMonthlyEventData(
+                  eventsData,
+                  'custom',
+                  interval,
+                  range.from,
+                  range.to
+                );
+              }
+            }}
+            initialFocus
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  )}
+
+  <div className="flex items-center space-x-2">
+    <Label htmlFor="interval">Interval:</Label>
+    <Select
+      value={interval}
+      onValueChange={(value) => {
+        setInterval(value as any);
+        // Trigger data refresh with new interval
+        processMonthlyEventData(
+          eventsData,
+          timeFrame,
+          value as any,
+          timeFrame === 'custom' ? customRange.start : undefined,
+          timeFrame === 'custom' ? customRange.end : undefined
+        );
+      }}
+    >
+      <SelectTrigger className="w-[100px]">
+        <SelectValue placeholder="Select interval" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="monthly">Monthly</SelectItem>
+        <SelectItem value="weekly">Weekly</SelectItem>
+        <SelectItem value="daily">Daily</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+</div>
                       <div className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={monthlyEventData}>
@@ -458,20 +788,122 @@ export const WebmasterReports: React.FC = () => {
                     <CardHeader>
                       <CardTitle>Volunteer Growth</CardTitle>
                       <CardDescription>
-                        Cumulative and new volunteers over time
+                        Cumulative and new volunteers over the selected time frame and interval
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-2">
+                      <div className="flex flex-wrap items-center gap-4 mb-4">
+                        <div className="flex items-center space-x-2">
+                          <Label htmlFor="time-frame">Time Frame:</Label>
+                          <Select
+                            value={timeFrame}
+                            onValueChange={(value) => {
+                              setTimeFrame(value as any);
+                              processMonthlyVolunteerData(
+                                volunteersData, // Ensure this state is added and populated
+                                value as any,
+                                interval
+                              );
+                            }}
+                          >
+                            <SelectTrigger className="w-[120px]">
+                              <SelectValue placeholder="Select time frame" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="12m">Last 12 Months</SelectItem>
+                              <SelectItem value="6m">Last 6 Months</SelectItem>
+                              <SelectItem value="3m">Last 3 Months</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {timeFrame === 'custom' && (
+                          <div className="flex items-center space-x-2">
+                            <Label>Custom Range:</Label>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  className="w-[240px] justify-start text-left font-normal"
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {customRange.start ? (
+                                    customRange.end ? (
+                                      <>
+                                        {format(customRange.start, 'MMM dd, yyyy')} -{' '}
+                                        {format(customRange.end, 'MMM dd, yyyy')}
+                                      </>
+                                    ) : (
+                                      format(customRange.start, 'MMM dd, yyyy')
+                                    )
+                                  ) : (
+                                    <span>Pick a date range</span>
+                                  )}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="range"
+                                  selected={{
+                                    from: customRange.start || undefined,
+                                    to: customRange.end || undefined,
+                                  }}
+                                  onSelect={(range) => {
+                                    if (range?.from && range?.to) {
+                                      setCustomRange({
+                                        start: range.from,
+                                        end: range.to,
+                                      });
+                                      processMonthlyVolunteerData(
+                                        volunteersData,
+                                        'custom',
+                                        interval,
+                                        range.from,
+                                        range.to
+                                      );
+                                    }
+                                  }}
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        )}
+
+                        <div className="flex items-center space-x-2">
+                          <Label htmlFor="interval">Interval:</Label>
+                          <Select
+                            value={interval}
+                            onValueChange={(value) => {
+                              setInterval(value as any);
+                              processMonthlyVolunteerData(
+                                volunteersData,
+                                timeFrame,
+                                value as any,
+                                timeFrame === 'custom' ? customRange.start : undefined,
+                                timeFrame === 'custom' ? customRange.end : undefined
+                              );
+                            }}
+                          >
+                            <SelectTrigger className="w-[100px]">
+                              <SelectValue placeholder="Select interval" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="monthly">Monthly</SelectItem>
+                              <SelectItem value="weekly">Weekly</SelectItem>
+                              <SelectItem value="daily">Daily</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
                       <div className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={monthlyVolunteerData}>
                             <XAxis dataKey="name" />
-                            <YAxis yAxisId="left" />
-                            <YAxis yAxisId="right" orientation="right" />
+                            <YAxis />
                             <Tooltip />
                             <Legend />
                             <Line 
-                              yAxisId="left"
                               type="monotone" 
                               dataKey="cumulativeVolunteers" 
                               name="Total Volunteers"
@@ -479,7 +911,6 @@ export const WebmasterReports: React.FC = () => {
                               activeDot={{ r: 8 }} 
                             />
                             <Line 
-                              yAxisId="right"
                               type="monotone" 
                               dataKey="newVolunteers" 
                               name="New Volunteers"
@@ -562,6 +993,72 @@ export const WebmasterReports: React.FC = () => {
                             <Legend />
                           </PieChart>
                         </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Volunteer Age Histogram */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Volunteer Age Distribution</CardTitle>
+                      <CardDescription>
+                        Histogram of volunteer ages. Adjust the interval to change the range.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Label htmlFor="age-interval">Age Interval:</Label>
+                        <input
+                          type="number"
+                          id="age-interval"
+                          value={ageInterval}
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value, 10);
+                            if (value > 0) setAgeInterval(value); // Ensure the interval is positive
+                          }}
+                          className="w-[100px] border border-gray-300 rounded px-2 py-1"
+                          min="1"
+                        />
+                      </div>
+                      <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={ageHistogramData}>
+                            <XAxis dataKey="range" />
+                            <YAxis />
+                            <Tooltip />
+                            <Bar dataKey="count" name="Volunteers" fill="#8884d8" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Volunteer Metrics */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Volunteer Metrics</CardTitle>
+                      <CardDescription>
+                        Key averages for volunteer participation and task completion
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium">Avg. Tasks Assigned</span>
+                          <span className="text-lg font-bold">{averageTasksAssigned.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium">Avg. Events Participated</span>
+                          <span className="text-lg font-bold">{averageEventsParticipated.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium">Avg. Tasks Completed</span>
+                          <span className="text-lg font-bold">{averageTasksCompleted.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium">Avg. Event Completion Rate</span>
+                          <span className="text-lg font-bold">{(averageTasksCompleted.toFixed(2)/averageTasksAssigned.toFixed(2)*100).toFixed(2)}%</span>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
