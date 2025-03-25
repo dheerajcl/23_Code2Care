@@ -8,9 +8,11 @@ import AccessibilityMenu from '@/components/AccessibilityMenu';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import LandingHeader from '@/components/LandingHeader';
+import { useLanguage } from '../components/LanguageContext'; // Add language context import
 
 const JoinUs: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage(); // Add translation hook
   
   return (
     <div className="min-h-screen flex flex-col">
@@ -25,10 +27,9 @@ const JoinUs: React.FC = () => {
               transition={{ duration: 0.5 }}
               className="text-center mb-12"
             >
-              <h1 className="text-4xl font-bold mb-4">Join Our Volunteer Community</h1>
+              <h1 className="text-4xl font-bold mb-4">{t('joinUsTitle')}</h1>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Make a difference in the lives of visually impaired, disabled, and underprivileged individuals 
-                by becoming a part of our supportive community.
+                {t('joinUsSubtitle')}
               </p>
             </motion.div>
             
@@ -43,10 +44,10 @@ const JoinUs: React.FC = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center">
                       <LogIn className="mr-2 h-5 w-5 text-primary" />
-                      Existing Volunteer
+                      {t('existingVolunteer')}
                     </CardTitle>
                     <CardDescription>
-                      Already registered? Log in to your account to access your dashboard, view upcoming events, and manage your profile.
+                      {t('existingVolunteerDescription')}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="flex-grow flex flex-col justify-between">
@@ -54,15 +55,15 @@ const JoinUs: React.FC = () => {
                       <ul className="space-y-2">
                         <li className="flex items-start">
                           <ChevronRight className="h-5 w-5 text-primary shrink-0 mr-2" />
-                          <span>Access your personalized volunteer dashboard</span>
+                          <span>{t('existingVolunteerFeature1')}</span>
                         </li>
                         <li className="flex items-start">
                           <ChevronRight className="h-5 w-5 text-primary shrink-0 mr-2" />
-                          <span>Sign up for upcoming volunteer opportunities</span>
+                          <span>{t('existingVolunteerFeature2')}</span>
                         </li>
                         <li className="flex items-start">
                           <ChevronRight className="h-5 w-5 text-primary shrink-0 mr-2" />
-                          <span>Track your volunteer hours and contributions</span>
+                          <span>{t('existingVolunteerFeature3')}</span>
                         </li>
                       </ul>
                     </div>
@@ -72,7 +73,7 @@ const JoinUs: React.FC = () => {
                       size="lg"
                       onClick={() => navigate('/login')}
                     >
-                      Log In
+                      {t('logIn')}
                       <LogIn className="ml-2 h-4 w-4" />
                     </Button>
                   </CardContent>
@@ -89,10 +90,10 @@ const JoinUs: React.FC = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center">
                       <UserPlus className="mr-2 h-5 w-5 text-primary" />
-                      New Volunteer
+                      {t('newVolunteer')}
                     </CardTitle>
                     <CardDescription>
-                      Ready to make a difference? Register as a volunteer and start your journey with Samarthanam Trust.
+                      {t('newVolunteerDescription')}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="flex-grow flex flex-col justify-between">
@@ -100,15 +101,15 @@ const JoinUs: React.FC = () => {
                       <ul className="space-y-2">
                         <li className="flex items-start">
                           <ChevronRight className="h-5 w-5 text-primary shrink-0 mr-2" />
-                          <span>Create your volunteer profile with skills and interests</span>
+                          <span>{t('newVolunteerFeature1')}</span>
                         </li>
                         <li className="flex items-start">
                           <ChevronRight className="h-5 w-5 text-primary shrink-0 mr-2" />
-                          <span>Get matched with opportunities that suit your preferences</span>
+                          <span>{t('newVolunteerFeature2')}</span>
                         </li>
                         <li className="flex items-start">
                           <ChevronRight className="h-5 w-5 text-primary shrink-0 mr-2" />
-                          <span>Join a community of like-minded individuals making an impact</span>
+                          <span>{t('newVolunteerFeature3')}</span>
                         </li>
                       </ul>
                     </div>
@@ -119,7 +120,7 @@ const JoinUs: React.FC = () => {
                       size="lg"
                       onClick={() => navigate('/register')}
                     >
-                      Register
+                      {t('register')}
                       <UserPlus className="ml-2 h-4 w-4" />
                     </Button>
                   </CardContent>
@@ -136,4 +137,4 @@ const JoinUs: React.FC = () => {
   );
 };
 
-export default JoinUs; 
+export default JoinUs;

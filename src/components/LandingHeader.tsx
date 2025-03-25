@@ -168,13 +168,13 @@ const LandingHeader: React.FC = () => {
                 <DropdownMenuLabel>{t('language')}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => changeLanguage('en')}>
-                  {t('english')}
+                  English
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => changeLanguage('hi')}>
-                  {t('hindi')}
+                   हिन्दी
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => changeLanguage('kn')}>
-                  {t('kannada')}
+                  ಕನ್ನಡ
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
