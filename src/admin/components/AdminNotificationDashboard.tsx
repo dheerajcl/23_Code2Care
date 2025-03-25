@@ -162,11 +162,14 @@ const AdminNotificationDashboard = () => {
         <main className="flex-1 overflow-auto p-8">
           <div className="container mx-auto max-w-7xl">
             <div className="flex flex-col space-y-6">
+              <div className="flex w-full justify-between">
               <div className="flex flex-col space-y-2">
-                <h1 className="text-3xl font-bold tracking-tight">Notification Dashboard</h1>
+              <h1 className="text-3xl font-bold tracking-tight">Notification Dashboard</h1>
                 <p className="text-muted-foreground">
                   Monitor and manage volunteer task notifications
                 </p>
+              </div>
+              <Button onClick={() => navigate('/admin/notifications/history')} className='bg-purple-700 hover:bg-purple-800'>View Notifications History</Button>
               </div>
 
               {/* Statistics Cards */}
