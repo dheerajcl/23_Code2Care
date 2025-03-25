@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Search, Filter, Award, Calendar, MapPin, 
-  Code, Activity, ChevronDown, ChevronUp, User, UserCheck, Clock, X
+  Code, Activity, ChevronDown, ChevronUp, User, UserCheck, Clock, X,MessageSquare, Trash,CheckCircle 
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
@@ -19,30 +19,75 @@ import { useQuery } from '@tanstack/react-query';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 
+// Add type definitions at the top of the file
+type Volunteer = {
+  id: string;
+  firstname: string;
+  lastname: string;
+  email: string;
+  contact?: string;
+  city?: string;
+  state?: string;
+  skills: string[];
+  domain: string;
+  availability: string;
+  created: string;
+  events: number;
+  hours: number;
+  rating: number;
+  status: string;
+};
+
+type Filters = {
+  skills: string[];
+  domain: string[];
+  availability: string[];
+};
+
+type SelectedFilters = {
+  skills: string[];
+  domain: string[];
+  availability: string[];
+};
 
 const AdminVolunteers = () => {
-  // State for volunteers data
-  const [volunteers, setVolunteers] = useState([]);
-  const [filteredVolunteers, setFilteredVolunteers] = useState([]);
+  // Update state definitions with proper types
+  const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
+  const [filteredVolunteers, setFilteredVolunteers] = useState<Volunteer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
-  // State for UI controls
+  const [error, setError] = useState<string | null>(null);
+  const [selectedVolunteers, setSelectedVolunteers] = useState<Set<string>>(new Set());
+  const [selectAll, setSelectAll] = useState(false);
+  const [messageTitle, setMessageTitle] = useState('');
+  const [messageBody, setMessageBody] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [isSent, setIsSent] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState('list'); // 'list', 'leaderboard', 'analytics'
-
-  const [selectedVolunteer, setSelectedVolunteer] = useState(null);
+  const [viewMode, setViewMode] = useState<'list' | 'leaderboard' | 'analytics'>('list');
+  const [selectedVolunteer, setSelectedVolunteer] = useState<Volunteer | null>(null);
   const [showModal, setShowModal] = useState(false);
-  
-  // New state for event history modal
   const [showEventHistoryModal, setShowEventHistoryModal] = useState(false);
-  const [eventHistory, setEventHistory] = useState(null);
+  const [eventHistory, setEventHistory] = useState<any>(null);
   const [loadingEventHistory, setLoadingEventHistory] = useState(false);
   
-  const { adminUser, logout } = useAuth();
-  const auth = useAuth();
+  const [filters, setFilters] = useState<Filters>({
+    skills: [],
+    domain: [],
+    availability: []
+  });
+  
+  const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({
+    skills: [],
+    domain: [],
+    availability: []
+  });
+
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   // Leaderboard data fetch with React Query - moved to component top level
@@ -71,18 +116,6 @@ const AdminVolunteers = () => {
     setShowModal(false);
     setSelectedVolunteer(null);
   };
-
-  // Filter states
-  const [filters, setFilters] = useState({
-    skills: [],
-    domain: [],
-    availability: []
-  });
-  const [selectedFilters, setSelectedFilters] = useState({
-    skills: [],
-    domain: [],
-    availability: []
-  });
 
   // Fetch volunteers data from Supabase
   useEffect(() => {
@@ -169,9 +202,9 @@ const AdminVolunteers = () => {
           });
           
           setFilters({
-            skills: [...skillsSet],
-            domain: [...domainSet],
-            availability: [...availabilitySet]
+            skills: Array.from(skillsSet) as string[],
+            domain: Array.from(domainSet) as string[],
+            availability: Array.from(availabilitySet) as string[]
           });
           
           // Sort volunteers alphabetically by name
@@ -194,6 +227,79 @@ const AdminVolunteers = () => {
     
     fetchVolunteersData();
   }, []);
+   // Toggle individual volunteer selection
+   const toggleSelection = (id) => {
+    setSelectedVolunteers((prev) => {
+      const newSelection = new Set(prev);
+      if (newSelection.has(id)) {
+        newSelection.delete(id);
+      } else {
+        newSelection.add(id);
+      }
+      return newSelection;
+    });
+  };
+  const toggleSelectAll = () => {
+    if (selectAll) {
+      setSelectedVolunteers(new Set());
+    } else {
+      setSelectedVolunteers(new Set(volunteers.map((v) => v.id)));
+    }
+    setSelectAll(!selectAll);
+  };
+  const deleteSelected = async () => {
+    if (selectedVolunteers.size === 0) {
+      toast.error('No volunteers selected for deletion');
+      return;
+    }
+
+    const idsToDelete = Array.from(selectedVolunteers);
+    const { error } = await supabase.from('volunteer').delete().in('id', idsToDelete);
+
+    if (error) {
+      toast.error('Failed to delete volunteers');
+    } else {
+      toast.success('Selected volunteers deleted');
+      setVolunteers(volunteers.filter((v) => !selectedVolunteers.has(v.id)));
+      setSelectedVolunteers(new Set());
+      setSelectAll(false);
+    }
+  };
+  
+  const sendMessage = async () => {
+    if (selectedVolunteers.size === 0) {
+      toast.error('No volunteers selected for messaging');
+      return;
+    }
+    if (!messageTitle || !messageBody) {
+      toast.error('Title and message cannot be empty');
+      return;
+    }
+
+    const messages = Array.from(selectedVolunteers).map((volunteerId) => ({
+      volunteer_id: volunteerId,
+      title_noti: messageTitle,
+      message: messageBody,
+      sent_at: new Date().toISOString(),
+    }));
+
+    const { error } = await supabase.from('internal_noti').insert(messages);
+
+    if (error) {
+      toast.error('Failed to send message');
+      setIsSending(false);
+    } else {
+      setIsSent(true);
+      setTimeout(() => {
+        setIsSent(false);
+        setMessageTitle('');
+        setMessageBody('');
+        setSelectedVolunteers(new Set());
+        setSelectAll(false);
+      }, 2000);
+    }
+    setIsSending(false);
+  };
 
   // Filter volunteers based on search and filters
   useEffect(() => {
@@ -346,26 +452,23 @@ const AdminVolunteers = () => {
   const renderAnalytics = () => {
     // Calculate analytics
     const totalVolunteers = volunteers.length;
-    const totalHours = volunteers.reduce((sum, v) => sum + v.hours, 0);
-    const totalEvents = new Set(volunteers.flatMap(v => v.events || [])).size;
     const activeVolunteers = volunteers.filter(v => v.status === 'Active').length;
+    const totalHours = volunteers.reduce((acc, v) => acc + (v.hours || 0), 0);
+    const avgHoursPerVolunteer = totalVolunteers ? Math.round((totalHours / totalVolunteers) * 10) / 10 : 0;
     
     // Group by skills, cities, etc for charts
-    const skillsData = {};
-    volunteers.forEach(volunteer => {
-      if (volunteer.skills) {
-        volunteer.skills.forEach(skill => {
-          skillsData[skill] = (skillsData[skill] || 0) + 1;
-        });
-      }
-    });
+    const skillsData = volunteers.reduce((acc, volunteer) => {
+      volunteer.skills.forEach(skill => {
+        acc[skill] = (acc[skill] || 0) + 1;
+      });
+      return acc;
+    }, {} as Record<string, number>);
     
-    const locationData = {};
-    volunteers.forEach(volunteer => {
-      if (volunteer.city) {
-        locationData[volunteer.city] = (locationData[volunteer.city] || 0) + 1;
-      }
-    });
+    const locationData = volunteers.reduce((acc, volunteer) => {
+      const location = volunteer.city || 'Unknown';
+      acc[location] = (acc[location] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
     
     // Sort skill and location data by count
     const sortedSkills = Object.entries(skillsData)
@@ -397,7 +500,7 @@ const AdminVolunteers = () => {
             <div className="border rounded-lg p-4 text-center">
               <p className="text-sm text-gray-500">Avg Hours/Volunteer</p>
               <p className="text-3xl font-bold">
-                {totalVolunteers ? (totalHours / totalVolunteers).toFixed(1) : '0'}
+                {avgHoursPerVolunteer.toFixed(1)}
               </p>
             </div>
           </div>
@@ -454,7 +557,7 @@ const AdminVolunteers = () => {
           <h2 className="text-xl font-bold mb-4">Recent Registrations</h2>
           <div className="space-y-3">
             {volunteers
-              .sort((a, b) => new Date(b.created) - new Date(a.created))
+              .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime())
               .slice(0, 5)
               .map(volunteer => (
                 <div key={volunteer.id} className="flex items-center p-2 border-b">
@@ -474,102 +577,140 @@ const AdminVolunteers = () => {
   };
 
   // LIST VIEW COMPONENTS
-  const renderVolunteerList = () => (
-    <div className="overflow-hidden bg-white rounded-lg shadow">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Volunteer
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Location
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Skills
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Events
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Hours
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Availability
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {filteredVolunteers.map((volunteer) => (
-            <tr key={volunteer.id} className="hover:bg-gray-50 transition-colors">
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
-                    <User className="h-5 w-5 text-gray-500" />
-                  </div>
-                  <div className="ml-4">
-                    <div className="text-sm font-medium text-gray-900">
-                      {volunteer.firstname} {volunteer.lastname}
+  const renderVolunteerList = () => {
+    if (filteredVolunteers.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <User className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No volunteers found</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {volunteers.length === 0 
+              ? "No volunteers have registered yet."
+              : "No volunteers match your current filters."}
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-200">
+              <th className="px-6 py-3 text-left">
+                <Checkbox 
+                  checked={selectAll} 
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Select all volunteers"
+                />
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Volunteer
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Location
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Skills
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Events
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Availability
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Profile
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredVolunteers.map((volunteer) => (
+              <tr 
+                key={volunteer.id}
+                className="hover:bg-gray-50 transition-colors duration-150"
+              >
+                <td className="px-6 py-4">
+                  <Checkbox
+                    checked={selectedVolunteers.has(volunteer.id)}
+                    onCheckedChange={() => toggleSelection(volunteer.id)}
+                    aria-label={`Select ${volunteer.firstname} ${volunteer.lastname}`}
+                  />
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex items-center">
+                    <div className="h-10 w-10 flex-shrink-0">
+                      <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
+                        <span className="text-purple-600 font-medium">
+                          {volunteer.firstname.charAt(0)}
+                          {volunteer.lastname.charAt(0)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-500">{volunteer.email}</div>
+                    <div className="ml-4">
+                      <div className="text-sm font-medium text-gray-900">
+                        {volunteer.firstname} {volunteer.lastname}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {volunteer.email}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-gray-900">{volunteer.city || 'Not specified'}</div>
-                <div className="text-sm text-gray-500">{volunteer.state || ''}</div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex flex-wrap gap-1">
-                  {volunteer.skills && volunteer.skills.length > 0 ? (
-                    volunteer.skills.slice(0, 2).map(skill => (
-                      <Badge key={skill} variant="outline" className="text-xs">
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex items-center">
+                    <MapPin className="h-4 w-4 text-gray-400 mr-2" />
+                    <span className="text-sm text-gray-900">
+                      {volunteer.city || 'Not specified'}, {volunteer.state || ''}
+                    </span>
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex flex-wrap gap-1">
+                    {volunteer.skills.slice(0, 2).map((skill) => (
+                      <Badge key={skill} variant="secondary" className="text-xs">
                         {skill}
                       </Badge>
-                    ))
-                  ) : (
-                    <span className="text-gray-400 text-sm">No skills specified</span>
-                  )}
-                  {volunteer.skills && volunteer.skills.length > 2 && (
-                    <Badge variant="outline" className="text-xs">
-                      +{volunteer.skills.length - 2} more
-                    </Badge>
-                  )}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {volunteer.events}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {volunteer.hours}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <Badge className={`
-                  ${volunteer.availability === 'weekends' ? 'bg-green-100 text-green-800' : ''}
-                  ${volunteer.availability === 'both' ? 'bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 text-white' : ''}
-                  ${volunteer.availability === 'weekdays' ? 'bg-green-100 text-green-800' : ''}
-                `}>
-                  {volunteer.availability}
-                </Badge>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <Button 
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleViewVolunteer(volunteer)}
-                >
-                  View
-                </Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+                    ))}
+                    {volunteer.skills.length > 2 && (
+                      <Badge variant="outline" className="text-xs">
+                        +{volunteer.skills.length - 2}
+                      </Badge>
+                    )}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex items-center">
+                    <Calendar className="h-4 w-4 text-gray-400 mr-2" />
+                    <span className="text-sm text-gray-900">{volunteer.events}</span>
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <Badge className={`
+                    ${volunteer.availability === 'weekends' ? 'bg-green-100 text-green-800' : ''}
+                    ${volunteer.availability === 'both' ? 'bg-blue-100 text-blue-800' : ''}
+                    ${volunteer.availability === 'weekdays' ? 'bg-yellow-100 text-yellow-800' : ''}
+                  `}>
+                    {volunteer.availability}
+                  </Badge>
+                </td>
+                <td className="px-6 py-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleViewVolunteer(volunteer)}
+                    className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                  >
+                    View Profile
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
 
   // New function to handle viewing event history
   const handleViewEventHistory = async () => {
@@ -620,7 +761,7 @@ const AdminVolunteers = () => {
       
       // If no event data but the volunteer exists, show a message
       if (completeData.stats.signupCount === 0) {
-        toast.info(`${completeData.first_name} hasn't registered for any events yet`);
+        toast.error(`${completeData.first_name} hasn't registered for any events yet`);
       }
       
       setEventHistory(completeData);
@@ -649,7 +790,7 @@ const AdminVolunteers = () => {
         <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
           <div className="p-6">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">Volunteer Profile</h2>
+              <h2 className="text-2xl font-bold">Profile View</h2>
               <Button variant="ghost" size="sm" onClick={closeModal}>
                 <X className="h-5 w-5" />
               </Button>
@@ -950,184 +1091,212 @@ const AdminVolunteers = () => {
   };
 
   return (
-    <div className="h-screen bg-gray-100 flex flex-col">
-      <AdminHeader  user={auth.user} handleLogout={handleLogout} title="Volunteer Management" />
-
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
-
+    <div className="flex h-screen bg-gray-50">
       <AdminSidebar />
-        
-        <main className="flex-1 overflow-y-auto p-4">
-          <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Volunteers</h1>
-              <p className="text-gray-500">Manage and view all registered volunteers</p>
-            </div>
-            
-            <div className="flex gap-2">
-              <Button 
-                variant={viewMode === 'list' ? 'default' : 'outline'}
-                onClick={() => setViewMode('list')}
-                className={viewMode === 'list' ? 'bg-purple-600 hover:bg-purple-700' : ''}
-              >
-                List View
-              </Button>
-              <Button 
-                variant={viewMode === 'leaderboard' ? 'default' : 'outline'}
-                onClick={() => setViewMode('leaderboard')}
-                className={viewMode === 'leaderboard' ? 'bg-purple-600 hover:bg-purple-700' : ''}
-              >
-                Leaderboard
-              </Button>
-              <Button 
-                variant={viewMode === 'analytics' ? 'default' : 'outline'}
-                onClick={() => setViewMode('analytics')}
-                className={viewMode === 'analytics' ? 'bg-purple-600 hover:bg-purple-700' : ''}
-              >
-                Analytics
-              </Button>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <AdminHeader />
+        <main className="flex-1 overflow-y-auto bg-gray-50 px-6 py-8">
+          {/* Page Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">Volunteers</h1>
+            <p className="mt-2 text-sm text-gray-600">
+              Manage and view all registered volunteers
+            </p>
+          </div>
+
+          {/* View Mode Tabs */}
+          <div className="mb-6">
+            <div className="border-b border-gray-200">
+              <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`${
+                    viewMode === 'list'
+                      ? 'border-purple-500 text-purple-600'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  } whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium`}
+                >
+                  List View
+                </button>
+                <button
+                  onClick={() => setViewMode('leaderboard')}
+                  className={`${
+                    viewMode === 'leaderboard'
+                      ? 'border-purple-500 text-purple-600'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  } whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium`}
+                >
+                  Leaderboard
+                </button>
+                <button
+                  onClick={() => setViewMode('analytics')}
+                  className={`${
+                    viewMode === 'analytics'
+                      ? 'border-purple-500 text-purple-600'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  } whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium`}
+                >
+                  Analytics
+                </button>
+              </nav>
             </div>
           </div>
-          
+
+          {/* Search and Filters */}
           <div className="mb-6">
-            <div className="bg-white rounded-lg shadow-md p-4">
-              <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                  <Input
-                    placeholder="Search volunteers by name, email, or location..."
-                    className="pl-10"
-                    value={searchTerm}
-                    onChange={handleSearch}
-                  />
+            <div className="flex gap-4 items-center">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  type="text"
+                  placeholder="Search volunteers by name, email, or location..."
+                  value={searchTerm}
+                  onChange={handleSearch}
+                  className="pl-10 w-full"
+                />
+              </div>
+              <div className="flex gap-3 flex-shrink-0">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="flex items-center"
+                >
+                  <Filter className="mr-2 h-4 w-4" />
+                  Filters
+                  {showFilters ? 
+                    <ChevronUp className="ml-2 h-4 w-4" /> : 
+                    <ChevronDown className="ml-2 h-4 w-4" />
+                  }
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={deleteSelected}
+                  disabled={selectedVolunteers.size === 0}
+                  className="flex items-center"
+                >
+                  <Trash className="mr-2 h-4 w-4" />
+                  Delete
+                </Button>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="flex items-center">
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      Message
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-4">
+                    <h3 className="text-lg font-semibold mb-2">Send Notification</h3>
+                    <Input
+                      placeholder="Enter Title"
+                      value={messageTitle}
+                      onChange={(e) => setMessageTitle(e.target.value)}
+                      className="mb-2"
+                      disabled={isSending}
+                    />
+                    <Textarea
+                      placeholder="Enter Message"
+                      value={messageBody}
+                      onChange={(e) => setMessageBody(e.target.value)}
+                      className="mb-2 min-h-[100px]"
+                      disabled={isSending}
+                    />
+                    <Button 
+                      onClick={sendMessage} 
+                      className="w-full" 
+                      disabled={isSending || isSent || !messageTitle || !messageBody}
+                    >
+                      {isSending ? 'Sending...' : isSent ? 'Sent!' : 'Send Message'}
+                      {isSent && <CheckCircle className="ml-2 h-4 w-4" />}
+                    </Button>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            {/* Filter Panel */}
+            {showFilters && (
+              <div className="mt-4 p-4 bg-white rounded-lg shadow border">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Skills Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Skills</label>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {filters.skills.map((skill) => (
+                        <label key={skill} className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={selectedFilters.skills.includes(skill)}
+                            onCheckedChange={() => toggleFilter('skills', skill)}
+                          />
+                          <span className="text-sm">{skill}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Domain Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Domain</label>
+                    <div className="space-y-2">
+                      {filters.domain.map((domain) => (
+                        <label key={domain} className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={selectedFilters.domain.includes(domain)}
+                            onCheckedChange={() => toggleFilter('domain', domain)}
+                          />
+                          <span className="text-sm">{domain}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Availability Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Availability</label>
+                    <div className="space-y-2">
+                      {filters.availability.map((availability) => (
+                        <label key={availability} className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={selectedFilters.availability.includes(availability)}
+                            onCheckedChange={() => toggleFilter('availability', availability)}
+                          />
+                          <span className="text-sm">{availability}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                
-                <div>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setShowFilters(!showFilters)}
-                    className="flex items-center"
-                  >
-                    <Filter className="mr-2 h-4 w-4" />
-                    Filters
-                    {showFilters ? 
-                      <ChevronUp className="ml-2 h-4 w-4" /> : 
-                      <ChevronDown className="ml-2 h-4 w-4" />
-                    }
+                <div className="mt-4 flex justify-end">
+                  <Button variant="outline" onClick={clearFilters} className="text-sm">
+                    Clear Filters
                   </Button>
                 </div>
               </div>
-              
-              {showFilters && (
-                <div className="mt-4 border-t pt-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Skills filter */}
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">Skills</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {filters.skills.map(skill => (
-                          <Badge 
-                            key={skill}
-                            variant={selectedFilters.skills.includes(skill) ? "default" : "outline"}
-                            className={`cursor-pointer ${
-                              selectedFilters.skills.includes(skill) ? 'bg-purple-600' : ''
-                            }`}
-                            onClick={() => toggleFilter('skills', skill)}
-                          >
-                            {skill}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {/* Domain filter */}
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">Primary Interest</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {filters.domain.map(domain => (
-                          <Badge 
-                            key={domain}
-                            variant={selectedFilters.domain.includes(domain) ? "default" : "outline"}
-                            className={`cursor-pointer ${
-                              selectedFilters.domain.includes(domain) ? 'bg-purple-600' : ''
-                            }`}
-                            onClick={() => toggleFilter('domain', domain)}
-                          >
-                            {domain}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {/* Availability filter */}
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">Availability</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {filters.availability.map(availability => (
-                          <Badge 
-                            key={availability}
-                            variant={selectedFilters.availability.includes(availability) ? "default" : "outline"}
-                            className={`cursor-pointer ${
-                              selectedFilters.availability.includes(availability) ? 'bg-purple-600' : ''
-                            }`}
-                            onClick={() => toggleFilter('availability', availability)}
-                          >
-                            {availability}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {(selectedFilters.skills.length > 0 || 
-                    selectedFilters.domain.length > 0 || 
-                    selectedFilters.availability.length > 0) && (
-                    <div className="mt-4 flex justify-end">
-                      <Button variant="outline" size="sm" onClick={clearFilters}>
-                        <X className="mr-2 h-4 w-4" />
-                        Clear All Filters
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            )}
           </div>
-          
-          {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-            </div>
-          ) : error ? (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-              <strong className="font-bold">Error!</strong>
-              <span className="block sm:inline"> {error}</span>
-            </div>
-          ) : filteredVolunteers.length === 0 ? (
-            <div className="text-center py-10">
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No volunteers found</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {volunteers.length === 0 
-                  ? "No volunteers have registered yet."
-                  : "No volunteers match your current filters."}
-              </p>
-            </div>
-          ) : (
-            <>
-              {viewMode === 'list' && renderVolunteerList()}
-              {viewMode === 'leaderboard' && renderLeaderboard()}
-              {viewMode === 'analytics' && renderAnalytics()}
-            </>
-          )}
-          
-          {/* Volunteer details modal */}
-          {showModal && renderVolunteerModal()}
-          
-          {/* Event history modal */}
-          {renderEventHistoryModal()}
+
+          {/* Content Area */}
+          <div className="bg-white rounded-lg shadow">
+            {isLoading ? (
+              <div className="flex justify-center items-center h-64">
+                <LoadingSpinner size="large" />
+              </div>
+            ) : error ? (
+              <div className="text-center py-12">
+                <p className="text-red-500">{error}</p>
+              </div>
+            ) : viewMode === 'list' ? (
+              renderVolunteerList()
+            ) : viewMode === 'leaderboard' ? (
+              renderLeaderboard()
+            ) : (
+              renderAnalytics()
+            )}
+          </div>
         </main>
       </div>
-      <AccessibilityMenu/>
+      <AccessibilityMenu />
+      {selectedVolunteer && renderVolunteerModal()}
+      {showEventHistoryModal && renderEventHistoryModal()}
     </div>
   );
 };

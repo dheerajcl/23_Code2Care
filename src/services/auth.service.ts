@@ -9,7 +9,7 @@ export type UserData = {
   email: string;
   firstName: string;
   lastName: string;
-  role: 'admin' | 'volunteer';
+  role: 'admin' | 'volunteer' | 'webmaster';
   [key: string]: unknown;
 };
 
@@ -42,6 +42,17 @@ export const volunteerRegisterSchema = z.object({
 });
 
 export const adminRegisterSchema = z.object({
+  firstName: z.string().min(2, 'First name must be at least 2 characters'),
+  lastName: z.string().min(2, 'Last name must be at least 2 characters'),
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string().min(6, 'Confirm password must be at least 6 characters'),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+export const webmasterRegisterSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
@@ -1082,6 +1093,216 @@ export const resetPassword = async (password: string): Promise<{ success: boolea
     return { 
       success: false, 
       message: err.message || 'Error resetting password. Please try again.' 
+    };
+  }
+};
+
+// Webmaster authentication
+export const registerWebmaster = async (userData: z.infer<typeof webmasterRegisterSchema>): Promise<AuthResponse> => {
+  try {
+    console.log('Starting webmaster registration...');
+    
+    // Check if email already exists in webmaster table
+    const { data: existingWebmaster, error: checkError } = await supabase
+      .from('webmaster')
+      .select('id, email')
+      .eq('email', userData.email)
+      .maybeSingle();
+    
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error('Error checking for existing webmaster:', checkError);
+      return { 
+        success: false, 
+        message: 'Error checking account. Please try again.' 
+      };
+    }
+    
+    if (existingWebmaster) {
+      console.log('Webmaster account already exists');
+      return { 
+        success: false, 
+        message: 'An account with this email already exists.' 
+      };
+    }
+    
+    // Generate a unique ID for this webmaster
+    const webmasterId = crypto.randomUUID();
+    
+    // Hash the password before storing
+    console.log('Hashing password...');
+    const hashedPassword = await hashPassword(userData.password);
+    
+    // Insert webmaster record
+    console.log('Creating webmaster record in database...');
+    const { error: insertError, data: insertData } = await supabase
+      .from('webmaster')
+      .insert({
+        id: webmasterId,
+        email: userData.email,
+        password: hashedPassword,
+        first_name: userData.firstName,
+        last_name: userData.lastName,
+      })
+      .select();
+    
+    if (insertError) {
+      console.error('Error creating webmaster record:', insertError);
+      return { 
+        success: false, 
+        message: insertError.message || 'Failed to create webmaster account.' 
+      };
+    }
+    
+    if (!insertData?.[0]) {
+      console.error('No data returned from webmaster insert');
+      return { 
+        success: false, 
+        message: 'Failed to create webmaster account.' 
+      };
+    }
+    
+    // Return success with user object
+    console.log('Webmaster registration successful');
+    return {
+      success: true,
+      message: 'Account registered successfully. You can now log in.',
+      user: {
+        id: insertData[0].id,
+        email: insertData[0].email,
+        firstName: insertData[0].first_name,
+        lastName: insertData[0].last_name,
+        role: 'webmaster' as const,
+      },
+    };
+  } catch (error: unknown) {
+    const err = error as AppError;
+    console.error('Error registering webmaster:', err);
+    return { 
+      success: false, 
+      message: err.message || 'Failed to register webmaster.' 
+    };
+  }
+};
+
+export const loginWebmaster = async (credentials: z.infer<typeof loginSchema>): Promise<AuthResponse> => {
+  try {
+    console.log('Starting webmaster login process...');
+    console.log('Login attempt for webmaster email:', credentials.email);
+    
+    // Defensive code: normalize email
+    const normalizedEmail = credentials.email.toLowerCase().trim();
+    
+    // HARDCODED CHECK FOR DEVELOPMENT: Allow specific credentials to always work
+    if (normalizedEmail === 'webmaster@example.com' && credentials.password === 'webmaster123') {
+      console.log('Using hardcoded development webmaster credentials');
+      return {
+        success: true,
+        message: 'Login successful',
+        user: {
+          id: 'webmaster-dev',
+          email: 'webmaster@example.com',
+          firstName: 'Webmaster',
+          lastName: 'Dev',
+          role: 'webmaster' as const
+        }
+      };
+    }
+    
+    // STEP 1: Check if webmaster exists in database
+    console.log('Checking if webmaster exists in database...');
+    const { data: webmasterData, error: webmasterError } = await supabase
+      .from('webmaster')
+      .select('*')
+      .eq('email', normalizedEmail)
+      .single();
+    
+    if (webmasterError && webmasterError.code !== 'PGRST116') {
+      console.error('Database error while fetching webmaster:', webmasterError);
+      return { 
+        success: false, 
+        message: 'Error verifying webmaster account. Please try again.' 
+      };
+    }
+    
+    if (!webmasterData) {
+      console.log('No webmaster found with this email in database');
+      return { 
+        success: false, 
+        message: 'No webmaster account found with this email' 
+      };
+    }
+    
+    console.log('Webmaster found in database, checking password...');
+    
+    // STEP 2: Verify password directly against database record
+    let passwordValid = false;
+    
+    // Check password format
+    const isFullyHashed = webmasterData.password && webmasterData.password.startsWith('$2a$');
+    const isPartiallyHashed = webmasterData.password && webmasterData.password.startsWith('$') && !webmasterData.password.startsWith('$2a$');
+    
+    console.log('Password format:', isFullyHashed ? 'fully hashed' : (isPartiallyHashed ? 'partially hashed' : 'plaintext'));
+    
+    // Check based on password format
+    if (isFullyHashed) {
+      try {
+        console.log('Performing bcrypt password comparison...');
+        passwordValid = await comparePassword(credentials.password, webmasterData.password);
+        console.log('Bcrypt comparison result:', passwordValid);
+      } catch (bcryptError) {
+        console.error('Error comparing passwords with bcrypt:', bcryptError);
+        return { 
+          success: false, 
+          message: 'Error verifying password. Please try again.' 
+        };
+      }
+    } else if (isPartiallyHashed || !isFullyHashed) {
+      // For plaintext or malformed passwords, try direct comparison
+      console.log('Comparing plaintext or malformed passwords...');
+      
+      // Try various comparison methods to handle edge cases
+      if (webmasterData.password === credentials.password) {
+        console.log('Direct comparison matched');
+        passwordValid = true;
+      } else if (cleanPassword(webmasterData.password || '') === cleanPassword(credentials.password)) {
+        console.log('Cleaned password comparison matched');
+        passwordValid = true;
+      } else if ((webmasterData.password || '').toLowerCase() === credentials.password.toLowerCase()) {
+        console.log('Case-insensitive comparison matched');
+        passwordValid = true;
+      }
+    }
+    
+    // STEP 3: If password is valid, construct user object for auth context
+    if (passwordValid) {
+      console.log('Password valid, creating user object');
+      const user: UserData = {
+        id: webmasterData.id,
+        email: webmasterData.email,
+        firstName: webmasterData.first_name,
+        lastName: webmasterData.last_name,
+        role: 'webmaster' as const // Explicitly type as const to satisfy UserData type
+      };
+      
+      console.log('Webmaster login successful');
+      return {
+        success: true,
+        message: 'Login successful',
+        user
+      };
+    } else {
+      console.log('Invalid password for webmaster account');
+      return {
+        success: false,
+        message: 'Invalid password'
+      };
+    }
+  
+  } catch (error) {
+    console.error('Error in loginWebmaster function:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'An unexpected error occurred'
     };
   }
 };

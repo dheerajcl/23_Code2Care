@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth, useAdminAuth, useVolunteerAuth } from '@/lib/authContext';
+import { useAuth, useAdminAuth, useVolunteerAuth, useWebmasterAuth } from '@/lib/authContext';
 import LoadingSpinner from './LoadingSpinner';
 
 type ProtectedRouteProps = {
   children: React.ReactNode;
-  roles?: ('admin' | 'volunteer')[];
+  roles?: ('admin' | 'volunteer' | 'webmaster')[];
   redirectTo?: string;
 };
 
@@ -21,14 +21,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { user: contextUser, loading: contextLoading } = useAuth();
   const { user: adminUser, loading: adminLoading } = useAdminAuth();
   const { user: volunteerUser, loading: volunteerLoading } = useVolunteerAuth();
+  const { user: webmasterUser, loading: webmasterLoading } = useWebmasterAuth();
   
-  // Determine if this is an admin or volunteer route
-  const isAdminRoute = roles.includes('admin') && !roles.includes('volunteer');
-  const isVolunteerRoute = roles.includes('volunteer') && !roles.includes('admin');
+  // Determine route type
+  const isAdminRoute = roles.includes('admin') && !roles.includes('volunteer') && !roles.includes('webmaster');
+  const isVolunteerRoute = roles.includes('volunteer') && !roles.includes('admin') && !roles.includes('webmaster');
+  const isWebmasterRoute = roles.includes('webmaster') && !roles.includes('admin') && !roles.includes('volunteer');
   
   // Select the appropriate user and loading state based on route type
-  const user = isAdminRoute ? adminUser : (isVolunteerRoute ? volunteerUser : contextUser);
-  const isLoading = isAdminRoute ? adminLoading : (isVolunteerRoute ? volunteerLoading : contextLoading);
+  const user = isAdminRoute ? adminUser : (isVolunteerRoute ? volunteerUser : (isWebmasterRoute ? webmasterUser : contextUser));
+  const isLoading = isAdminRoute ? adminLoading : (isVolunteerRoute ? volunteerLoading : (isWebmasterRoute ? webmasterLoading : contextLoading));
   
   // Update loading state once contexts have finished loading
   useEffect(() => {
@@ -58,6 +60,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       return <Navigate to="/admin/dashboard" replace />;
     } else if (user.role === 'volunteer') {
       return <Navigate to="/volunteer/dashboard" replace />;
+    } else if (user.role === 'webmaster') {
+      return <Navigate to="/webmaster/dashboard" replace />;
     }
     
     // Default fallback
