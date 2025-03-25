@@ -13,18 +13,18 @@ export interface TaskBrailleData {
 
 export function convertTaskToBraille(task: TaskBrailleData): string {
   try {
-    // Format each line with proper spacing and structure
+    // First create the content in English
     const taskDetails = [
-      `⠞⠁⠎⠅⠒ ${task.title}`,
-      `⠙⠑⠎⠉⠗⠊⠏⠞⠊⠕⠝⠒ ${task.description || 'No description'}`,
-      `⠎⠞⠁⠞⠥⠎⠒ ${task.status}`,
-      `⠏⠗⠊⠕⠗⠊⠞⠽⠒ ${task.priority}`,
-      `⠙⠥⠑ ⠙⠁⠞⠑⠒ ${task.due_date || 'No due date'}`,
-      task.assignee ? `⠁⠎⠎⠊⠛⠝⠑⠙ ⠞⠕⠒ ${task.assignee.name}` : `⠁⠎⠎⠊⠛⠝⠑⠙ ⠞⠕⠒ Unassigned`
+      `Task: ${task.title}`,
+      `Description: ${task.description || 'No description'}`,
+      `Status: ${task.status}`,
+      `Priority: ${task.priority}`,
+      `Due Date: ${task.due_date || 'No due date'}`,
+      `Assigned to: ${task.assignee ? task.assignee.name : 'Unassigned'}`
     ].join('\n\n');
 
-    // Convert to braille with proper formatting
-    return taskDetails;
+    // Convert the entire content to braille
+    return braille.toBraille(taskDetails);
   } catch (error) {
     console.error('Error converting task to braille:', error);
     return 'Error converting to braille. Please try again.';
