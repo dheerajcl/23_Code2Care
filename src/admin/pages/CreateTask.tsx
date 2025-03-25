@@ -44,6 +44,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { createTaskAssignment, Task } from '@/services/database.service';
 import { emailService } from '@/services/email.service';
 import { notificationService } from '@/services/notification.service';
+import AccessibilityMenu from '@/components/AccessibilityMenu';
+
 
 const CreateTask = () => {
   const navigate = useNavigate();
@@ -1083,6 +1085,7 @@ const formatDate = (dateString) => {
             )}
           </div>
         </main>
+        <AccessibilityMenu/>
       </AdminLayout>
   );
 };

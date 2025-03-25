@@ -27,6 +27,8 @@ import { getEvents, deleteEvent } from '@/services/database.service';
 import { format } from 'date-fns';
 import { supabase } from '@/lib/supabase';
 import { toast } from '../../components/ui/use-toast';
+import AccessibilityMenu from '@/components/AccessibilityMenu';
+
 
 const AdminEventsPage = () => {
   const navigate = useNavigate();
@@ -490,6 +492,7 @@ const AdminEventsPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AccessibilityMenu/>
     </div>
   );
 };

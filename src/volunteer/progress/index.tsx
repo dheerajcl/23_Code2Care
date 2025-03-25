@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { Bar, BarChart, ResponsiveContainer } from 'recharts';
 import { VolunteerLayout } from '@/components/layouts/VolunteerLayout';
+import AccessibilityMenu from '@/components/AccessibilityMenu';
+
 
 // Mock data (you can replace this with real data from your API)
 const activityData = [
@@ -143,6 +145,7 @@ export const VolunteerProgress = () => {
             </CardContent>
           </Card>
         </div>
+        <AccessibilityMenu/>
       </div>
     </VolunteerLayout>
   );

@@ -3,6 +3,8 @@ import { useAuth } from '@/lib/authContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Award } from 'lucide-react';
 import { VolunteerLayout } from '@/components/layouts/VolunteerLayout';
+import AccessibilityMenu from '@/components/AccessibilityMenu';
+
 
 // Mock data (you can replace this with real data from your API)
 const badges = [
@@ -76,6 +78,7 @@ export const VolunteerBadges = () => {
             </p>
           </Card>
         </div>
+        <AccessibilityMenu/>
       </div>
     </VolunteerLayout>
   );

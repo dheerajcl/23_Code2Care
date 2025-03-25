@@ -569,6 +569,7 @@ const AdminDashboard: React.FC = () => {
           </div>
         </main>
       </div>
+      <AccessibilityMenu/>
     </div>
   );
 };
