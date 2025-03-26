@@ -9,18 +9,80 @@ import { getVolunteerHours, getVolunteerSkills, getVolunteerFeedback } from '@/s
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+
+const getVolunteerPointsHistogram = async (volunteerId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('points')
+      .select('points, created_at')
+      .eq('volunteer_id', volunteerId);
+
+    if (error) {
+      console.error('Error fetching volunteer points:', error);
+      throw error;
+    }
+
+    const pointsData = data?.map((record) => ({
+      date: new Date(record.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      points: record.points || 0,
+    })) || [];
+
+    const aggregatedData = pointsData.reduce((acc, curr) => {
+      const existing = acc.find((item) => item.date === curr.date);
+      if (existing) {
+        existing.points += curr.points;
+      } else {
+        acc.push({ date: curr.date, points: curr.points });
+      }
+      return acc;
+    }, []);
+
+    return { success: true, data: aggregatedData };
+  } catch (error) {
+    console.error('Error in getVolunteerPointsHistogram:', error);
+    return { success: false, error: 'Failed to fetch points data' };
+  }
+};
+
+const getTaskHistory = async (volunteerId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('task_assignment')
+      .select(`
+        task_id,
+        status,
+        created_at,
+        task (
+          title,
+          description
+        )
+      `)
+      .eq('volunteer_id', volunteerId).order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching task history:', error);
+      throw error;
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error in getTaskHistory:', error);
+    return { success: false, error: 'Failed to fetch task history' };
+  }
+};
 
 export const VolunteerProgress = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState({
-    hours: true,
-    skills: true,
-    feedback: true
+    points: true,
+    tasks: true,
+    feedback: true,
   });
   const [error, setError] = useState({
-    hours: '',
-    skills: '',
-    feedback: ''
+    points: '',
+    tasks: '',
+    feedback: '',
   });
   
   // State for data
@@ -33,46 +95,49 @@ export const VolunteerProgress = () => {
     suggestedSkills: []
   });
   const [feedbackData, setFeedbackData] = useState([]);
+  const [pointsData, setPointsData] = useState({
+    chartData: [],
+    totalPoints: 0,
+  });
+  const [taskHistory, setTaskHistory] = useState([]);
 
   // Fetch data when component mounts
   useEffect(() => {
     const fetchData = async () => {
       if (!user?.id) return;
       
-      // Fetch hours data
+      // Fetch points data
       try {
-        setLoading(prev => ({ ...prev, hours: true }));
-        const { success, data, error } = await getVolunteerHours(user.id);
+        setLoading((prev) => ({ ...prev, points: true })); // Reuse hours loading state for points
+        const { success, data, error } = await getVolunteerPointsHistogram(user.id);
         if (success && data) {
-          setHoursData({
-            chartData: data.chartData,
-            totalHours: data.totalHours
+          const totalPoints = data.reduce((sum, record) => sum + record.points, 0);
+          setPointsData({
+            chartData: data,
+            totalPoints,
           });
         } else {
-          setError(prev => ({ ...prev, hours: error || 'Failed to fetch hours data' }));
+          setError((prev) => ({ ...prev, points: error || 'Failed to fetch points data' }));
         }
       } catch (err) {
-        setError(prev => ({ ...prev, hours: 'Error loading hours data' }));
+        setError((prev) => ({ ...prev, points: 'Error loading points data' }));
       } finally {
-        setLoading(prev => ({ ...prev, hours: false }));
+        setLoading((prev) => ({ ...prev, points: false }));
       }
       
-      // Fetch skills data
+      // Fetch task history
       try {
-        setLoading(prev => ({ ...prev, skills: true }));
-        const { success, data, error } = await getVolunteerSkills(user.id);
+        setLoading((prev) => ({ ...prev, tasks: true }));
+        const { success, data, error } = await getTaskHistory(user.id);
         if (success && data) {
-          setSkillsData({
-            skills: data.skills,
-            suggestedSkills: data.suggestedSkills
-          });
+          setTaskHistory(data);
         } else {
-          setError(prev => ({ ...prev, skills: error || 'Failed to fetch skills data' }));
+          setError((prev) => ({ ...prev, tasks: error || 'Failed to fetch task history' }));
         }
       } catch (err) {
-        setError(prev => ({ ...prev, skills: 'Error loading skills data' }));
+        setError((prev) => ({ ...prev, tasks: 'Error loading task history' }));
       } finally {
-        setLoading(prev => ({ ...prev, skills: false }));
+        setLoading((prev) => ({ ...prev, tasks: false }));
       }
       
       // Fetch feedback data
@@ -100,44 +165,44 @@ export const VolunteerProgress = () => {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">My Progress</h1>
           <p className="text-muted-foreground mt-2">
-            Track your volunteer hours, skills development, and feedback from events.
+            Track your volunteer points, task history, and feedback from events.
           </p>
         </div>
         
         <div className="grid gap-6">
           <div className="grid gap-4 md:grid-cols-2">
-            {/* Volunteer Hours Card */}
+            {/* Volunteer Points Card */}
             <Card>
               <CardHeader>
-                <CardTitle>Volunteer Hours</CardTitle>
+                <CardTitle>Volunteer Points</CardTitle>
                 <CardDescription>
-                  Your volunteering hours over time
+                  Your points earned over time
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {loading.hours ? (
+                {loading.points ? (
                   <div className="h-[300px] flex items-center justify-center">
                     <Skeleton className="h-[250px] w-full" />
                   </div>
-                ) : error.hours ? (
+                ) : error.points ? (
                   <Alert variant="destructive" className="mb-4">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error.hours}</AlertDescription>
+                    <AlertDescription>{error.points}</AlertDescription>
                   </Alert>
                 ) : (
                   <div className="h-[300px]">
                     <div className="text-center mb-4">
-                      <h3 className="text-3xl font-bold">{hoursData.totalHours}</h3>
-                      <p className="text-sm text-muted-foreground">Total Hours</p>
+                      <h3 className="text-3xl font-bold">{pointsData.totalPoints}</h3>
+                      <p className="text-sm text-muted-foreground">Total Points</p>
                     </div>
                     <ResponsiveContainer width="100%" height="80%">
-                      <BarChart data={hoursData.chartData}>
-                        <XAxis dataKey="name" />
-                        <Tooltip 
-                          formatter={(value) => [`${value} hours`, 'Hours']}
-                          labelFormatter={(label) => `Month: ${label}`}
+                      <BarChart data={pointsData.chartData}>
+                        <XAxis dataKey="date" />
+                        <Tooltip
+                          formatter={(value) => [`${value} points`, 'Points']}
+                          labelFormatter={(label) => `Date: ${label}`}
                         />
-                        <Bar dataKey="hours" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="points" fill="#22c55e" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -145,64 +210,57 @@ export const VolunteerProgress = () => {
               </CardContent>
             </Card>
 
-            {/* Skills Development Card */}
+            {/* Task History Card */}
             <Card>
               <CardHeader>
-                <CardTitle>Skills Development</CardTitle>
+                <CardTitle>Task History</CardTitle>
                 <CardDescription>
-                  Track your skill progression
+                  View your assigned tasks and their statuses
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {loading.skills ? (
+                {loading.tasks ? (
                   <div className="space-y-4">
                     <Skeleton className="h-8 w-full" />
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-8 w-full" />
                     <Skeleton className="h-4 w-full" />
                   </div>
-                ) : error.skills ? (
+                ) : error.tasks ? (
                   <Alert variant="destructive" className="mb-4">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error.skills}</AlertDescription>
+                    <AlertDescription>{error.tasks}</AlertDescription>
                   </Alert>
-                ) : (
+                ) : taskHistory.length > 0 ? (
                   <div className="space-y-4">
-                    {skillsData.skills.slice(0, 3).map((skill) => (
-                      <div key={skill.name} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="text-sm font-medium">{skill.name}</div>
-                          <div className="text-sm text-muted-foreground">{skill.level}</div>
-                        </div>
-                        <Progress value={skill.progress} max={100} className="h-2" />
-                      </div>
-                    ))}
-                    
-                    {skillsData.skills.length === 0 && (
-                      <div className="text-center py-2 text-muted-foreground">
-                        No skills tracked yet. Complete tasks to develop your skills!
-                      </div>
-                    )}
-                    
-                    <div className="pt-4">
-                      <h3 className="text-sm font-medium mb-2">Suggested Skill Development</h3>
-                      <div className="space-y-2">
-                        {skillsData.suggestedSkills.slice(0, 2).map((skill) => (
-                          <div key={skill} className="p-2 border rounded-md">
-                            <div className="font-medium">{skill}</div>
-                            <div className="text-sm text-muted-foreground">
-                              Participate in related activities to develop this skill
-                            </div>
-                          </div>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-2">Task Title</th>
+                          <th className="text-left py-2">Description</th>
+                          <th className="text-left py-2">Status</th>
+                          <th className="text-left py-2">Created Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {taskHistory.map((task, index) => (
+                          <tr key={index} className="border-b">
+                            <td className="py-2">{task.task?.title || 'N/A'}</td>
+                            <td className="py-2">{task.task?.description || 'N/A'}</td>
+                            <td className="py-2">{task.status}</td>
+                            <td className="py-2">
+                              {task.created_at
+                                ? new Date(task.created_at).toLocaleDateString()
+                                : 'N/A'}
+                            </td>
+                          </tr>
                         ))}
-                        
-                        {skillsData.suggestedSkills.length === 0 && (
-                          <div className="text-center py-2 text-muted-foreground">
-                            Great job! You've already started developing all suggested skills.
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-2 text-muted-foreground">
+                    No tasks assigned yet. Tasks will appear here once assigned.
                   </div>
                 )}
               </CardContent>
@@ -212,9 +270,9 @@ export const VolunteerProgress = () => {
           {/* Feedback Card */}
           <Card>
             <CardHeader>
-              <CardTitle>Feedback & Recognition</CardTitle>
+              <CardTitle>Feedback</CardTitle>
               <CardDescription>
-                Feedback received from event organizers
+                Feedback History
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -238,7 +296,7 @@ export const VolunteerProgress = () => {
                           {[...Array(5)].map((_, i) => (
                             <svg 
                               key={i} 
-                              className={`w-4 h-4 ${i < feedback.rating ? 'text-yellow-400' : 'text-gray-300'}`} 
+                              className={`w-4 h-4 ${i < (feedback.rating/2) ? 'text-yellow-400' : 'text-gray-300'}`} 
                               fill="currentColor" 
                               viewBox="0 0 20 20"
                             >
@@ -268,4 +326,4 @@ export const VolunteerProgress = () => {
       </div>
     </VolunteerLayout>
   );
-}; 
+};
