@@ -682,6 +682,11 @@ const handleSelectAll = () => {
     ])
   ];
 
+  // Add this helper function to get the current date/time in ISO format
+  const getCurrentDateTimeISO = () => {
+    return new Date().toISOString().slice(0, 16);
+  };
+
   if (error) {
     return (
       <div className="flex h-screen bg-gray-100">
@@ -1021,6 +1026,7 @@ const handleSelectAll = () => {
                               id="task-due-date"
                               type="datetime-local"
                               value={taskForm.deadline}
+                              min={getCurrentDateTimeISO()}
                               onChange={(e) => setTaskForm({ ...taskForm, deadline: e.target.value })}
                               className="mt-1"
                             />
