@@ -40,6 +40,12 @@ const AdminEventForm = ({ initialData, isEditing = false }: EventFormProps) => {
   const [endTime, setEndTime] = useState<string>(
     initialData?.end_date ? format(new Date(initialData.end_date), 'HH:mm') : '17:00'
   );
+  const [closeDate, setCloseDate] = useState<Date | undefined>(
+    initialData?.end_date ? new Date(initialData.end_date) : undefined
+  );
+  const [closeTime, setCloseTime] = useState<string>(
+    initialData?.end_date ? format(new Date(initialData.end_date), 'HH:mm') : '17:00'
+  );
 
   const { register, handleSubmit, setValue, formState: { errors } } = useForm({
     defaultValues: {
@@ -261,18 +267,18 @@ const AdminEventForm = ({ initialData, isEditing = false }: EventFormProps) => {
                     variant="outline"
                     className={cn(
                       "justify-start text-left font-normal w-full",
-                      !endDate && "text-muted-foreground"
+                      !closeDate && "text-muted-foreground"
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {endDate ? format(endDate, "PPP") : "Select date"}
+                    {closeDate ? format(closeDate, "PPP") : "Select date"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
                   <Calendar
                     mode="single"
-                    selected={endDate}
-                    onSelect={setEndDate}
+                    selected={closeDate}
+                    onSelect={setCloseDate}
                     initialFocus
                     disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                   />
