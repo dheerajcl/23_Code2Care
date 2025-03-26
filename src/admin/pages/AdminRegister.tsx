@@ -40,11 +40,6 @@ const AdminRegister = () => {
   });
   
   // If already logged in, redirect to admin dashboard
-  useEffect(() => {
-    if (user && user.role === 'admin') {
-      navigate('/admin/dashboard');
-    }
-  }, [user, navigate]);
   
   // Animation effect
   useEffect(() => {
@@ -207,30 +202,6 @@ const AdminRegister = () => {
               ) : (
                 'Register Now'
               )}
-            </button>
-            <button 
-              type="button" 
-              className="w-full border border-gray-300 py-3 rounded-md flex items-center justify-center mb-4"
-            >
-              <svg width="20" height="20" viewBox="0 0 20 20" className="mr-2">
-                <path 
-                  d="M19.6 10.2c0-.7-.1-1.3-.2-1.9h-9.5v3.7h5.5c-.2 1.2-1 2.3-2.1 3v2.5h3.4c2-1.8 3.1-4.5 3.1-7.3z" 
-                  fill="#4285F4" 
-                />
-                <path 
-                  d="M10 20c2.8 0 5.2-1 7-2.6l-3.4-2.5c-1 .6-2.2 1-3.6 1-2.8 0-5.1-1.9-6-4.4H.5v2.6C2.2 17.8 5.8 20 10 20z" 
-                  fill="#34A853" 
-                />
-                <path 
-                  d="M4 11.5c-.2-.6-.4-1.3-.4-2s.1-1.4.4-2V4.9H.5A9.96 9.96 0 0 0 0 10c0 1.6.4 3.2 1 4.5l3-2.3z" 
-                  fill="#FBBC05" 
-                />
-                <path 
-                  d="M10 3.6c1.6 0 3 .6 4.1 1.6l3-3C15.3.8 12.9 0 10 0 5.8 0 2.2 2.2.5 5.9l3.5 2.6c.9-2.5 3.2-4.4 6-4.4z" 
-                  fill="#EA4335" 
-                />
-              </svg>
-              Register with Google
             </button>
           </form>
         </div>

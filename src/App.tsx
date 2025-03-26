@@ -18,7 +18,7 @@ import { TalkBackProvider } from './components/TalkBack';
 import { ThemeProvider } from 'next-themes';
 import LocalStorageCleaner from './components/LocalStorageCleaner';
 import AdminParticipants from "@/admin/pages/AdminParticipants";
-
+import RegisterWebmaster from './RegisterWebmaster.tsx';
 // Pages
 import Index from "./pages/Index";
 import Events from "./pages/Events";
@@ -99,7 +99,22 @@ function App() {
                           
                           {/* Admin routes */}
                           <Route path="/admin/login" element={<AdminLogin />} />
-                          <Route path="/admin/register" element={<AdminRegister />} />
+                          <Route
+                            path="/admin/registers"
+                            element={
+                              <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                                <AdminRegister />
+                              </ProtectedRoute>
+                            }
+                          />
+                          {/* <Route
+                            path="/admin/webmasterregisters"
+                            element={
+                              <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                                <RegisterWebmaster />
+                              </ProtectedRoute>
+                            }
+                          /> */}
                           <Route
                             path="/admin/dashboard"
                             element={

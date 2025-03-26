@@ -208,6 +208,24 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ user: propUser, handleLogout:
                         </div>
                       </button>
                       <button
+                        onClick={() => navigate('/admin/registers')}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <div className="flex items-center">
+                          <User className="h-4 w-4 mr-2" />
+                          Register an Admin
+                        </div>
+                      </button>
+                      {/* <button
+                        onClick={() => navigate('/admin/webmasterregisters')}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <div className="flex items-center">
+                          <User className="h-4 w-4 mr-2" />
+                          Register a Webmaster
+                        </div>
+                      </button> */}
+                      <button
                         onClick={onLogout}
                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
