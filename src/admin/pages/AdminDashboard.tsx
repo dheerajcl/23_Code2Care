@@ -28,7 +28,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
@@ -36,6 +36,11 @@ import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
 import { getDashboardStats, getEvents, getVolunteers } from '@/services/database.service';
 import { supabase } from '@/lib/supabase';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format, subMonths, eachMonthOfInterval, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addWeeks, min, startOfDay, endOfDay, addDays } from 'date-fns';
 
 const AdminDashboard: React.FC = () => {
   const { user, logout } = useAdminAuth();
@@ -58,152 +63,68 @@ const AdminDashboard: React.FC = () => {
   const [skillDistribution, setSkillDistribution] = useState<Array<any>>([]);
   const [recentVolunteers, setRecentVolunteers] = useState<Array<any>>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<Array<any>>([]);
+  const [monthlyVolunteerData, setMonthlyVolunteerData] = useState([]); // Add state for monthly volunteer data
+  const [monthlyVolunteerHoursData, setMonthlyVolunteerHoursData] = useState([]); // Add state for monthly volunteer hours data
+  const [timeFrame, setTimeFrame] = useState<'12m' | '6m' | '3m' | 'custom'>('12m');
+  const [customRange, setCustomRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
+  const [interval, setInterval] = useState<'monthly' | 'weekly' | 'daily'>('monthly');
+  const [eventsData, setEventsData] = useState([]); // Add state to store events data
+  const [volunteersData, setVolunteersData] = useState([]); // Add state to store volunteers data
+  const [eventTimeFrame, setEventTimeFrame] = useState<'12m' | '6m' | '3m' | 'custom'>('12m');
+  const [eventCustomRange, setEventCustomRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
+  const [eventInterval, setEventInterval] = useState<'monthly' | 'weekly' | 'daily'>('monthly');
 
   // Fetch dashboard data on component load
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        
+
         // Fetch dashboard stats
         const stats = await getDashboardStats();
         if (stats.error) throw stats.error;
-        
-        // Format volunteer hours (placeholder - no direct API for this yet)
-        const volunteerHours = 854; // This should be replaced with actual data when available
-        
-        setDashboardStats({ 
-          ...stats, 
-          volunteerHours 
-        });
-        
-        // Fetch events for chart data
+
+        // Fetch events
         const { data: events, error: eventsError } = await getEvents();
         if (eventsError) throw eventsError;
-        
+        setEventsData(events); // Store events data in state
+
         // Fetch volunteers
         const { data: volunteers, error: volunteersError } = await getVolunteers();
         if (volunteersError) throw volunteersError;
-        
-        // Prepare events chart data
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const eventCounts: { [key: string]: number } = {};
-        
-        // Initialize with all months
-        monthNames.forEach(month => {
-          eventCounts[month] = 0;
+        setVolunteersData(volunteers); // Store volunteers data in state
+
+        // Calculate total volunteer hours
+        const volunteerHours = volunteers.reduce((sum, vol) => sum + (vol.hours || 0), 0);
+
+        setDashboardStats({
+          ...stats,
+          volunteerHours,
         });
-        
-        // Count events by month
-        events.forEach((event: any) => {
-          const eventDate = new Date(event.start_date);
-          const month = monthNames[eventDate.getMonth()];
-          eventCounts[month] = (eventCounts[month] || 0) + 1;
-        });
-        
-        // Convert to chart format
-        const formattedEventData = Object.keys(eventCounts).map(name => ({
-          name,
-          count: eventCounts[name]
-        }));
-        
-        setEventData(formattedEventData);
-        
-        // Prepare volunteer growth data (simplified - would need more historical data for accuracy)
-        const currentMonth = new Date().getMonth();
-        const recentMonths = monthNames.slice(Math.max(0, currentMonth - 6), currentMonth + 1);
-        
-        // Simple sample data - in a real app you'd fetch historical data
-        const formattedVolunteerData = recentMonths.map((name, index) => ({
-          name,
-          active: Math.floor(volunteers.length * 0.7) + (index * 10),
-          new: Math.floor(volunteers.length * 0.1) + (index * 3)
-        }));
-        
-        setVolunteerData(formattedVolunteerData);
-        
-        // Get skill distribution
-        const skills: { [key: string]: number } = {};
-        
-        volunteers.forEach((volunteer: any) => {
-          if (volunteer.skills) {
-            const volunteerSkills = Array.isArray(volunteer.skills) 
-              ? volunteer.skills 
-              : typeof volunteer.skills === 'string' 
-                ? volunteer.skills.split(',') 
-                : [];
-                
-            volunteerSkills.forEach((skill: string) => {
-              const trimmedSkill = skill.trim();
-              skills[trimmedSkill] = (skills[trimmedSkill] || 0) + 1;
-            });
-          }
-        });
-        
-        const formattedSkills = Object.entries(skills)
-          .map(([name, value]) => ({ name, value }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 5);
-        
-        setSkillDistribution(formattedSkills);
-        
-        // Get recent volunteers
-        const sortedVolunteers = [...volunteers]
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-          .slice(0, 4)
-          .map(volunteer => {
-            // Calculate how long ago they joined
-            const joinedDate = new Date(volunteer.created_at);
-            const now = new Date();
-            const diffTime = Math.abs(now.getTime() - joinedDate.getTime());
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            let joined = diffDays === 0 
-              ? 'Today' 
-              : diffDays === 1 
-                ? '1 day ago' 
-                : diffDays < 7 
-                  ? `${diffDays} days ago` 
-                  : `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
-            
-            return {
-              id: volunteer.id,
-              name: `${volunteer.first_name || ''} ${volunteer.last_name || ''}`.trim(),
-              email: volunteer.email,
-              skills: volunteer.skills 
-                ? (Array.isArray(volunteer.skills) 
-                  ? volunteer.skills 
-                  : typeof volunteer.skills === 'string' 
-                    ? volunteer.skills.split(',').map((s: string) => s.trim()) 
-                    : [])
-                : [],
-              joined,
-              events: volunteer.event_count || 0,
-              status: volunteer.event_count ? 'active' : 'new'
-            };
-          });
-        
-        setRecentVolunteers(sortedVolunteers);
-        
-        // Get upcoming events
+
+        // Process upcoming events
         const upcomingEvts = events
-          .filter((event: any) => new Date(event.start_date) > new Date())
-          .sort((a: any, b: any) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+          .filter((event) => new Date(event.start_date) > new Date())
+          .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
           .slice(0, 3)
-          .map((event: any) => ({
+          .map((event) => ({
             id: event.id,
             title: event.title,
             date: new Date(event.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
             location: event.location || 'N/A',
             volunteers: event.registered_count || 0,
-            volunteerNeeded: event.capacity || 0,
-            status: 'Upcoming'
+            volunteerNeeded: event.max_volunteers| 0,
+            status: 'Upcoming',
           }));
-        
+
         setUpcomingEvents(upcomingEvts);
-        
+
+        // Process initial chart data
+        processMonthlyEventData(events, timeFrame, interval);
+        processMonthlyVolunteerData(volunteers, timeFrame, interval);
+        processMonthlyVolunteerHoursData(volunteers, timeFrame, interval);
       } catch (err) {
-        console.error("Error fetching dashboard data:", err);
+        console.error('Error fetching dashboard data:', err);
         setError(err instanceof Error ? err : new Error('Failed to fetch dashboard data'));
       } finally {
         setLoading(false);
@@ -211,7 +132,295 @@ const AdminDashboard: React.FC = () => {
     };
 
     fetchDashboardData();
-  }, []);
+  }, []); // Only fetch data on initial load
+
+  useEffect(() => {
+    if (eventsData.length > 0) {
+      processMonthlyEventData(eventsData, eventTimeFrame, eventInterval);
+    }
+  }, [eventsData, eventTimeFrame, eventInterval]); // Update event data when time frame or interval changes
+
+  useEffect(() => {
+    if (volunteersData.length > 0) {
+      processMonthlyVolunteerData(volunteersData, timeFrame, interval);
+      processMonthlyVolunteerHoursData(volunteersData, timeFrame, interval);
+    }
+  }, [volunteersData, timeFrame, interval]); // Update volunteer data when time frame or interval changes
+
+  const processMonthlyEventData = (
+    events,
+    timeFrame = '12m',
+    interval = 'monthly',
+    customStart = null,
+    customEnd = null
+  ) => {
+    let startDate, endDate;
+
+    // Determine date range based on time frame
+    endDate = new Date();
+
+    switch (timeFrame) {
+      case '3m':
+        startDate = subMonths(endDate, 3);
+        break;
+      case '6m':
+        startDate = subMonths(endDate, 6);
+        break;
+      case 'custom':
+        startDate = customStart || subMonths(endDate, 12);
+        endDate = customEnd || endDate;
+        break;
+      case '12m':
+      default:
+        startDate = subMonths(endDate, 12);
+        break;
+    }
+
+    // Create array of time periods based on interval
+    let periods = [];
+
+    if (interval === 'monthly') {
+      periods = eachMonthOfInterval({ start: startDate, end: endDate }).map(date => ({
+        date,
+        label: format(date, 'MMM yy'),
+        start: startOfMonth(date),
+        end: endOfMonth(date),
+      }));
+    } else if (interval === 'weekly') {
+      let current = startOfWeek(startDate);
+      while (current <= endDate) {
+        const weekEnd = endOfWeek(current);
+        periods.push({
+          date: current,
+          label: `${format(current, 'MMM d')} - ${format(min([weekEnd, endDate]), 'MMM d')}`,
+          start: current,
+          end: weekEnd,
+        });
+        current = addWeeks(current, 1);
+      }
+    } else if (interval === 'daily') {
+      let current = startDate;
+      while (current <= endDate) {
+        periods.push({
+          date: current,
+          label: format(current, 'MMM d'),
+          start: startOfDay(current),
+          end: endOfDay(current),
+        });
+        current = addDays(current, 1);
+      }
+    }
+
+    // Initialize data with all periods
+    const processedData = periods.map(period => ({
+      name: period.label,
+      date: period.date,
+      start: period.start,
+      end: period.end,
+      created: 0,
+      completed: 0,
+    }));
+
+    // Count events per period
+    events.forEach(event => {
+      const eventCreatedDate = new Date(event.created_at);
+      const eventEndDate = new Date(event.end_date);
+
+      processedData.forEach(item => {
+        if (eventCreatedDate >= item.start && eventCreatedDate <= item.end) {
+          item.created += 1;
+        }
+        if (eventEndDate >= item.start && eventEndDate <= item.end && eventEndDate < new Date()) {
+          item.completed += 1;
+        }
+      });
+    });
+
+    setEventData(processedData);
+  };
+
+  const processMonthlyVolunteerData = (
+    volunteers,
+    timeFrame = '12m',
+    interval = 'monthly',
+    customStart = null,
+    customEnd = null
+  ) => {
+    let startDate, endDate;
+
+    // Determine date range based on time frame
+    endDate = new Date();
+
+    switch (timeFrame) {
+      case '3m':
+        startDate = subMonths(endDate, 3);
+        break;
+      case '6m':
+        startDate = subMonths(endDate, 6);
+        break;
+      case 'custom':
+        startDate = customStart || subMonths(endDate, 12);
+        endDate = customEnd || endDate;
+        break;
+      case '12m':
+      default:
+        startDate = subMonths(endDate, 12);
+        break;
+    }
+
+    // Create array of time periods based on interval
+    let periods = [];
+
+    if (interval === 'monthly') {
+      periods = eachMonthOfInterval({ start: startDate, end: endDate }).map(date => ({
+        date,
+        label: format(date, 'MMM yy'),
+        start: startOfMonth(date),
+        end: endOfMonth(date),
+      }));
+    } else if (interval === 'weekly') {
+      let current = startOfWeek(startDate);
+      while (current <= endDate) {
+        const weekEnd = endOfWeek(current);
+        periods.push({
+          date: current,
+          label: `${format(current, 'MMM d')} - ${format(min([weekEnd, endDate]), 'MMM d')}`,
+          start: current,
+          end: weekEnd,
+        });
+        current = addWeeks(current, 1);
+      }
+    } else if (interval === 'daily') {
+      let current = startDate;
+      while (current <= endDate) {
+        periods.push({
+          date: current,
+          label: format(current, 'MMM d'),
+          start: startOfDay(current),
+          end: endOfDay(current),
+        });
+        current = addDays(current, 1);
+      }
+    }
+
+    // Initialize data with all periods
+    const processedData = periods.map(period => ({
+      name: period.label,
+      date: period.date,
+      start: period.start,
+      end: period.end,
+      newVolunteers: 0,
+      cumulativeVolunteers: 0,
+    }));
+
+    // Count volunteers per period
+    let cumulativeCount = 0;
+
+    volunteers.forEach(volunteer => {
+      const volunteerCreatedDate = new Date(volunteer.created_at);
+
+      processedData.forEach(item => {
+        if (volunteerCreatedDate >= item.start && volunteerCreatedDate <= item.end) {
+          item.newVolunteers += 1;
+        }
+      });
+    });
+
+    processedData.forEach(item => {
+      cumulativeCount += item.newVolunteers;
+      item.cumulativeVolunteers = cumulativeCount;
+    });
+
+    setMonthlyVolunteerData(processedData);
+  };
+
+  const processMonthlyVolunteerHoursData = (
+    volunteers,
+    timeFrame = '12m',
+    interval = 'monthly',
+    customStart = null,
+    customEnd = null
+  ) => {
+    let startDate, endDate;
+
+    // Determine date range based on time frame
+    endDate = new Date();
+
+    switch (timeFrame) {
+      case '3m':
+        startDate = subMonths(endDate, 3);
+        break;
+      case '6m':
+        startDate = subMonths(endDate, 6);
+        break;
+      case 'custom':
+        startDate = customStart || subMonths(endDate, 12);
+        endDate = customEnd || endDate;
+        break;
+      case '12m':
+      default:
+        startDate = subMonths(endDate, 12);
+        break;
+    }
+
+    // Create array of time periods based on interval
+    let periods = [];
+
+    if (interval === 'monthly') {
+      periods = eachMonthOfInterval({ start: startDate, end: endDate }).map(date => ({
+        date,
+        label: format(date, 'MMM yy'),
+        start: startOfMonth(date),
+        end: endOfMonth(date),
+      }));
+    } else if (interval === 'weekly') {
+      let current = startOfWeek(startDate);
+      while (current <= endDate) {
+        const weekEnd = endOfWeek(current);
+        periods.push({
+          date: current,
+          label: `${format(current, 'MMM d')} - ${format(min([weekEnd, endDate]), 'MMM d')}`,
+          start: current,
+          end: weekEnd,
+        });
+        current = addWeeks(current, 1);
+      }
+    } else if (interval === 'daily') {
+      let current = startDate;
+      while (current <= endDate) {
+        periods.push({
+          date: current,
+          label: format(current, 'MMM d'),
+          start: startOfDay(current),
+          end: endOfDay(current),
+        });
+        current = addDays(current, 1);
+      }
+    }
+
+    // Initialize data with all periods
+    const processedData = periods.map(period => ({
+      name: period.label,
+      date: period.date,
+      start: period.start,
+      end: period.end,
+      volunteerHours: 0,
+    }));
+
+    // Count volunteer hours per period
+    volunteers.forEach(volunteer => {
+      const volunteerCreatedDate = new Date(volunteer.created_at);
+      const hours = volunteer.hours || 0;
+
+      processedData.forEach(item => {
+        if (volunteerCreatedDate >= item.start && volunteerCreatedDate <= item.end) {
+          item.volunteerHours += hours;
+        }
+      });
+    });
+
+    setMonthlyVolunteerHoursData(processedData);
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -359,17 +568,125 @@ const AdminDashboard: React.FC = () => {
                   <CardHeader>
                     <CardTitle>Event Engagement</CardTitle>
                     <CardDescription>
-                      Number of events conducted over time
+                      Events created and completed over the selected time frame and interval
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="pt-2">
+                    <div className="flex flex-wrap items-center gap-4 mb-4">
+                      <div className="flex items-center space-x-2">
+                        <Label htmlFor="event-time-frame">Time Frame:</Label>
+                        <Select
+                          value={eventTimeFrame}
+                          onValueChange={(value) => {
+                            setEventTimeFrame(value as any);
+                            processMonthlyEventData(
+                              eventsData,
+                              value as any,
+                              eventInterval,
+                              eventCustomRange.start,
+                              eventCustomRange.end
+                            );
+                          }}
+                        >
+                          <SelectTrigger className="w-[120px]">
+                            <SelectValue placeholder="Select time frame" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="12m">Last 12 Months</SelectItem>
+                            <SelectItem value="6m">Last 6 Months</SelectItem>
+                            <SelectItem value="3m">Last 3 Months</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {eventTimeFrame === 'custom' && (
+                        <div className="flex items-center space-x-2">
+                          <Label>Custom Range:</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="w-[240px] justify-start text-left font-normal"
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {eventCustomRange.start ? (
+                                  eventCustomRange.end ? (
+                                    <>
+                                      {format(eventCustomRange.start, 'MMM dd, yyyy')} -{' '}
+                                      {format(eventCustomRange.end, 'MMM dd, yyyy')}
+                                    </>
+                                  ) : (
+                                    format(eventCustomRange.start, 'MMM dd, yyyy')
+                                  )
+                                ) : (
+                                  <span>Pick a date range</span>
+                                )}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="range"
+                                selected={{
+                                  from: eventCustomRange.start || undefined,
+                                  to: eventCustomRange.end || undefined,
+                                }}
+                                onSelect={(range) => {
+                                  if (range?.from && range?.to) {
+                                    setEventCustomRange({
+                                      start: range.from,
+                                      end: range.to,
+                                    });
+                                    processMonthlyEventData(
+                                      eventsData,
+                                      'custom',
+                                      eventInterval,
+                                      range.from,
+                                      range.to
+                                    );
+                                  }
+                                }}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      )}
+
+                      <div className="flex items-center space-x-2">
+                        <Label htmlFor="event-interval">Interval:</Label>
+                        <Select
+                          value={eventInterval}
+                          onValueChange={(value) => {
+                            setEventInterval(value as any);
+                            processMonthlyEventData(
+                              eventsData,
+                              eventTimeFrame,
+                              value as any,
+                              eventTimeFrame === 'custom' ? eventCustomRange.start : undefined,
+                              eventTimeFrame === 'custom' ? eventCustomRange.end : undefined
+                            );
+                          }}
+                        >
+                          <SelectTrigger className="w-[100px]">
+                            <SelectValue placeholder="Select interval" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="monthly">Monthly</SelectItem>
+                            <SelectItem value="weekly">Weekly</SelectItem>
+                            <SelectItem value="daily">Daily</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                     <div className="h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={eventData}>
                           <XAxis dataKey="name" />
                           <YAxis />
                           <Tooltip />
-                          <Bar dataKey="count" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                          <Legend />
+                          <Bar dataKey="created" name="Events Created" fill="#8884d8" />
+                          <Bar dataKey="completed" name="Events Completed" fill="#82ca9d" />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -379,45 +696,267 @@ const AdminDashboard: React.FC = () => {
                   <CardHeader>
                     <CardTitle>Volunteer Growth</CardTitle>
                     <CardDescription>
-                      Active and new volunteers over time
+                      Cumulative and new volunteers over the selected time frame and interval
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="pt-2">
+                    <div className="flex flex-wrap items-center gap-4 mb-4">
+                      <div className="flex items-center space-x-2">
+                        <Label htmlFor="time-frame">Time Frame:</Label>
+                        <Select
+                          value={timeFrame}
+                          onValueChange={(value) => {
+                            setTimeFrame(value as any);
+                            processMonthlyVolunteerData(
+                              monthlyVolunteerData,
+                              value as any,
+                              interval
+                            );
+                          }}
+                        >
+                          <SelectTrigger className="w-[120px]">
+                            <SelectValue placeholder="Select time frame" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="12m">Last 12 Months</SelectItem>
+                            <SelectItem value="6m">Last 6 Months</SelectItem>
+                            <SelectItem value="3m">Last 3 Months</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {timeFrame === 'custom' && (
+                        <div className="flex items-center space-x-2">
+                          <Label>Custom Range:</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="w-[240px] justify-start text-left font-normal"
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {customRange.start ? (
+                                  customRange.end ? (
+                                    <>
+                                      {format(customRange.start, 'MMM dd, yyyy')} -{' '}
+                                      {format(customRange.end, 'MMM dd, yyyy')}
+                                    </>
+                                  ) : (
+                                    format(customRange.start, 'MMM dd, yyyy')
+                                  )
+                                ) : (
+                                  <span>Pick a date range</span>
+                                )}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="range"
+                                selected={{
+                                  from: customRange.start || undefined,
+                                  to: customRange.end || undefined,
+                                }}
+                                onSelect={(range) => {
+                                  if (range?.from && range?.to) {
+                                    setCustomRange({
+                                      start: range.from,
+                                      end: range.to,
+                                    });
+                                    processMonthlyVolunteerData(
+                                      monthlyVolunteerData,
+                                      'custom',
+                                      interval,
+                                      range.from,
+                                      range.to
+                                    );
+                                  }
+                                }}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      )}
+
+                      <div className="flex items-center space-x-2">
+                        <Label htmlFor="interval">Interval:</Label>
+                        <Select
+                          value={interval}
+                          onValueChange={(value) => {
+                            setInterval(value as any);
+                            processMonthlyVolunteerData(
+                              monthlyVolunteerData,
+                              timeFrame,
+                              value as any,
+                              timeFrame === 'custom' ? customRange.start : undefined,
+                              timeFrame === 'custom' ? customRange.end : undefined
+                            );
+                          }}
+                        >
+                          <SelectTrigger className="w-[100px]">
+                            <SelectValue placeholder="Select interval" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="monthly">Monthly</SelectItem>
+                            <SelectItem value="weekly">Weekly</SelectItem>
+                            <SelectItem value="daily">Daily</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                     <div className="h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={volunteerData}>
+                        <LineChart data={monthlyVolunteerData}>
                           <XAxis dataKey="name" />
                           <YAxis />
                           <Tooltip />
-                          <Line type="monotone" dataKey="active" stroke="#0ea5e9" strokeWidth={2} />
-                          <Line type="monotone" dataKey="new" stroke="#22c55e" strokeWidth={2} />
+                          <Legend />
+                          <Line
+                            type="monotone"
+                            dataKey="cumulativeVolunteers"
+                            name="Total Volunteers"
+                            stroke="#8884d8"
+                            activeDot={{ r: 8 }}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="newVolunteers"
+                            name="New Volunteers"
+                            stroke="#82ca9d"
+                          />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
                   </CardContent>
                 </Card>
-              </div>
-
-              {/* Volunteer Skills and Upcoming Events */}
-              <div className="grid gap-4 md:grid-cols-2">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Volunteer Skills Distribution</CardTitle>
+                    <CardTitle>Volunteer Hours Growth</CardTitle>
                     <CardDescription>
-                      Overview of volunteer skill sets
+                      Total volunteer hours over the selected time frame and interval
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {skillDistribution.map((skill) => (
-                        <div key={skill.name} className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div className="text-sm font-medium">{skill.name}</div>
-                            <div className="text-sm text-muted-foreground">{skill.value}</div>
-                          </div>
-                          <Progress value={skill.value} max={Math.max(...skillDistribution.map(s => s.value))} className="h-2" />
+                  <CardContent className="pt-2">
+                    <div className="flex flex-wrap items-center gap-4 mb-4">
+                      <div className="flex items-center space-x-2">
+                        <Label htmlFor="time-frame">Time Frame:</Label>
+                        <Select
+                          value={timeFrame}
+                          onValueChange={(value) => {
+                            setTimeFrame(value as any);
+                            processMonthlyVolunteerHoursData(
+                              monthlyVolunteerHoursData,
+                              value as any,
+                              interval
+                            );
+                          }}
+                        >
+                          <SelectTrigger className="w-[120px]">
+                            <SelectValue placeholder="Select time frame" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="12m">Last 12 Months</SelectItem>
+                            <SelectItem value="6m">Last 6 Months</SelectItem>
+                            <SelectItem value="3m">Last 3 Months</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {timeFrame === 'custom' && (
+                        <div className="flex items-center space-x-2">
+                          <Label>Custom Range:</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="w-[240px] justify-start text-left font-normal"
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {customRange.start ? (
+                                  customRange.end ? (
+                                    <>
+                                      {format(customRange.start, 'MMM dd, yyyy')} -{' '}
+                                      {format(customRange.end, 'MMM dd, yyyy')}
+                                    </>
+                                  ) : (
+                                    format(customRange.start, 'MMM dd, yyyy')
+                                  )
+                                ) : (
+                                  <span>Pick a date range</span>
+                                )}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="range"
+                                selected={{
+                                  from: customRange.start || undefined,
+                                  to: customRange.end || undefined,
+                                }}
+                                onSelect={(range) => {
+                                  if (range?.from && range?.to) {
+                                    setCustomRange({
+                                      start: range.from,
+                                      end: range.to,
+                                    });
+                                    processMonthlyVolunteerHoursData(
+                                      monthlyVolunteerHoursData,
+                                      'custom',
+                                      interval,
+                                      range.from,
+                                      range.to
+                                    );
+                                  }
+                                }}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
                         </div>
-                      ))}
+                      )}
+
+                      <div className="flex items-center space-x-2">
+                        <Label htmlFor="interval">Interval:</Label>
+                        <Select
+                          value={interval}
+                          onValueChange={(value) => {
+                            setInterval(value as any);
+                            processMonthlyVolunteerHoursData(
+                              monthlyVolunteerHoursData,
+                              timeFrame,
+                              value as any,
+                              timeFrame === 'custom' ? customRange.start : undefined,
+                              timeFrame === 'custom' ? customRange.end : undefined
+                            );
+                          }}
+                        >
+                          <SelectTrigger className="w-[100px]">
+                            <SelectValue placeholder="Select interval" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="monthly">Monthly</SelectItem>
+                            <SelectItem value="weekly">Weekly</SelectItem>
+                            <SelectItem value="daily">Daily</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={monthlyVolunteerHoursData}>
+                          <XAxis dataKey="name" />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Line
+                            type="monotone"
+                            dataKey="volunteerHours"
+                            name="Volunteer Hours"
+                            stroke="#8884d8"
+                            activeDot={{ r: 8 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
                     </div>
                   </CardContent>
                 </Card>
@@ -574,4 +1113,4 @@ const AdminDashboard: React.FC = () => {
   );
 };
 
-export default AdminDashboard; 
+export default AdminDashboard;
