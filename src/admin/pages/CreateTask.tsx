@@ -751,6 +751,7 @@ const formatDate = (dateString) => {
                               selected={deadline}
                               onSelect={setDeadline}
                               initialFocus
+                              fromDate={new Date()}
                             />
                           </PopoverContent>
                         </Popover>

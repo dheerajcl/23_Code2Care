@@ -17,6 +17,7 @@ import AdminNotificationDashboard from './admin/components/AdminNotificationDash
 import { TalkBackProvider } from './components/TalkBack';
 import { ThemeProvider } from 'next-themes';
 import LocalStorageCleaner from './components/LocalStorageCleaner';
+import AdminParticipants from "@/admin/pages/AdminParticipants";
 
 // Pages
 import Index from "./pages/Index";
@@ -160,6 +161,14 @@ function App() {
                             element={
                               <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
                                 <AdminVolunteers />
+                              </ProtectedRoute>
+                            }
+                          />
+                          <Route
+                            path="/admin/participants"
+                            element={
+                              <ProtectedRoute roles={['admin']} redirectTo="/admin/login">
+                                <AdminParticipants />
                               </ProtectedRoute>
                             }
                           />
