@@ -54,12 +54,12 @@ const Hero: React.FC<HeroProps> = ({
           
           {showCta && (
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button asChild size="lg" className="w-full sm:w-auto">
+              <Button asChild size="lg" className="w-full text-xl sm:w-auto">
                 <Link to="/join-us">
                   {t('becomeVolunteer')}
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
+              <Button asChild variant="outline" size="lg" className="w-full text-xl sm:w-auto">
                 <Link to="/events">
                   {t('browseEvents')}
                 </Link>

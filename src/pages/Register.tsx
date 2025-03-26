@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CalendarIcon, Check, ChevronDownIcon, ChevronRight, HelpCircle, Loader2 } from 'lucide-react';
-import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import Hero from '@/components/Hero';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -985,13 +983,7 @@ const Register: React.FC = () => {
     <div className="min-h-screen flex flex-col">
       <LandingHeader />
       
-      <main className="flex-grow">
-        <Hero 
-          title="Volunteer Registration" 
-          subtitle="Join our volunteer community and help make a difference in the lives of visually impaired, disabled, and underprivileged individuals."
-          showCta={false}
-        />
-        
+      <main className="flex-grow mt-16">
         <section className="py-16 px-4">
           <div className="container mx-auto max-w-3xl">
             {/* Progress Steps */}
