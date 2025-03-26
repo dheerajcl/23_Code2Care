@@ -39,7 +39,6 @@ const Events = () => {
     try {
       setLoading(true);
 
-      // Fetch events
       const { data: eventData, error: eventError } = await supabase
         .from('event')
         .select('*, max_volunteers')
@@ -53,7 +52,6 @@ const Events = () => {
         return;
       }
 
-      // Fetch signup counts for all event IDs
       const eventIds = eventData.map(event => event.id);
       const { data: signupData, error: signupError } = await supabase
         .from('event_signup')
@@ -74,7 +72,6 @@ const Events = () => {
         return;
       }
 
-      // Merge events with signup counts and calculate remaining spots
       const eventsWithCounts = eventData.map(event => ({
         ...event,
         registered_count: signupData[event.id] || 0,
@@ -82,8 +79,6 @@ const Events = () => {
       }));
 
       setEvents(eventsWithCounts);
-
-      // Extract unique event types
       const types = [...new Set(eventsWithCounts.map(event => event.category))];
       setEventTypes(types);
 
@@ -105,7 +100,6 @@ const Events = () => {
     try {
       const result = await registerForEvent(eventId);
       if (result.success) {
-        // Update local state to reflect new registration
         const updatedEvents = events.map(event =>
           event.id === eventId
             ? {
@@ -125,7 +119,76 @@ const Events = () => {
     }
   };
 
-  // Filter functions (unchanged)
+  const isEventEnded = (end_date) => {
+    return new Date(end_date) < new Date();
+  };
+
+  const renderCustomButtons = (event) => {
+    const isEnded = isEventEnded(event.end_date);
+    const isRegistered = registeredEvents && registeredEvents[event.id];
+
+    if (isEnded) {
+      return (
+        <div className="flex flex-col gap-2 w-full">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled
+            className="flex items-center justify-center gap-1 text-sm text-gray-500 w-full cursor-not-allowed"
+          >
+            <CalendarCheck size={16} />
+            <span>Event Ended</span>
+          </Button>
+        </div>
+      );
+    }
+
+    if (isRegistered) {
+      return (
+        <div className="flex flex-col gap-2 w-full">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled
+            className="flex items-center justify-center gap-1 text-sm text-green-600 w-full cursor-not-allowed"
+          >
+            <CalendarCheck size={16} />
+            <span>Registered</span>
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-col gap-2 w-full">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleVolunteerSignup(event.id);
+          }}
+          className="flex items-center bg-blue-600 hover:bg-blue-700 justify-center gap-1 text-sm text-white w-full"
+        >
+          <BellRing size={16} />
+          <span>Volunteer for Event</span>
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleVolunteerSignup(event.id); // Adjust if separate participant logic exists
+          }}
+          className="flex items-center justify-center gap-1 text-sm w-full"
+        >
+          <CalendarCheck size={16} />
+          <span>Register as Participant</span>
+        </Button>
+      </div>
+    );
+  };
+
   const filterBySearch = (event) => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
@@ -144,29 +207,24 @@ const Events = () => {
 
   const filterByDate = (event) => {
     if (selectedDate === 'all') return true;
-    
     const today = new Date();
     const eventStartDate = new Date(event.start_date);
     const eventEndDate = new Date(event.end_date);
-    
-    if (selectedDate === 'upcoming') {
-      return checkIfEventIsUpcoming(event.start_date);
-    }
-    
-    if (selectedDate === 'live') {
-      return checkIfEventIsLive(event.start_date, event.end_date);
-    }
-    
-    if (selectedDate === 'past') {
-      return eventEndDate < today;
-    }
-    
+    if (selectedDate === 'upcoming') return checkIfEventIsUpcoming(event.start_date);
+    if (selectedDate === 'live') return checkIfEventIsLive(event.start_date, event.end_date);
+    if (selectedDate === 'past') return eventEndDate < today;
     return true;
   };
 
-  const filteredEvents = events.filter(
-    event => filterBySearch(event) && filterByType(event) && filterByDate(event)
-  );
+  const filteredEvents = events
+    .filter(event => filterBySearch(event) && filterByType(event) && filterByDate(event))
+    .sort((a, b) => {
+      const aEnded = isEventEnded(a.end_date);
+      const bEnded = isEventEnded(b.end_date);
+      if (aEnded && !bEnded) return 1; // Ended events go to the end
+      if (!aEnded && bEnded) return -1; // Ongoing events come first
+      return new Date(a.start_date) - new Date(b.start_date); // Within each group, sort by start date
+    });
 
   const clearFilters = () => {
     setSearchTerm('');
@@ -177,9 +235,7 @@ const Events = () => {
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
-      
       <main className="flex-1 container mx-auto p-4 md:p-6 mt-32">
-        {/* Search and Filters (unchanged) */}
         <div className="mb-6 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="relative flex-1">
@@ -192,7 +248,6 @@ const Events = () => {
                 className="pl-9"
               />
             </div>
-            
             <div className="flex gap-2">
               <Select value={selectedType} onValueChange={setSelectedType}>
                 <SelectTrigger className="w-[130px]">
@@ -205,7 +260,6 @@ const Events = () => {
                   ))}
                 </SelectContent>
               </Select>
-              
               <Select value={selectedDate} onValueChange={setSelectedDate}>
                 <SelectTrigger className="w-[130px]">
                   <SelectValue placeholder="Filter by date" />
@@ -217,7 +271,6 @@ const Events = () => {
                   <SelectItem value="past">Past Events</SelectItem>
                 </SelectContent>
               </Select>
-              
               {(searchTerm || selectedType !== 'all' || selectedDate !== 'all') && (
                 <Button variant="outline" size="icon" onClick={clearFilters}>
                   <X className="h-4 w-4" />
@@ -225,7 +278,6 @@ const Events = () => {
               )}
             </div>
           </div>
-          
           {(searchTerm || selectedType !== 'all' || selectedDate !== 'all') && (
             <div className="flex flex-wrap gap-2">
               {searchTerm && (
@@ -240,7 +292,6 @@ const Events = () => {
                   </button>
                 </Badge>
               )}
-              
               {selectedType !== 'all' && (
                 <Badge variant="secondary" className="flex items-center">
                   Type: {selectedType}
@@ -253,7 +304,6 @@ const Events = () => {
                   </button>
                 </Badge>
               )}
-              
               {selectedDate !== 'all' && (
                 <Badge variant="secondary" className="flex items-center">
                   Date: {selectedDate}
@@ -269,8 +319,7 @@ const Events = () => {
             </div>
           )}
         </div>
-        
-        {/* Events Grid */}
+
         {loading ? (
           <div className="flex justify-center items-center py-20">
             <LoadingSpinner size="large" />
@@ -287,13 +336,14 @@ const Events = () => {
                   end_date={event.end_date}
                   location={event.location}
                   category={event.category}
-                  volunteersNeeded={event.max_volunteers} // Updated prop name
-                  remainingSpots={event.remaining_spots} // New prop
+                  volunteersNeeded={event.max_volunteers}
+                  remainingSpots={isEventEnded(event.end_date) ? null : event.remaining_spots} // Hide for ended events
                   image_url={event.image_url}
-                  isRegistered={registeredEvents && registeredEvents[event.id]} 
+                  isRegistered={registeredEvents && registeredEvents[event.id]}
                   isRecommended={false}
                   loading={false}
                   handleVolunteerSignup={() => handleVolunteerSignup(event.id)}
+                  customButtons={renderCustomButtons(event)}
                 />
               </div>
             ))}
@@ -323,7 +373,7 @@ const Events = () => {
         )}
       </main>
 
-      <AccessibilityMenu/>
+      <AccessibilityMenu />
     </div>
   );
 };

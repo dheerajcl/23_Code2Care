@@ -229,7 +229,7 @@ const EventCard: React.FC<EventCardProps> = ({
               <span>
                 {remainingSpots !== null 
                   ? `${remainingSpots} spot${remainingSpots === 1 ? '' : 's'} remaining to volunteer` 
-                  : 'Unlimited volunteers'}
+                  : 'No longer accepting volunteers'}
               </span>
             </div>
           </CardContent>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronRight, Heart, Users, Calendar, BookOpen } from 'lucide-react';
+import { ChevronRight, Heart, Users, Calendar, BookOpen, BellRing, CalendarCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import Footer from '@/components/Footer';
@@ -18,6 +18,7 @@ const Events: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { t } = useLanguage();
+  const { user, registeredEvents, registerForEvent } = useAuth();
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -67,12 +68,120 @@ const Events: React.FC = () => {
         remainingSpots: event.max_volunteers ? event.max_volunteers - (signupData[event.id] || 0) : null
       }));
 
-      setEvents(eventsWithCounts);
+      // Sort events to push ended ones to the end
+      const sortedEvents = eventsWithCounts.sort((a, b) => {
+        const aEnded = new Date(a.end_date) < new Date();
+        const bEnded = new Date(b.end_date) < new Date();
+        if (aEnded && !bEnded) return 1; // Ended events go to the end
+        if (!aEnded && bEnded) return -1; // Ongoing events come first
+        return new Date(a.start_date) - new Date(b.start_date); // Sort by start date within groups
+      });
+
+      setEvents(sortedEvents);
       setLoading(false);
     };
 
     fetchEvents();
   }, [t]);
+
+  const isEventEnded = (end_date: string) => {
+    return new Date(end_date) < new Date();
+  };
+
+  const handleVolunteerSignup = async (eventId: string) => {
+    if (!user) {
+      toast.error(t('pleaseLoginToRegister'));
+      navigate('/login');
+      return false;
+    }
+
+    try {
+      const result = await registerForEvent(eventId);
+      if (result.success) {
+        const updatedEvents = events.map(event =>
+          event.id === eventId
+            ? {
+                ...event,
+                registered_count: event.registered_count + 1,
+                remainingSpots: event.max_volunteers ? event.max_volunteers - (event.registered_count + 1) : null
+              }
+            : event
+        );
+        setEvents(updatedEvents);
+      }
+      return result.success;
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error(t('unexpectedError'));
+      return false;
+    }
+  };
+
+  const renderCustomButtons = (event: any) => {
+    const isEnded = isEventEnded(event.end_date);
+    const isRegistered = registeredEvents && registeredEvents[event.id];
+
+    if (isEnded) {
+      return (
+        <div className="flex flex-col gap-2 w-full">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled
+            className="flex items-center justify-center gap-1 text-sm text-gray-500 w-full cursor-not-allowed"
+          >
+            <CalendarCheck size={16} />
+            <span>{t('eventEnded')}</span>
+          </Button>
+        </div>
+      );
+    }
+
+    if (isRegistered) {
+      return (
+        <div className="flex flex-col gap-2 w-full">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled
+            className="flex items-center justify-center gap-1 text-sm text-green-600 w-full cursor-not-allowed"
+          >
+            <CalendarCheck size={16} />
+            <span>{t('registered')}</span>
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-col gap-2 w-full">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleVolunteerSignup(event.id);
+          }}
+          className="flex items-center bg-blue-600 hover:bg-blue-700 justify-center gap-1 text-sm text-white w-full"
+        >
+          <BellRing size={16} />
+          <span>{t('volunteerForEvent')}</span>
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleVolunteerSignup(event.id); // Adjust if separate participant logic exists
+          }}
+          className="flex items-center justify-center gap-1 text-sm w-full"
+        >
+          <CalendarCheck size={16} />
+          <span>{t('registerAsParticipant')}</span>
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -97,8 +206,12 @@ const Events: React.FC = () => {
                 location={event.location}
                 category={event.category}
                 volunteersNeeded={event.max_volunteers}
-                remainingSpots={event.remainingSpots}
+                remainingSpots={isEventEnded(event.end_date) ? null : event.remainingSpots} // Hide for ended events
                 image_url={event.image_url}
+                isRegistered={registeredEvents && registeredEvents[event.id]}
+                isRecommended={false}
+                loading={false}
+                customButtons={renderCustomButtons(event)}
               />
             ))}
           </div>
