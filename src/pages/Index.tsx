@@ -7,18 +7,20 @@ import Footer from '@/components/Footer';
 import Hero from '@/components/Hero';
 import EventCard from '@/components/EventCard';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
-import { useAuth } from '@/lib/authContext';
+import { useVolunteerAuth } from '@/lib/authContext';
 import { supabase } from '@/lib/supabase';
 import LandingHeader from '@/components/LandingHeader';
 import { useLanguage } from '../components/LanguageContext'; // Add language context import
-
+import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 // Events component to show upcoming events
 const Events: React.FC = () => {
+  const navigate = useNavigate();
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { t } = useLanguage(); // Add translation function
-
+const { user, registeredEvents, registerForEvent } = useVolunteerAuth();
   useEffect(() => {
     const fetchEvents = async () => {
       setLoading(true);
@@ -41,7 +43,22 @@ const Events: React.FC = () => {
 
     fetchEvents();
   }, [t]); // Add t to dependencies
+  const handleVolunteerSignup = async (eventId) => {
+    if (!user) {
+      toast.error('Please log in to register for events');
+      navigate('/login');
+      return false;
+    }
 
+    try {
+      // Use registerForEvent from context
+      return await registerForEvent(eventId);
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('An unexpected error occurred');
+      return false;
+    }
+  };
   return (
     <div>
       <LandingHeader />
@@ -55,7 +72,23 @@ const Events: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {events.map(event => (
-              <EventCard key={event.id} {...event} />
+             <div key={event.id}>
+             <EventCard
+               id={event.id.toString()}
+               title={event.title}
+               description={event.description}
+               start_date={event.start_date}
+               end_date={event.end_date}
+               location={event.location}
+               category={event.category}
+               volunteersNeeded={event.volunteers_needed}
+               image_url={event.image_url}
+               isRegistered={registeredEvents && registeredEvents[event.id]} 
+               isRecommended={false}
+               loading={false}
+               handleVolunteerSignup={() => handleVolunteerSignup(event.id)}
+             />
+           </div>
             ))}
           </div>
         )}
