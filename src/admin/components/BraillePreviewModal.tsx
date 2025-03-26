@@ -35,7 +35,7 @@ export const BraillePreviewModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileType className="h-5 w-5 text-primary" />
@@ -65,11 +65,11 @@ export const BraillePreviewModal = ({
           </Label>
         </div>
 
-        <ScrollArea className="h-[400px] w-full rounded-md border p-4">
-          <pre className="whitespace-pre-wrap font-mono">
+        <div className="h-[400px] w-full rounded-md border p-4 overflow-auto">
+          <pre className="whitespace-pre-wrap font-mono min-w-full">
             {showOriginal ? originalText : brailleText}
           </pre>
-        </ScrollArea>
+        </div>
 
         <DialogFooter className="flex justify-between items-center">
           <div className="flex gap-2">
