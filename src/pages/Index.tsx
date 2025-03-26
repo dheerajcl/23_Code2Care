@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronRight, Heart, Users, Calendar, BookOpen, BellRing, CalendarCheck } from 'lucide-react';
+import { ChevronRight, Heart, Users, Calendar, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import Footer from '@/components/Footer';
@@ -10,178 +10,37 @@ import AccessibilityMenu from '@/components/AccessibilityMenu';
 import { useAuth } from '@/lib/authContext';
 import { supabase } from '@/lib/supabase';
 import LandingHeader from '@/components/LandingHeader';
-import { useLanguage } from '../components/LanguageContext';
+import { useLanguage } from '../components/LanguageContext'; // Add language context import
 
 // Events component to show upcoming events
 const Events: React.FC = () => {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { t } = useLanguage();
-  const { user, registeredEvents, registerForEvent } = useAuth();
+  const { t } = useLanguage(); // Add translation function
 
   useEffect(() => {
     const fetchEvents = async () => {
       setLoading(true);
       setError(null);
 
-      // Fetch events with max_volunteers
-      const { data: eventData, error: eventError } = await supabase
+      const { data, error } = await supabase
         .from('event')
-        .select('*, max_volunteers')
+        .select('*')
         .gt('close_date', new Date().toISOString())
-        .order('start_date', { ascending: true })
         .limit(3);
 
-      if (eventError) {
-        console.error('Error fetching events:', eventError.message);
-        setError(t('failedToLoadEvents'));
-        setLoading(false);
-        return;
+      if (error) {
+        console.error('Error fetching events:', error.message);
+        setError(t('failedToLoadEvents')); // Use translated error message
+      } else {
+        setEvents(data);
       }
-
-      // Fetch signup counts for these events
-      const eventIds = eventData.map(event => event.id);
-      const { data: signupData, error: signupError } = await supabase
-        .from('event_signup')
-        .select('event_id')
-        .in('event_id', eventIds)
-        .then(res => {
-          const counts = res.data.reduce((acc, signup) => {
-            acc[signup.event_id] = (acc[signup.event_id] || 0) + 1;
-            return acc;
-          }, {});
-          return { data: counts, error: res.error };
-        });
-
-      if (signupError) {
-        console.error('Error fetching signup counts:', signupError);
-        setError(t('failedToLoadEvents'));
-        setLoading(false);
-        return;
-      }
-
-      // Merge events with signup counts and calculate remaining spots
-      const eventsWithCounts = eventData.map(event => ({
-        ...event,
-        registered_count: signupData[event.id] || 0,
-        remainingSpots: event.max_volunteers ? event.max_volunteers - (signupData[event.id] || 0) : null
-      }));
-
-      // Sort events to push ended ones to the end
-      const sortedEvents = eventsWithCounts.sort((a, b) => {
-        const aEnded = new Date(a.end_date) < new Date();
-        const bEnded = new Date(b.end_date) < new Date();
-        if (aEnded && !bEnded) return 1; // Ended events go to the end
-        if (!aEnded && bEnded) return -1; // Ongoing events come first
-        return new Date(a.start_date) - new Date(b.start_date); // Sort by start date within groups
-      });
-
-      setEvents(sortedEvents);
       setLoading(false);
     };
 
     fetchEvents();
-  }, [t]);
-
-  const isEventEnded = (end_date: string) => {
-    return new Date(end_date) < new Date();
-  };
-
-  const handleVolunteerSignup = async (eventId: string) => {
-    if (!user) {
-      toast.error(t('pleaseLoginToRegister'));
-      navigate('/login');
-      return false;
-    }
-
-    try {
-      const result = await registerForEvent(eventId);
-      if (result.success) {
-        const updatedEvents = events.map(event =>
-          event.id === eventId
-            ? {
-                ...event,
-                registered_count: event.registered_count + 1,
-                remainingSpots: event.max_volunteers ? event.max_volunteers - (event.registered_count + 1) : null
-              }
-            : event
-        );
-        setEvents(updatedEvents);
-      }
-      return result.success;
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error(t('unexpectedError'));
-      return false;
-    }
-  };
-
-  const renderCustomButtons = (event: any) => {
-    const isEnded = isEventEnded(event.end_date);
-    const isRegistered = registeredEvents && registeredEvents[event.id];
-
-    if (isEnded) {
-      return (
-        <div className="flex flex-col gap-2 w-full">
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled
-            className="flex items-center justify-center gap-1 text-sm text-gray-500 w-full cursor-not-allowed"
-          >
-            <CalendarCheck size={16} />
-            <span>{t('eventEnded')}</span>
-          </Button>
-        </div>
-      );
-    }
-
-    if (isRegistered) {
-      return (
-        <div className="flex flex-col gap-2 w-full">
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled
-            className="flex items-center justify-center gap-1 text-sm text-green-600 w-full cursor-not-allowed"
-          >
-            <CalendarCheck size={16} />
-            <span>{t('registered')}</span>
-          </Button>
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex flex-col gap-2 w-full">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleVolunteerSignup(event.id);
-          }}
-          className="flex items-center bg-blue-600 hover:bg-blue-700 justify-center gap-1 text-sm text-white w-full"
-        >
-          <BellRing size={16} />
-          <span>{t('volunteerForEvent')}</span>
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleVolunteerSignup(event.id); // Adjust if separate participant logic exists
-          }}
-          className="flex items-center justify-center gap-1 text-sm w-full"
-        >
-          <CalendarCheck size={16} />
-          <span>{t('registerAsParticipant')}</span>
-        </Button>
-      </div>
-    );
-  };
+  }, [t]); // Add t to dependencies
 
   return (
     <div>
@@ -196,23 +55,7 @@ const Events: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {events.map(event => (
-              <EventCard
-                key={event.id}
-                id={event.id.toString()}
-                title={event.title}
-                description={event.description}
-                start_date={event.start_date}
-                end_date={event.end_date}
-                location={event.location}
-                category={event.category}
-                volunteersNeeded={event.max_volunteers}
-                remainingSpots={isEventEnded(event.end_date) ? null : event.remainingSpots} // Hide for ended events
-                image_url={event.image_url}
-                isRegistered={registeredEvents && registeredEvents[event.id]}
-                isRecommended={false}
-                loading={false}
-                customButtons={renderCustomButtons(event)}
-              />
+              <EventCard key={event.id} {...event} />
             ))}
           </div>
         )}
@@ -230,8 +73,9 @@ const Events: React.FC = () => {
 };
 
 const Index: React.FC = () => {
-  const { t } = useLanguage();
+  const { t } = useLanguage(); // Add translation function
 
+  // Update impactStats with translated labels
   const impactStats = [
     { icon: <Users className="h-12 w-12 text-primary" />, value: "20,000+", label: t('livesImpacted') },
     { icon: <Calendar className="h-12 w-12 text-primary" />, value: "500+", label: t('eventsOrganized') },
