@@ -74,6 +74,7 @@ const AdminVolunteers = () => {
   const [showEventHistoryModal, setShowEventHistoryModal] = useState(false);
   const [eventHistory, setEventHistory] = useState<any>(null);
   const [loadingEventHistory, setLoadingEventHistory] = useState(false);
+  const auth = useAuth();
   
   const [filters, setFilters] = useState<Filters>({
     skills: [],
@@ -1091,10 +1092,10 @@ const AdminVolunteers = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <AdminSidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <AdminHeader />
+    <div className="h-screen bg-gray-100 flex flex-col">
+      <AdminHeader title="Events Management" user={auth.user} onLogout={handleLogout} />
+      <div className="flex h-screen bg-gray-100 overflow-hidden">
+        <AdminSidebar />
         <main className="flex-1 overflow-y-auto bg-gray-50 px-6 py-8">
           {/* Page Header */}
           <div className="mb-8">
