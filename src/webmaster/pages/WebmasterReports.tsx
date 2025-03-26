@@ -100,6 +100,11 @@ const [averageTasksAssigned, setAverageTasksAssigned] = useState(0);
 const [averageEventsParticipated, setAverageEventsParticipated] = useState(0);
 const [averageTasksCompleted, setAverageTasksCompleted] = useState(0);
 const [averageEventCompletionRate, setAverageEventCompletionRate] = useState(0);
+const [volunteerPieData, setVolunteerPieData] = useState([]); // State for pie chart data
+const [selectedEvent, setSelectedEvent] = useState(null); // State for selected event
+const [eventPieData, setEventPieData] = useState([]); // State for pie chart data of the selected event
+const [tasksByCategoryData, setTasksByCategoryData] = useState([]); // State for tasks by category data
+const [topLocationsData, setTopLocationsData] = useState([]); // State for top 5 locations data
   // Constants for charts
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82ca9d', '#ffc658'];
   
@@ -224,6 +229,86 @@ const [averageEventCompletionRate, setAverageEventCompletionRate] = useState(0);
 
     fetchVolunteerMetrics();
   }, []);
+
+  useEffect(() => {
+    const fetchVolunteerPieData = async () => {
+      try {
+        const { data: events, error: eventsError } = await supabase
+          .from('event')
+          .select('id, title, max_volunteers');
+        if (eventsError) throw eventsError;
+  
+        const { data: signups, error: signupsError } = await supabase
+          .from('event_signup')
+          .select('event_id');
+        if (signupsError) throw signupsError;
+  
+        const signupCounts = signups.reduce((acc, signup) => {
+          acc[signup.event_id] = (acc[signup.event_id] || 0) + 1;
+          return acc;
+        }, {});
+  
+        const pieData = events.map(event => ({
+          name: event.title,
+          maxVolunteers: event.max_volunteers || 0,
+          registeredVolunteers: signupCounts[event.id] || 0,
+        }));
+  
+        setVolunteerPieData(pieData);
+      } catch (error) {
+        console.error('Error fetching volunteer pie chart data:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load volunteer pie chart data',
+          variant: 'destructive',
+        });
+      }
+    };
+  
+    fetchVolunteerPieData();
+  }, []);
+
+  useEffect(() => {
+    const fetchEventPieData = async (eventId) => {
+      try {
+        const { data: event, error: eventError } = await supabase
+          .from('event')
+          .select('id, title, max_volunteers')
+          .eq('id', eventId)
+          .single();
+        if (eventError) throw eventError;
+  
+        const { data: signups, error: signupsError } = await supabase
+          .from('event_signup')
+          .select('event_id')
+          .eq('event_id', eventId);
+        if (signupsError) throw signupsError;
+  
+        const registeredVolunteers = signups.length;
+  
+        const maxVolunteers = event.max_volunteers || 0; // Ensure max_volunteers is a number
+        const remainingSlots = Math.max(maxVolunteers - registeredVolunteers, 0); // Prevent negative values
+  
+        const pieData = [
+          { name: 'Registered Volunteers', value: registeredVolunteers },
+          { name: 'Remaining Slots', value: remainingSlots },
+        ];
+  
+        setEventPieData(pieData);
+      } catch (error) {
+        console.error('Error fetching event pie chart data:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load event pie chart data',
+          variant: 'destructive',
+        });
+      }
+    };
+  
+    if (selectedEvent) {
+      fetchEventPieData(selectedEvent);
+    }
+  }, [selectedEvent]);
 
   const processMonthlyEventData = (
     events,
@@ -520,6 +605,81 @@ const [averageEventCompletionRate, setAverageEventCompletionRate] = useState(0);
       processAgeHistogramData(volunteersData, ageInterval);
     }
   }, [volunteersData, ageInterval]);
+
+  useEffect(() => {
+    const fetchTasksByCategoryData = async () => {
+      try {
+        const { data: events, error: eventsError } = await supabase
+          .from('event')
+          .select('id, category');
+        if (eventsError) throw eventsError;
+  
+        const { data: tasks, error: tasksError } = await supabase
+          .from('task')
+          .select('event_id');
+        if (tasksError) throw tasksError;
+  
+        const tasksCountByEvent = tasks.reduce((acc, task) => {
+          acc[task.event_id] = (acc[task.event_id] || 0) + 1;
+          return acc;
+        }, {});
+  
+        const tasksByCategory = events.reduce((acc, event) => {
+          const category = event.category || 'Uncategorized';
+          acc[category] = (acc[category] || 0) + (tasksCountByEvent[event.id] || 0);
+          return acc;
+        }, {});
+  
+        const chartData = Object.entries(tasksByCategory)
+          .map(([category, count]) => ({ category, count: Number(count) })) // Ensure count is a number
+          .sort((a, b) => b.count - a.count);
+  
+        setTasksByCategoryData(chartData);
+      } catch (error) {
+        console.error('Error fetching tasks by category data:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load tasks by category data',
+          variant: 'destructive',
+        });
+      }
+    };
+  
+    fetchTasksByCategoryData();
+  }, []);
+
+  useEffect(() => {
+    const fetchTopLocationsData = async () => {
+      try {
+        const { data: volunteers, error: volunteersError } = await supabase
+          .from('volunteer')
+          .select('city');
+        if (volunteersError) throw volunteersError;
+  
+        const locationCounts = volunteers.reduce((acc, volunteer) => {
+          const city = volunteer.city || 'Unknown';
+          acc[city] = (acc[city] || 0) + 1;
+          return acc;
+        }, {});
+  
+        const sortedLocations = Object.entries(locationCounts)
+          .map(([city, count]) => ({ city, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 5); // Get top 5 locations
+  
+        setTopLocationsData(sortedLocations);
+      } catch (error) {
+        console.error('Error fetching top locations data:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load top locations data',
+          variant: 'destructive',
+        });
+      }
+    };
+  
+    fetchTopLocationsData();
+  }, []);
   
   if (loading) {
     return (
@@ -961,6 +1121,27 @@ const [averageEventCompletionRate, setAverageEventCompletionRate] = useState(0);
                       </div>
                     </CardContent>
                   </Card>
+
+                  {/* Top 5 Locations with Maximum Volunteers */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Top 5 Locations with Maximum Volunteers</CardTitle>
+                      <CardDescription>Locations with the highest number of volunteers</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={topLocationsData}>
+                            <XAxis dataKey="city" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="count" name="Volunteers" fill="#82ca9d" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
                   
                   {/* Volunteer Location Distribution */}
                   <Card>
@@ -1152,6 +1333,84 @@ const [averageEventCompletionRate, setAverageEventCompletionRate] = useState(0);
                           />
                         </div>
                       </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Tasks by Event Category */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Tasks by Event Category</CardTitle>
+                      <CardDescription>
+                        Number of tasks created for each event category
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={tasksByCategoryData}>
+                            <XAxis dataKey="category" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="count" name="Tasks Created" fill="#82ca9d" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Volunteer Registration vs Max Volunteers for Selected Event */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Volunteer Registration vs Max Volunteers</CardTitle>
+                      <CardDescription>
+                        Select an event to view the comparison of registered volunteers and maximum allowed volunteers.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="mb-4">
+                        <Label htmlFor="event-select">Select Event:</Label>
+                        <Select
+                          onValueChange={(value) => setSelectedEvent(value)}
+                          value={selectedEvent}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Choose an event" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {eventsData.map((event) => (
+                              <SelectItem key={event.id} value={event.id}>
+                                {event.title}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {eventPieData.length > 0 && (
+                        <div className="h-[300px]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={eventPieData}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={true}
+                                outerRadius={80}
+                                fill="#8884d8"
+                                dataKey="value"
+                                nameKey="name"
+                                label={({ name, value }) => `${name}: ${value}`}
+                              >
+                                {eventPieData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip />
+                              <Legend />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </div>

@@ -340,52 +340,6 @@ export const WebmasterDashboard: React.FC = () => {
                   </CardContent>
                 </Card>
               </div>
-
-              {/* Charts */}
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Event Engagement</CardTitle>
-                    <CardDescription>
-                      Number of events conducted over time
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={eventData}>
-                          <XAxis dataKey="name" />
-                          <YAxis />
-                          <Tooltip />
-                          <Bar dataKey="count" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Volunteer Growth</CardTitle>
-                    <CardDescription>
-                      Active and new volunteers over time
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={volunteerData}>
-                          <XAxis dataKey="name" />
-                          <YAxis />
-                          <Tooltip />
-                          <Line type="monotone" dataKey="active" stroke="#0ea5e9" strokeWidth={2} />
-                          <Line type="monotone" dataKey="new" stroke="#22c55e" strokeWidth={2} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
               {/* Upcoming Events */}
               
               <Card>

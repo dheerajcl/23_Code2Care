@@ -349,9 +349,9 @@ export const WebmasterEventFeedback: React.FC = () => {
                             </div>
                           </div>
                           <p className="text-sm text-gray-700">
-                            <b>'Suggest to improve: '</b>{item.improvement_suggestions}
+                            <b>Suggest to improve: </b>{item.improvement_suggestions}
                             <br></br>
-                            <b>'Impactful moment: '</b>{item.impactful_moment || 'No comments provided'}
+                            <b>Impactful moment: </b>{item.impactful_moment || 'No comments provided'}
                           </p>
                         </div>
                       ))}
