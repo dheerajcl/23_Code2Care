@@ -611,11 +611,63 @@ export const getDashboardStats = async () => {
     
     if (activeEventsError) throw activeEventsError;
     
+    // Get total volunteer hours
+    const { data: hoursData, error: hoursError } = await supabase
+      .from('event_signup')
+      .select('hours, created_at');
+    
+    if (hoursError) throw hoursError;
+    
+    // Calculate current month hours
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    
+    // Calculate previous month hours
+    const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+    
+    let currentMonthHours = 0;
+    let prevMonthHours = 0;
+    
+    // Sum up all hours and categorize by month
+    const volunteerHours = hoursData.reduce((total, record) => {
+      // Handle null/undefined values and parse to number
+      const hours = record.hours ? parseFloat(record.hours) : 0;
+      
+      // Check if record is from current or previous month
+      if (record.created_at) {
+        const recordDate = new Date(record.created_at);
+        const recordMonth = recordDate.getMonth();
+        const recordYear = recordDate.getFullYear();
+        
+        if (recordMonth === currentMonth && recordYear === currentYear) {
+          currentMonthHours += hours;
+        } else if (recordMonth === prevMonth && recordYear === prevYear) {
+          prevMonthHours += hours;
+        }
+      }
+      
+      return total + hours;
+    }, 0);
+    
+    // Calculate month over month growth percentage
+    let hoursGrowthPercentage = 0;
+    if (prevMonthHours > 0) {
+      hoursGrowthPercentage = Math.round(((currentMonthHours - prevMonthHours) / prevMonthHours) * 100);
+    } else if (currentMonthHours > 0) {
+      hoursGrowthPercentage = 100; // First month with hours
+    }
+    
     return {
       totalVolunteers: totalVolunteers || 0,
       totalEvents: totalEvents || 0,
       newVolunteers: newVolunteers || 0,
       activeEvents: activeEvents || 0,
+      volunteerHours: Math.round(volunteerHours) || 0,
+      currentMonthHours: Math.round(currentMonthHours) || 0,
+      prevMonthHours: Math.round(prevMonthHours) || 0,
+      hoursGrowthPercentage,
       error: null
     };
   } catch (error) {
@@ -625,6 +677,10 @@ export const getDashboardStats = async () => {
       totalEvents: 0,
       newVolunteers: 0,
       activeEvents: 0,
+      volunteerHours: 0,
+      currentMonthHours: 0,
+      prevMonthHours: 0,
+      hoursGrowthPercentage: 0,
       error
     };
   }

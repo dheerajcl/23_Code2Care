@@ -49,7 +49,8 @@ const AdminDashboard: React.FC = () => {
     totalEvents: 0,
     newVolunteers: 0,
     activeEvents: 0,
-    volunteerHours: 0
+    volunteerHours: 0,
+    hoursGrowthPercentage: 0
   });
 
   // State for charts data
@@ -69,13 +70,8 @@ const AdminDashboard: React.FC = () => {
         const stats = await getDashboardStats();
         if (stats.error) throw stats.error;
         
-        // Format volunteer hours (placeholder - no direct API for this yet)
-        const volunteerHours = 854; // This should be replaced with actual data when available
-        
-        setDashboardStats({ 
-          ...stats, 
-          volunteerHours 
-        });
+        // Set dashboard stats directly from the API
+        setDashboardStats(stats);
         
         // Fetch events for chart data
         const { data: events, error: eventsError } = await getEvents();
@@ -326,9 +322,12 @@ const AdminDashboard: React.FC = () => {
                   <CardContent>
                     <div className="text-2xl font-bold">{dashboardStats.volunteerHours}</div>
                     <p className="text-xs text-muted-foreground mt-1 flex items-center">
-                      <span className="text-green-500 flex items-center mr-1">
-                        <ArrowUpRight className="h-3 w-3 mr-1" />
-                        18%
+                      <span className={`${dashboardStats.hoursGrowthPercentage >= 0 ? "text-green-500" : "text-red-500"} flex items-center mr-1`}>
+                        {dashboardStats.hoursGrowthPercentage >= 0 ? 
+                          <ArrowUpRight className="h-3 w-3 mr-1" /> : 
+                          <ArrowDownRight className="h-3 w-3 mr-1" />
+                        }
+                        {Math.abs(dashboardStats.hoursGrowthPercentage)}%
                       </span>
                       from last month
                     </p>
