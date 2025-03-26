@@ -7,7 +7,6 @@ const menuItems = [
   { name: 'My Events', icon: <Calendar size={20} />, path: '/volunteer/events' },
   { name: 'Tasks', icon: <CheckCircle size={20} />, path: '/volunteer/tasks' },
   { name: 'Progress', icon: <BarChart3 size={20} />, path: '/volunteer/progress' },
-  { name: 'Badges', icon: <Award size={20} />, path: '/volunteer/badges' },
 ];
 
 const Sidebar = () => {

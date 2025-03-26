@@ -107,7 +107,6 @@ export const Leaderboard = () => {
               <TableHead className="w-12">Rank</TableHead>
               <TableHead>Volunteer</TableHead>
               <TableHead className="text-right">Points</TableHead>
-              <TableHead className="text-right">Badges</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -124,7 +123,6 @@ export const Leaderboard = () => {
                     {entry.first_name} {entry.last_name}
                   </TableCell>
                   <TableCell className="text-right">{entry.total_points}</TableCell>
-                  <TableCell className="text-right">{entry.badge_count}</TableCell>
                 </TableRow>
               ))
             ) : (
