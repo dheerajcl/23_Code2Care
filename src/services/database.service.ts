@@ -3529,3 +3529,131 @@ export const getParticipantsByEventId = async (eventId: string): Promise<{ data:
   }
 };
 
+/**
+ * Safely delete an event and all related data
+ * This handles deleting all dependent records to avoid foreign key constraint errors
+ */
+export const cascadeDeleteEvent = async (eventId: string) => {
+  try {
+    console.log(`Starting cascade delete for event ${eventId}`);
+    
+    // Delete feedback first (depends on event_id)
+    const { error: feedbackError } = await supabase
+      .from('feedback')  // Correct table name is 'feedback', not 'event_feedback'
+      .delete()
+      .eq('event_id', eventId);
+    
+    if (feedbackError) {
+      console.error('Error deleting event feedback:', feedbackError);
+      // Continue with other deletions even if this fails
+    }
+    
+    // Delete task assignments (depends on tasks which depend on event)
+    const { data: taskData } = await supabase
+      .from('task')
+      .select('id')
+      .eq('event_id', eventId);
+    
+    if (taskData && taskData.length > 0) {
+      const taskIds = taskData.map(task => task.id);
+      console.log(`Found ${taskIds.length} tasks to delete for event ${eventId}`);
+      
+      // Delete task_assignment records
+      const { error: assignmentError } = await supabase
+        .from('task_assignment')
+        .delete()
+        .in('task_id', taskIds);
+      
+      if (assignmentError) {
+        console.error('Error deleting task assignments:', assignmentError);
+      }
+      
+      // Delete task responses if they exist
+      const { error: responseError } = await supabase
+        .from('task_response')
+        .delete()
+        .in('task_id', taskIds);
+      
+      if (responseError && responseError.code !== '42P01') { // Ignore if table doesn't exist
+        console.error('Error deleting task responses:', responseError);
+      }
+      
+      // Delete notifications related to these tasks
+      const { error: notifError } = await supabase
+        .from('notification')
+        .delete()
+        .in('task_id', taskIds);
+      
+      if (notifError && notifError.code !== '42P01') { // Ignore if table doesn't exist
+        console.error('Error deleting task notifications:', notifError);
+      }
+    }
+    
+    // Now delete all tasks for this event
+    const { error: taskError } = await supabase
+      .from('task')
+      .delete()
+      .eq('event_id', eventId);
+    
+    if (taskError) {
+      console.error('Error deleting tasks:', taskError);
+    }
+    
+    // Delete event registrations/signups
+    const { error: signupError } = await supabase
+      .from('event_signup')
+      .delete()
+      .eq('event_id', eventId);
+    
+    if (signupError) {
+      console.error('Error deleting event signups:', signupError);
+    }
+    
+    // Delete participant registrations
+    const { error: participantError } = await supabase
+      .from('participant')
+      .delete()
+      .eq('event_id', eventId);
+    
+    if (participantError && participantError.code !== '42P01') {
+      console.error('Error deleting participants:', participantError);
+    }
+    
+    // Handle any other potential relations that might reference the event
+    // Delete event_feedback if it exists separately from feedback
+    const { error: eventFeedbackError } = await supabase
+      .from('event_feedback')
+      .delete()
+      .eq('event_id', eventId);
+    
+    if (eventFeedbackError && eventFeedbackError.code !== '42P01') {
+      console.error('Error deleting specific event feedback:', eventFeedbackError);
+    }
+    
+    // Finally delete the event itself
+    const { data, error } = await supabase
+      .from('event')
+      .delete()
+      .eq('id', eventId)
+      .select();
+    
+    if (error) {
+      console.error('Error deleting event:', error);
+      
+      // If we get a foreign key constraint error, log which table is causing the issue
+      if (error.code === '23503') {
+        const details = error.details || '';
+        console.error(`Foreign key constraint error: ${details}`);
+        return { success: false, error: `Foreign key constraint: ${details}. Please make sure all references to this event are deleted first.` };
+      }
+      
+      return { success: false, error: error.message };
+    }
+    
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error in cascadeDeleteEvent:', error);
+    return { success: false, error: error.message };
+  }
+};
+
