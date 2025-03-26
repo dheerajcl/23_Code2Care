@@ -421,6 +421,15 @@ export const registerVolunteer = async (userData: z.infer<typeof volunteerRegist
         first_name: userData.firstName,
         last_name: userData.lastName,
         how_heard: userData.howHeard,
+        phone: userData.phone,
+        // dob: userData.dob,
+        address: userData.address,
+        city: userData.city,
+        state: userData.state,
+        skills: userData.skills,
+        interests: userData.interests,
+        availability: userData.availability,
+        experience: userData.experience
       })
       .select();
     

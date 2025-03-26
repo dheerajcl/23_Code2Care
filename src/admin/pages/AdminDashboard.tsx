@@ -119,7 +119,34 @@ const AdminDashboard: React.FC = () => {
           }));
 
         setUpcomingEvents(upcomingEvts);
+// Inside the fetchDashboardData function, after processing other data
+const processRecentVolunteers = (volunteers) => {
+  // Get the current time
+  const now = new Date();
+  
+  // Filter volunteers who joined within the last 24 hours
+  const recentVols = volunteers
+    .filter(volunteer => {
+      const joinedDate = new Date(volunteer.created_at);
+      const hoursSinceJoining = (now.getTime() - joinedDate.getTime()) / (1000 * 60 * 60);
+      return hoursSinceJoining <= 24;
+    })
+    .map(volunteer => ({
+      id: volunteer.id,
+      name: `${volunteer.first_name} ${volunteer.last_name}`,
+      email: volunteer.email,
+      skills: volunteer.skills || [],
+      joined: format(new Date(volunteer.created_at), 'MMM dd, yyyy'),
+      events: volunteer.events_attended || 0,
+      status: volunteer.is_active ? 'active' : 'new'
+    }))
+    .slice(0, 5); // Limit to 5 most recent volunteers
 
+  setRecentVolunteers(recentVols);
+};
+
+// Call this function after fetching volunteers
+processRecentVolunteers(volunteers);
         // Process initial chart data
         processMonthlyEventData(events, timeFrame, interval);
         processMonthlyVolunteerData(volunteers, timeFrame, interval);

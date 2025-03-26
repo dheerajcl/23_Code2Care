@@ -849,7 +849,7 @@ const stateCityMap: { [key: string]: string[] } = {
 
 const Register: React.FC = () => {
   const [step, setStep] = useState(1);
-  const [dob, setDob] = useState<Date | undefined>(undefined);
+  // const [dob, setDob] = useState<Date | undefined>(undefined);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
