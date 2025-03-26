@@ -3459,3 +3459,54 @@ export const databaseService = {
   getVolunteerFeedback
 };
 
+// Participant interfaces
+export interface Participant {
+  id?: string;
+  participant_id: string;
+  participant_name: string;
+  participant_email: string;
+  participant_phone: string;
+  participant_address: string;
+  participant_special: string;
+  event_id: string;
+  notification: boolean;
+  created_at?: string;
+}
+
+export interface ParticipantWithEvent extends Participant {
+  event?: {
+    id: string;
+    title: string;
+    start_date: string;
+    end_date: string;
+    category: string;
+  };
+}
+
+/**
+ * Fetches all participants with their associated event details
+ */
+export const getParticipants = async (): Promise<{ data: ParticipantWithEvent[] | null; error: any }> => {
+  try {
+    const { data, error } = await supabase
+      .from('participant')
+      .select(`
+        *,
+        event:event (
+          id,
+          title,
+          start_date,
+          end_date,
+          category
+        )
+      `);
+
+    if (error) throw error;
+    
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error fetching participants:', error);
+    return { data: null, error };
+  }
+};
+
