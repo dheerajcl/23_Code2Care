@@ -18,10 +18,12 @@ import {
   Mail,
   User,
   MessageSquare,
-  CheckCircle
+  CheckCircle,
+  FileText,
+  Download
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getEventById, getTasksByEventId, createTask, updateTask, deleteTask, getEventRegistrations, registerVolunteerForEvent, updateEventRegistration, deleteEventRegistration, getAdminEventTasks } from '@/services/database.service';
+import { getEventById, getTasksByEventId, createTask, updateTask, deleteTask, getEventRegistrations, registerVolunteerForEvent, updateEventRegistration, deleteEventRegistration, getAdminEventTasks, getParticipantsByEventId } from '@/services/database.service';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -39,6 +41,9 @@ import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { CSVLink } from "react-csv";
 
 // Task View Components
 import TaskTable from '../components/AdminTaskTable';
@@ -103,6 +108,10 @@ const AdminEventDetails = () => {
   // Task counts state
   const [taskCounts, setTaskCounts] = useState({ todo: 0, inProgress: 0, inReview: 0, done: 0 });
 
+  // New state for participants
+  const [participants, setParticipants] = useState([]);
+  const [loadingParticipants, setLoadingParticipants] = useState(true);
+
   // Fetch event details and related data
   useEffect(() => {
     const fetchEventDetails = async () => {
@@ -161,6 +170,13 @@ const AdminEventDetails = () => {
           const { data: registrationsData, error: registrationsError } = await getEventRegistrations(id);
           if (registrationsError) throw registrationsError;
           setRegistrations(registrationsData || []);
+
+          // Get participants for this event
+          setLoadingParticipants(true);
+          const { data: participantsData, error: participantsError } = await getParticipantsByEventId(id);
+          if (participantsError) throw participantsError;
+          setParticipants(participantsData || []);
+          setLoadingParticipants(false);
 
           // Fetch all volunteers
           const { data: volunteersData, error: volunteersError } = await supabase
@@ -592,6 +608,80 @@ const handleSelectAll = () => {
     return new Date(endDate) < new Date();
   };
 
+  // Generate PDF for volunteers
+  const generateVolunteersPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text(`${event.title} - Volunteer List`, 14, 22);
+    doc.setFontSize(11);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+    
+    const tableData = registrations.map(reg => [
+      `${reg.volunteer.first_name} ${reg.volunteer.last_name}`,
+      reg.volunteer.email,
+      formatDate(reg.created_at),
+      reg.status,
+      reg.hours || 0
+    ]);
+    
+    autoTable(doc, {
+      head: [['Name', 'Email', 'Registration Date', 'Status', 'Hours']],
+      body: tableData,
+      startY: 40
+    });
+    
+    doc.save(`${event.title.replace(/\s+/g, '_')}_volunteers.pdf`);
+  };
+
+  // Generate PDF for participants
+  const generateParticipantsPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text(`${event.title} - Participant List`, 14, 22);
+    doc.setFontSize(11);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+    
+    const tableData = participants.map(p => [
+      p.participant_name,
+      p.participant_email,
+      p.participant_phone,
+      p.participant_special || 'None'
+    ]);
+    
+    autoTable(doc, {
+      head: [['Name', 'Email', 'Phone', 'Special Requirements']],
+      body: tableData,
+      startY: 40
+    });
+    
+    doc.save(`${event.title.replace(/\s+/g, '_')}_participants.pdf`);
+  };
+
+  // CSV data for volunteers
+  const volunteersCSVData = [
+    ['Name', 'Email', 'Phone', 'Registration Date', 'Status', 'Hours Served'],
+    ...registrations.map(reg => [
+      `${reg.volunteer.first_name} ${reg.volunteer.last_name}`,
+      reg.volunteer.email,
+      reg.volunteer.phone || 'N/A',
+      formatDate(reg.created_at),
+      reg.status,
+      reg.hours || 0
+    ])
+  ];
+
+  // CSV data for participants
+  const participantsCSVData = [
+    ['Name', 'Email', 'Phone', 'Address', 'Special Requirements'],
+    ...participants.map(p => [
+      p.participant_name,
+      p.participant_email,
+      p.participant_phone,
+      p.participant_address || 'N/A',
+      p.participant_special || 'None'
+    ])
+  ];
+
   if (error) {
     return (
       <div className="flex h-screen bg-gray-100">
@@ -681,6 +771,7 @@ const handleSelectAll = () => {
                 <TabsTrigger value="details" className="flex-1">Event Details</TabsTrigger>
                 <TabsTrigger value="tasks" className="flex-1">Tasks</TabsTrigger>
                 <TabsTrigger value="volunteers" className="flex-1">Volunteers</TabsTrigger>
+                <TabsTrigger value="participants" className="flex-1">Participants</TabsTrigger>
               </TabsList>
 
               <TabsContent value="details" className="space-y-6">
@@ -1026,41 +1117,74 @@ const handleSelectAll = () => {
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-4 py-2">
-            <Checkbox checked={selectedVolunteers.length === registrations.length} onCheckedChange={handleSelectAll} />
-            <span>Select All</span>
-          </div>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline">
-                <MessageSquare className="w-5 h-5 mr-2" />
-                Send Message
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-4">
-              <h3 className="text-lg font-semibold mb-2">Send Notification</h3>
-              <Input
-                placeholder="Enter Title"
-                value={messageTitle}
-                onChange={(e) => setMessageTitle(e.target.value)}
-                className="mb-2"
-                disabled={isSending}
-              />
-              <Textarea
-                placeholder="Enter Message"
-                value={messageBody}
-                onChange={(e) => setMessageBody(e.target.value)}
-                className="mb-2"
-                disabled={isSending}
-              />
-              <Button onClick={sendMessage} className="w-full" disabled={isSending && isSent}>
-                {isSent ? <CheckCircle className="w-5 h-5 mr-2" /> : null}
-                {isSent ? 'Sent!' : isSending ? 'Sending...' : 'Send'}
-              </Button>
-            </PopoverContent>
-          </Popover>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-4 py-2">
+                        <Checkbox checked={selectedVolunteers.length === registrations.length} onCheckedChange={handleSelectAll} />
+                        <span>Select All</span>
+                      </div>
+                      
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline">
+                            <MessageSquare className="w-5 h-5 mr-2" />
+                            Send Message
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 p-4">
+                          <h3 className="text-lg font-semibold mb-2">Send Notification</h3>
+                          <Input
+                            placeholder="Enter Title"
+                            value={messageTitle}
+                            onChange={(e) => setMessageTitle(e.target.value)}
+                            className="mb-2"
+                            disabled={isSending}
+                          />
+                          <Textarea
+                            placeholder="Enter Message"
+                            value={messageBody}
+                            onChange={(e) => setMessageBody(e.target.value)}
+                            className="mb-2"
+                            disabled={isSending}
+                          />
+                          <Button onClick={sendMessage} className="w-full" disabled={isSending && isSent}>
+                            {isSent ? <CheckCircle className="w-5 h-5 mr-2" /> : null}
+                            {isSent ? 'Sent!' : isSending ? 'Sending...' : 'Send'}
+                          </Button>
+                        </PopoverContent>
+                      </Popover>
+                      
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setShowRegistrationForm(true)}
+                        className="flex items-center gap-2"
+                      >
+                        <UserPlus className="w-5 h-5" />
+                        Register Volunteer
+                      </Button>
+                      
+                      <CSVLink 
+                        data={volunteersCSVData}
+                        filename={`${event.title.replace(/\s+/g, '_')}_volunteers.csv`}
+                      >
+                        <Button 
+                          variant="outline" 
+                          className="flex items-center gap-2"
+                        >
+                          <Download className="w-5 h-5" />
+                          Export CSV
+                        </Button>
+                      </CSVLink>
+                      
+                      <Button 
+                        variant="outline" 
+                        onClick={generateVolunteersPDF}
+                        className="flex items-center gap-2"
+                      >
+                        <FileText className="w-5 h-5" />
+                        Export PDF
+                      </Button>
+                    </div>
                   </div>
-
 
                   {registrations.length === 0 ? (
                     <div className="text-center py-8">
@@ -1239,6 +1363,119 @@ const handleSelectAll = () => {
                     </div>
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="participants" className="space-y-6">
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                    <div>
+                      <h2 className="text-xl font-semibold">Event Participants</h2>
+                      <p className="text-gray-500">
+                        {participants.length} participants registered
+                      </p>
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CSVLink 
+                        data={participantsCSVData}
+                        filename={`${event?.title.replace(/\s+/g, '_')}_participants.csv`}
+                      >
+                        <Button 
+                          variant="outline" 
+                          className="flex items-center gap-2"
+                        >
+                          <Download className="w-5 h-5" />
+                          Export CSV
+                        </Button>
+                      </CSVLink>
+                      
+                      <Button 
+                        variant="outline" 
+                        onClick={generateParticipantsPDF}
+                        className="flex items-center gap-2"
+                      >
+                        <FileText className="w-5 h-5" />
+                        Export PDF
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Participants table */}
+                  {loadingParticipants ? (
+                    <div className="text-center py-8">
+                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                      <p className="mt-4">Loading participants...</p>
+                    </div>
+                  ) : participants.length === 0 ? (
+                    <div className="text-center py-8">
+                      <h3 className="mt-2 text-sm font-medium text-gray-900">No participants registered yet</h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Participants register directly through the public event page.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-hidden rounded-lg border">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Participant
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Contact
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Address
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Special Requirements
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Notifications
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {participants.map((participant) => (
+                            <tr key={participant.participant_id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <div className="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
+                                    <User className="h-5 w-5 text-gray-500" />
+                                  </div>
+                                  <div className="ml-4">
+                                    <div className="text-sm font-medium text-gray-900">
+                                      {participant.participant_name}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm">
+                                  <p>{participant.participant_email}</p>
+                                  <p className="text-muted-foreground">{participant.participant_phone}</p>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {participant.participant_address || 'Not provided'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <div className="max-w-xs truncate">
+                                  {participant.participant_special || 'None'}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <Badge variant={participant.notification ? 'default' : 'outline'}>
+                                  {participant.notification ? 'Enabled' : 'Disabled'}
+                                </Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               </TabsContent>
             </Tabs>
           </div>

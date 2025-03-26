@@ -3510,3 +3510,22 @@ export const getParticipants = async (): Promise<{ data: ParticipantWithEvent[] 
   }
 };
 
+/**
+ * Fetches participants for a specific event
+ */
+export const getParticipantsByEventId = async (eventId: string): Promise<{ data: Participant[] | null; error: any }> => {
+  try {
+    const { data, error } = await supabase
+      .from('participant')
+      .select('*')
+      .eq('event_id', eventId);
+
+    if (error) throw error;
+    
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error fetching participants for event:', error);
+    return { data: null, error };
+  }
+};
+
