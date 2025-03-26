@@ -60,122 +60,103 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { updateVolunteer } from '@/services/database.service';
+import { supabase } from '@/lib/supabase'; // Import supabase
 
-export const assignedTasks = [
-  {
-    id: '1',
-    eventId: '1',
-    eventTitle: 'Digital Literacy Workshop',
-    title: 'Setup equipment',
-    description: 'Setup computers and assistive technology devices',
-    date: 'Aug 15, 2023',
-    time: '9:00 AM - 10:00 AM',
-    status: 'upcoming'
-  },
-  {
-    id: '2',
-    eventId: '1',
-    eventTitle: 'Digital Literacy Workshop',
-    title: 'Teaching assistance',
-    description: 'Help participants with hands-on exercises',
-    date: 'Aug 15, 2023',
-    time: '10:00 AM - 1:00 PM',
-    status: 'upcoming'
-  },
-  {
-    id: '3',
-    eventId: '4',
-    eventTitle: 'Blind Cricket Workshop',
-    title: 'Equipment management',
-    description: 'Manage and distribute cricket equipment to participants',
-    date: 'Jul 25, 2023',
-    time: '9:00 AM - 12:00 PM',
-    status: 'completed'
-  },
-];
 
-const badges = [
-  {
-    id: '1',
-    name: 'First Steps',
-    description: 'Completed your first volunteer activity',
-    icon: '🌱',
-    date: 'Jul 25, 2023',
-    color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
-  },
-  {
-    id: '2',
-    name: 'Tech Helper',
-    description: 'Assisted in a technology-based volunteer event',
-    icon: '💻',
-    date: 'Jul 25, 2023',
-    color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-  },
-  {
-    id: '3',
-    name: 'Early Bird',
-    description: 'Arrived early and helped with setup',
-    icon: '🐦',
-    date: 'Jul 25, 2023',
-    color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'
-  },
-];
+const getEventSignupCountForVolunteer = async (volunteerId: string) => {
+  try {
+    const { count, error } = await supabase
+      .from('event_signup')
+      .select('*', { count: 'exact' })
+      .eq('volunteer_id', volunteerId);
 
-const volunteerStats = [
-  {
-    name: 'Events',
-    value: 1,
-    target: 10,
-    progress: 10,
-    icon: <Calendar className="h-4 w-4 text-muted-foreground" />,
-  },
-  {
-    name: 'Hours',
-    value: 5,
-    target: 50,
-    progress: 10,
-    icon: <Clock className="h-4 w-4 text-muted-foreground" />,
-  },
-  {
-    name: 'Badges',
-    value: 3,
-    target: 10,
-    progress: 30,
-    icon: <Award className="h-4 w-4 text-muted-foreground" />,
-  },
-  {
-    name: 'Skills',
-    value: 2,
-    target: 5,
-    progress: 40,
-    icon: <BookOpen className="h-4 w-4 text-muted-foreground" />,
-  },
-];
+    if (error) {
+      console.error('Error fetching event signup count:', error);
+      throw error;
+    }
 
-const activityData = [
-  { name: 'Jun', hours: 0 },
-  { name: 'Jul', hours: 5 },
-  { name: 'Aug', hours: 0 },
-  { name: 'Sep', hours: 0 },
-  { name: 'Oct', hours: 0 },
-  { name: 'Nov', hours: 0 },
-];
+    return { count };
+  } catch (error) {
+    console.error('Error in getEventSignupCountForVolunteer:', error);
+    return { count: 0, error };
+  }
+};
 
-const feedbackData = [
-  {
-    id: '1',
-    eventTitle: 'Blind Cricket Workshop',
-    date: 'Jul 25, 2023',
-    comment: 'Great enthusiasm and very helpful with the participants. Good communication skills.',
-    rating: 5,
-  },
-];
+const getVolunteerPoints = async (volunteerId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('points')
+      .select('points')
+      .eq('volunteer_id', volunteerId);
+
+    if (error) {
+      console.error('Error fetching volunteer points:', error);
+      throw error;
+    }
+
+    const totalPoints = data?.reduce((sum, record) => sum + (record.points || 0), 0) || 0;
+    return { totalPoints };
+  } catch (error) {
+    console.error('Error in getVolunteerPoints:', error);
+    return { totalPoints: 0, error };
+  }
+};
+
+const getPendingTasksCount = async (volunteerId: string) => {
+  try {
+    const { count, error } = await supabase
+      .from('task_assignment')
+      .select('*', { count: 'exact' })
+      .eq('volunteer_id', volunteerId)
+      .in('status', ['accepted', 'pending']);
+
+    if (error) {
+      console.error('Error fetching pending tasks count:', error);
+      throw error;
+    }
+
+    return { count };
+  } catch (error) {
+    console.error('Error in getPendingTasksCount:', error);
+    return { count: 0, error };
+  }
+};
+
+const getVolunteerInterests = async (volunteerId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('volunteer')
+      .select('interests')
+      .eq('id', volunteerId);
+
+    if (error) {
+      console.error('Error fetching volunteer interests:', error);
+      throw error;
+    }
+
+    // Parse interests as an array
+    const interests = data?.[0]?.interests
+      ? Array.isArray(data[0].interests)
+        ? data[0].interests
+        : data[0].interests.split(',').map((interest: string) => interest.trim())
+      : [];
+
+    return { interests };
+  } catch (error) {
+    console.error('Error in getVolunteerInterests:', error);
+    return { interests: [], error };
+  }
+};
 
 export const VolunteerDashboard = () => {
   const { user, logout, setUser } = useVolunteerAuth();
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
+  const [participatedEventsCount, setParticipatedEventsCount] = useState(0); // State for participated events count
+  const [volunteerPoints, setVolunteerPoints] = useState(0); // State for volunteer points
+  const [pendingTasksCount, setPendingTasksCount] = useState(0); // State for pending tasks count
+  const [volunteerInterests, setVolunteerInterests] = useState<string[]>([]); // State for volunteer interests
   const location = useLocation();
   
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
@@ -213,6 +194,28 @@ export const VolunteerDashboard = () => {
       if (user?.id) {
         const { data: notificationData } = await notificationService.getVolunteerNotifications(user.id);
         setNotifications(notificationData || []);
+      }
+
+      // Fetch participated events count
+      if (user?.id) {
+        const { count, error: countError } = await getEventSignupCountForVolunteer(user.id);
+        if (countError) throw countError;
+        setParticipatedEventsCount(count || 0);
+
+        // Fetch volunteer points
+        const { totalPoints, error: pointsError } = await getVolunteerPoints(user.id);
+        if (pointsError) throw pointsError;
+        setVolunteerPoints(totalPoints || 0);
+
+        // Fetch pending tasks count
+        const { count: pendingCount, error: tasksError } = await getPendingTasksCount(user.id);
+        if (tasksError) throw tasksError;
+        setPendingTasksCount(pendingCount || 0);
+
+        // Fetch volunteer interests
+        const { interests, error: interestsError } = await getVolunteerInterests(user.id);
+        if (interestsError) throw interestsError;
+        setVolunteerInterests(interests || []);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -344,26 +347,61 @@ export const VolunteerDashboard = () => {
 
               {/* Stats Overview */}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {volunteerStats.map((stat) => (
-                  <Card key={stat.name}>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">
-                        {stat.name}
-                      </CardTitle>
-                      {stat.icon}
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{stat.value} <span className="text-sm font-normal text-muted-foreground">/ {stat.target}</span></div>
-                      <div className="mt-3">
-                        <div className="text-xs text-muted-foreground mb-1 flex justify-between">
-                          <span>Progress</span>
-                          <span>{stat.progress}%</span>
-                        </div>
-                        <Progress value={stat.progress} max={100} className="h-2" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Participated Events</CardTitle>
+                    <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{participatedEventsCount}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Total events you have participated in</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Points</CardTitle>
+                    <Award className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{volunteerPoints}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Total points earned</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Pending Tasks</CardTitle>
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {pendingTasksCount > 0 ? 'Complete Pending Tasks' : 'No tasks currently'}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {pendingTasksCount > 0
+                        ? `${pendingTasksCount} task(s) pending`
+                        : 'You have no pending tasks'}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Interests</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    {volunteerInterests.length > 0 ? (
+                      <ul className="list-disc pl-5">
+                        {volunteerInterests.map((interest, index) => (
+                          <li key={index} className="text-sm text-muted-foreground">
+                            {interest}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No interests added</p>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
 
               {/* Leaderboard Section */}
@@ -484,4 +522,4 @@ export const VolunteerDashboard = () => {
   );
 };
 
-export default VolunteerDashboard; 
+export default VolunteerDashboard;
