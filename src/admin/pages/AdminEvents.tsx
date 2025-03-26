@@ -23,7 +23,7 @@ import {
   DialogTitle
 } from '../../components/ui/dialog';
 import { motion } from 'framer-motion';
-import { getEvents, deleteEvent } from '@/services/database.service';
+import { getEvents, cascadeDeleteEvent } from '@/services/database.service';
 import { format } from 'date-fns';
 import { supabase } from '@/lib/supabase';
 import { toast } from '../../components/ui/use-toast';
@@ -175,8 +175,17 @@ const AdminEventsPage = () => {
 
     setIsDeleting(true);
     try {
-      const { success, error } = await deleteEvent(eventToDelete.id);
-      if (error) throw error;
+      // Use cascading delete function that handles removing all related data
+      const { success, error } = await cascadeDeleteEvent(eventToDelete.id);
+      
+      if (error) {
+        toast({
+          title: "Error Deleting Event",
+          description: `Failed to delete event: ${error}`,
+          variant: "destructive"
+        });
+        return;
+      }
 
       if (success) {
         // Remove event from local state
@@ -185,14 +194,14 @@ const AdminEventsPage = () => {
 
         toast({
           title: "Event Deleted",
-          description: `"${eventToDelete.title}" has been permanently deleted.`
+          description: `"${eventToDelete.title}" has been successfully deleted along with all related data.`
         });
       }
     } catch (err) {
       console.error('Error deleting event:', err);
       toast({
         title: "Error",
-        description: err.message || 'Failed to delete the event. Please try again.',
+        description: "Failed to delete the event. The system will try to resolve any database constraints automatically. Please try again.",
         variant: "destructive"
       });
     } finally {
