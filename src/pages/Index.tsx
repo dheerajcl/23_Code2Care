@@ -29,7 +29,7 @@ const { user, registeredEvents, registerForEvent } = useVolunteerAuth();
       const { data, error } = await supabase
         .from('event')
         .select('*')
-        .gt('close_date', new Date().toISOString())
+        .order('start_date', { ascending: true })
         .limit(3);
 
       if (error) {

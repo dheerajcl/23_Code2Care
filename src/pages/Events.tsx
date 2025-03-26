@@ -43,7 +43,6 @@ const Events = () => {
 const { data, error } = await supabase
 .from('event')
 .select('*')
-.gt('close_date', new Date().toISOString())
 .order('start_date', { ascending: true });
 
       if (error) {
@@ -165,19 +164,7 @@ const { data, error } = await supabase
                 </SelectContent>
               </Select>
               
-              <Select value={selectedDate} onValueChange={setSelectedDate}>
-                <SelectTrigger className="w-[130px]">
-                  <SelectValue placeholder="Filter by date" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Dates</SelectItem>
-                  <SelectItem value="upcoming">Upcoming</SelectItem>
-                  <SelectItem value="live">Live Now</SelectItem>
-                  <SelectItem value="past">Past Events</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              {(searchTerm || selectedType !== 'all' || selectedDate !== 'all') && (
+              {(searchTerm || selectedType !== 'all') && (
                 <Button variant="outline" size="icon" onClick={clearFilters}>
                   <X className="h-4 w-4" />
                 </Button>
@@ -185,7 +172,39 @@ const { data, error } = await supabase
             </div>
           </div>
           
-          {(searchTerm || selectedType !== 'all' || selectedDate !== 'all') && (
+          {/* Date Filter Buttons */}
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              variant={selectedDate === 'all' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setSelectedDate('all')}
+            >
+              All Events
+            </Button>
+            <Button 
+              variant={selectedDate === 'upcoming' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setSelectedDate('upcoming')}
+            >
+              Upcoming
+            </Button>
+            <Button 
+              variant={selectedDate === 'live' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setSelectedDate('live')}
+            >
+              Live Now
+            </Button>
+            <Button 
+              variant={selectedDate === 'past' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setSelectedDate('past')}
+            >
+              Past Events
+            </Button>
+          </div>
+          
+          {(searchTerm || selectedType !== 'all') && (
             <div className="flex flex-wrap gap-2">
               {searchTerm && (
                 <Badge variant="secondary" className="flex items-center">
@@ -207,19 +226,6 @@ const { data, error } = await supabase
                     onClick={() => setSelectedType('all')}
                     className="ml-1 hover:text-primary"
                     aria-label="Remove type filter"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              )}
-              
-              {selectedDate !== 'all' && (
-                <Badge variant="secondary" className="flex items-center">
-                  Date: {selectedDate}
-                  <button
-                    onClick={() => setSelectedDate('all')}
-                    className="ml-1 hover:text-primary"
-                    aria-label="Remove date filter"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -268,7 +274,7 @@ const { data, error } = await supabase
             <p className="text-gray-500">
               Try adjusting your search or filter criteria.
             </p>
-            {searchTerm || selectedType !== 'all' || selectedDate !== 'all' ? (
+            {searchTerm || selectedType !== 'all' ? (
               <Button
                 variant="outline"
                 onClick={clearFilters}

@@ -202,10 +202,10 @@ export const VolunteerDashboard = () => {
       // Fetch upcoming events
       const { data: events } = await getEvents();
       if (events) {
-        // Filter to get only upcoming events
-        const upcoming = events.filter(event => 
-          new Date(event.start_date) > new Date()
-        ).slice(0, 3); // Get only 3 upcoming events
+        // Get all events sorted by start date (most recent first)
+        const upcoming = events
+          .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+          .slice(0, 3); // Get only 3 events
         setUpcomingEvents(upcoming);
       }
       
