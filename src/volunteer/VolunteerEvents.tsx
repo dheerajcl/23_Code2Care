@@ -8,7 +8,6 @@ import Sidebar from '../components/Sidebar';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import Chatbot from "@/components/chatbot";
 import {
   Select,
   SelectContent,
@@ -440,9 +439,6 @@ const VolunteerEvents = () => {
             </motion.div>
           )}
         </main>
-      </div>
-      <div className="flex-grow mt-6">
-                <Chatbot />        
       </div>
       <AccessibilityMenu />
 

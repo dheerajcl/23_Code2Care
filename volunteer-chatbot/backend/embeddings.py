@@ -1,19 +1,23 @@
-import faiss 
+import faiss # type: ignore
 import os
 import numpy as np
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer # type: ignore
 from database import fetch_volunteers, fetch_events
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
+# Load the sentence transformer model
+model = SentenceTransformer("all-MiniLM-L6-v2")  # Open-source, works locally
 
+# Function to generate embeddings
 def generate_embeddings(texts):
     return model.encode(texts, convert_to_numpy=True)
 
+# Fetch volunteers & events
 volunteers = fetch_volunteers()
 events = fetch_events()
 
 print(f"✅ Fetched {len(volunteers)} volunteers and {len(events)} events.")
 
+# Prepare text data for embedding
 data = []
 ids = []
 
@@ -32,21 +36,26 @@ for e in events:
     data.append(text)
     ids.append(e["id"])
 
+# Generate embeddings
 embeddings = generate_embeddings(data)
 
-print(f" Embedding shape: {embeddings.shape}")
+# Validate embedding shape
+print(f"✅ Embedding shape: {embeddings.shape}")  # Should be (num_samples, 384)
 
+# Initialize FAISS index
 dimension = embeddings.shape[1]
 index = faiss.IndexFlatL2(dimension)
 index.add(embeddings)
 
+# Ensure vectorstore directory exists
 vectorstore_path = "vectorstore"
 if not os.path.exists(vectorstore_path):
     os.makedirs(vectorstore_path)
 
+# Save index
 try:
     faiss.write_index(index, os.path.join(vectorstore_path, "faiss_index.bin"))
     np.save(os.path.join(vectorstore_path, "ids.npy"), ids)
-    print("FAISS Index Created & Saved Successfully!")
+    print("✅ FAISS Index Created & Saved Successfully!")
 except Exception as e:
-    print(f"Error saving FAISS index: {e}")
+    print(f"❌ Error saving FAISS index: {e}")
