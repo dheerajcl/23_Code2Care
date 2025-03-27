@@ -13,10 +13,8 @@ from database import get_assigned_tasks
 from database import fetch_volunteers, fetch_events, fetch_tasks, fetch_task_assignments
 from database import get_tasks_for_volunteer
 
-# Initialize FastAPI
 app = FastAPI()
 
-# Enable CORS (✅ Fix applied for proper CORS handling)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,10 +23,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load sentence transformer model
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
-# Globals for FAISS and data
 index = None
 ids = None
 volunteers = []
@@ -36,7 +32,6 @@ events = []
 tasks = []
 assignments = []
 
-# Configure Gemini API
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 @app.on_event("startup")
@@ -44,7 +39,7 @@ def startup_event():
     global index, ids, volunteers, events, tasks, assignments
 
     print("🔄 Updating FAISS index on startup...")
-    from faiss_updater import update_faiss_index  # Import locally to avoid circular imports
+    from faiss_updater import update_faiss_index 
     update_faiss_index()
     print("✅ FAISS index updated.")
 
@@ -65,7 +60,6 @@ def retrieve_info(matched_ids):
     for id in matched_ids:
         id_str = str(id)
 
-        # Volunteers
         for v in volunteers:
             if v["id"] == id:
                 results.append(
@@ -155,7 +149,6 @@ def process_user_query(user_input, volunteer_id):
             response = "You currently have no tasks assigned."
         return response
     else:
-        # Pass to default retrieval process
         return default_retriever_logic(user_input)
 
 def get_gemini_response(query, context, conversation_history=""):
@@ -184,6 +177,7 @@ def get_gemini_response(query, context, conversation_history=""):
     f"Relevant Data:\n{context}\n"
     f"---\n\n"
     f"Answer in a friendly, clear way using both history and available data."
+    f"don't add **"
 
 )
 
@@ -201,13 +195,12 @@ def home():
 def search(
     query: str = Query(..., description="Search query to find tasks, events, or assignments"),
     conversation_history: str = "",
-    volunteer_id: str = None  # <-- Add this line
+    volunteer_id: str = None 
 ):
 
     query_embedding = model.encode([query], convert_to_numpy=True)
     matched_ids = []
 
-    # MONTH DETECTION
     months = list(calendar.month_name)
     month_in_query = None
     for month in months:
@@ -215,7 +208,6 @@ def search(
             month_in_query = month
             break
 
-    # LOCATION DETECTION
     location_keywords = ["bangalojre", "bengaluru", "delhi", "chennai", "mumbai"]  # Expand as needed
     location_in_query = None
     for loc in location_keywords:
@@ -223,7 +215,6 @@ def search(
             location_in_query = loc.lower()
             break
 
-    # STATUS DETECTION
     status_keywords = ["pending", "completed", "in progress", "review", "done"]
     status_in_query = None
     for status in status_keywords:
@@ -231,27 +222,23 @@ def search(
             status_in_query = status.lower()
             break
 
-    # 🔥 TASK-SPECIFIC FILTER
     if "task" in query.lower() or "tasks" in query.lower():
         print("🟢 Detected Task Query... Applying filters")
         for t in tasks:
             include = True
 
-            # Filter by MONTH
             if month_in_query:
                 if t['start_time']:
                     task_month = parser.parse(t['start_time']).strftime("%B")
                     if task_month.lower() != month_in_query.lower():
                         include = False
 
-            # Filter by LOCATION
             if location_in_query:
                 for e in events:
-                    if e['id'] == t['event_id']:  # Match event
+                    if e['id'] == t['event_id']: 
                         if location_in_query not in e['location'].lower():
                             include = False
 
-            # Filter by STATUS
             if status_in_query:
                 if status_in_query not in t['status'].lower():
                     include = False
@@ -261,20 +248,18 @@ def search(
 
         print(f"✅ Filtered Task IDs: {matched_ids}")
 
-    # 🔽 EVENT FILTER (if query is about events)
     elif "event" in query.lower() or month_in_query or location_in_query:
         print("📅 Detected Event Query... Applying filters")
 
         for e in events:
             include = True
 
-            # Month filter
             if month_in_query:
                 event_month = parser.parse(e['start_date']).strftime("%B")
                 if event_month.lower() != month_in_query.lower():
                     include = False
 
-            # Location filter
+
             if location_in_query:
                 if location_in_query not in e['location'].lower():
                     include = False
@@ -282,15 +267,13 @@ def search(
             if include:
                 matched_ids.append(e['id'])
 
-        print(f"✅ Filtered Event IDs: {matched_ids}")
+        print(f" Filtered Event IDs: {matched_ids}")
 
     else:
-        # FAISS fallback for general queries
         D, I = index.search(query_embedding, 3)
         matched_ids = [ids[i] for i in I[0] if i >= 0]
         print(f"🔑 FAISS Matched IDs: {matched_ids}")
 
-    # Retrieve context
     context = retrieve_info(matched_ids)
     chatbot_response = get_gemini_response(query, context, conversation_history)
 
@@ -300,26 +283,22 @@ def search(
         "chatbot_response": chatbot_response
     }
 class ChatRequest(BaseModel):
-    messages: list[dict]  # Expecting list of {"user": "text", "bot": "text"}
+    messages: list[dict] 
 
 @app.post("/chat/")
 async def chat(request: ChatRequest, volunteer_id: str = Query(None)):
-    # 👇 Combine all previous messages to maintain context
     conversation_history = ""
     for msg in request.messages:
         conversation_history += f"User: {msg['user']}\nBot: {msg['bot']}\n"
 
     latest_user_query = request.messages[-1]["user"]
 
-    # 👇 Send entire conversation to search function
     search_response = search(query=latest_user_query, volunteer_id=volunteer_id, conversation_history=conversation_history)
     
     chatbot_response = search_response.get("chatbot_response", "I couldn't find relevant information.")
 
     return {"response": chatbot_response}
 
-
-# Run server
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)

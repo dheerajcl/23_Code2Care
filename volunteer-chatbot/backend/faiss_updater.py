@@ -3,13 +3,11 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 from database import fetch_events, fetch_volunteers, fetch_tasks, fetch_task_assignments
 
-# Load model
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 def update_faiss_index():
     print("🔄 Updating FAISS index with fresh data...")
 
-    # Fetch data
     volunteers = fetch_volunteers()
     events = fetch_events()
     tasks = fetch_tasks()
@@ -18,7 +16,6 @@ def update_faiss_index():
     all_data = []
     all_ids = []
 
-    # Volunteers
     for v in volunteers:
         text = (
             f"Volunteer {v['first_name']} {v['last_name']} (Rating: {v['rating']})\n"
@@ -32,8 +29,6 @@ def update_faiss_index():
         all_data.append(text)
         all_ids.append(v["id"])
 
-
-    # Events
     for e in events:
         text = (
             f"Event: {e['title']} ({e['category']})\n"
@@ -47,7 +42,6 @@ def update_faiss_index():
         all_ids.append(e["id"])
 
 
-    # Tasks
     for t in tasks:
         text = (
             f"Task Title: {t['title']} Description: {t['description']} "
@@ -55,9 +49,8 @@ def update_faiss_index():
             f"Status: {t['status']} Deadline: {t['deadline']} Max Volunteers: {t['max_volunteers']}"
         )
         all_data.append(text)
-        all_ids.append(f"task_{t['id']}")  # Prefix "task_"
+        all_ids.append(f"task_{t['id']}")
 
-    # Task Assignments
     for ta in task_assignments:
         assignment_id = f"{ta['volunteer_id']}_{ta['task_id']}"
         text = (
@@ -65,21 +58,17 @@ def update_faiss_index():
             f"Status: {ta['status']} Response Deadline: {ta['response_deadline']}, Event ID: {ta['event_id']}"
         )
         all_data.append(text)
-        all_ids.append(f"assign_{assignment_id}")  # Prefix "assign_"
+        all_ids.append(f"assign_{assignment_id}")
 
-    # Convert to embeddings
     embeddings = model.encode(all_data, convert_to_numpy=True)
 
-    # Create FAISS index
     new_index = faiss.IndexFlatL2(embeddings.shape[1])
     new_index.add(embeddings)
 
-    # Save index & IDs
     faiss.write_index(new_index, "vectorstore/faiss_index.bin")
     np.save("vectorstore/ids.npy", np.array(all_ids))
 
     print(f"✅ FAISS index updated! Volunteers: {len(volunteers)}, Events: {len(events)}, Tasks: {len(tasks)}, Assignments: {len(task_assignments)}")
 
-# Run directly
 if __name__ == "__main__":
     update_faiss_index()

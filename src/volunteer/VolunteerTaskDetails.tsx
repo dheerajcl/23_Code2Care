@@ -6,6 +6,7 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import { supabase } from '@/lib/supabase';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import Chatbot from "@/components/chatbot";
 
 // Task View Components
 import TaskTable from '../components/TaskTable';
@@ -570,6 +571,9 @@ const VolunteerTaskDetails = () => {
             </div>
           </div>
         </main>
+        <div className="flex-grow mt-6">
+                <Chatbot />        
+        </div>
       </div>
       <AccessibilityMenu/>
     </div>
